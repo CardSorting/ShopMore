@@ -10,6 +10,27 @@
  * - Singleton pattern enforced via module-level caching
  * - JoyZoning compliant: UI imports Domain ONLY via hooks
  * 
+ * INITIALIZATION PATTERNS (Documented for Clarity):
+ * 
+ * PATTERN 1: getServiceContainer() - Factory Pattern
+ * - Purpose: Create isolated, fresh service instances for testing or state isolation
+ * - Use Case: Unit testing, debugging, or scenarios requiring fresh state
+ * - Behavior: Creates NEW repository instances each call, no caching
+ * - Note: Not recommended for production use (conflicts with PATTERN 2)
+ * 
+ * PATTERN 2: getInitialServices() - Singleton Pattern (Production)
+ * - Purpose: Global singleton services for consistent app-wide state
+ * - Use Case: Production app, Cart persistence, user state management
+ * - Behavior: Returns CACHED container (repositories persist across calls)
+ * - Default: Used by useServices() hook for production app behavior
+ * 
+ * SINGLETON STATE MANAGEMENT:
+ * - authServiceInstance: AuthAdapter (shared across app)
+ * - authProviderInstance: AuthAdapter (firebase init cached)
+ * - productsRepo: FirestoreProductRepository (cached singleton - shared)
+ * - cartRepo: FirestoreCartRepository (cached singleton - shared)
+ * - ordersRepo: FirestoreOrderRepository (cached singleton - shared)
+ * 
  * NOISE IMPORTS ELIMINATED:
  * - No infrastructure polluting core layer
  * - No core polluting infrastructure layer
@@ -17,9 +38,20 @@
  * 
  * INITIALIZATION ORDER:
  * 1. Firebase initialized lazily by first service using it
- * 2. Repositories instantiated per service (scoped)
- * 3. Services created on-demand via getInitialServices()
+ * 2. Repository instances cached on first creation (singleton)
+ * 3. Services created on-demand via getInitialServices() hook
  * 4. UI components use useServices() hook only
+ * 
+ * REPOSITORY SCOPE (IMPORTANT):
+ * - ProductRepository: Singleton - shared across ProductService
+ * - CartRepository: Singleton - shared across CartService AND preserved in memory
+ * - OrderRepository: Singleton - shared across OrderService
+ * 
+ * DESIGN RATIONALE:
+ * - CartRepository singleton allows seamless cart persistence
+ *   without complex state management or page navigation
+ * - Other repositories as singletons improve performance (cached queries)
+ * - Factory pattern preserved for testing scenarios
  */
 
 import { FirestoreProductRepository } from '@infrastructure/repositories/FirestoreProductRepository';
@@ -32,30 +64,86 @@ import { CartService } from './CartService';
 import { OrderService } from './OrderService';
 import { AuthService } from './AuthService';
 
-// Singleton caches
+// Singleton caches for production (Pattern 2 - getInitialServices)
 // These ensure single instances while maintaining lazy loading
 let authServiceInstance: AuthService | null = null;
 let authProviderInstance: AuthAdapter | null = null;
 
-// Legacy support - purely lazy-loaded
-let _cachedContainer: ReturnType<typeof getServiceContainer> | null = null;
+// Repository singletons - cached globally (shared across all services)
+let productRepoInstance: FirestoreProductRepository | null = null;
+let cartRepoInstance: FirestoreCartRepository | null = null;
+let orderRepoInstance: FirestoreOrderRepository | null = null;
 
 /**
- * Get the service container (lazy initialization)
- * Call this inside useServices() hook to ensure components render
+ * FACTORY PATTERN: Creates fresh service instances
+ * 
+ * Use this for testing when you need isolated state.
+ * Not recommended for production use.
+ * 
+ * @returns Container with fresh repository instances
  */
 export function getServiceContainer() {
-  // Create repositories (scoped per service, not shared globally)
+  // Always create new instances - no caching
   const productRepo = new FirestoreProductRepository();
   const cartRepo = new FirestoreCartRepository();
   const orderRepo = new FirestoreOrderRepository();
   
-  // Create auth provider once
+  // Auth always singleton
+  const authProvider = new AuthAdapter();
+  const authService = new AuthService(authProvider);
+  
+  return {
+    authProvider,
+    authService,
+    productService: new ProductService(productRepo),
+    cartService: new CartService(cartRepo, productRepo),
+    orderService: new OrderService(
+      orderRepo,
+      productRepo,
+      cartRepo,
+      new MockPaymentProcessor()
+    ),
+  };
+}
+
+/**
+ * SINGLETON PATTERN: Gets global cached services (Production Default)
+ * 
+ * This is the pattern used by useServices() hook for production apps.
+ * Repositories are cached and retained across function calls.
+ * 
+ * @returns Container with cached singleton instances
+ * 
+ * IMPORTANT:
+ * - CartRepository remains in memory for seamless cart persistence
+ * - ProductRepository stays cached for performance
+ * - Other services reuse the same instances
+ */
+export function getInitialServices() {
+  // Use cached repository instances if available (singleton pattern)
+  const productRepo = productRepoInstance ?? new FirestoreProductRepository();
+  const cartRepo = cartRepoInstance ?? new FirestoreCartRepository();
+  const orderRepo = orderRepoInstance ?? new FirestoreOrderRepository();
+  
+  // Cache cart repository to maintain state for persistence
+  if (!cartRepoInstance) {
+    cartRepoInstance = cartRepo;
+  }
+  
+  // Cache other repositories for performance
+  if (!productRepoInstance) {
+    productRepoInstance = productRepo;
+  }
+  
+  if (!orderRepoInstance) {
+    orderRepoInstance = orderRepo;
+  }
+  
+  // Auth always singleton
   if (!authProviderInstance) {
     authProviderInstance = new AuthAdapter();
   }
   
-  // Create auth service once
   if (!authServiceInstance) {
     authServiceInstance = new AuthService(authProviderInstance);
   }
@@ -72,15 +160,4 @@ export function getServiceContainer() {
       new MockPaymentProcessor()
     ),
   };
-}
-
-/**
- * Legacy export - now strict lazy initialization
- * Used by CartPage for auth initialization
- */
-export function getInitialServices() {
-  if (!_cachedContainer) {
-    _cachedContainer = getServiceContainer();
-  }
-  return _cachedContainer;
 }

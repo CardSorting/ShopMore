@@ -1,0 +1,96 @@
+/**
+ * [LAYER: DOMAIN]
+ */
+import type { CartItem, Product } from './models';
+import { InsufficientStockError } from './errors';
+
+export const MAX_CART_QUANTITY = 99;
+
+export function calculateCartTotal(items: CartItem[]): number {
+  return items.reduce((sum, item) => sum + item.priceSnapshot * item.quantity, 0);
+}
+
+export function validateCartItem(
+  product: Product,
+  quantity: number,
+  existingQuantity: number = 0
+): boolean {
+  if (quantity <= 0) return false;
+  if (quantity > MAX_CART_QUANTITY) return false;
+  if (product.stock < quantity + existingQuantity) return false;
+  return true;
+}
+
+export function canPlaceOrder(
+  items: CartItem[],
+  stockMap: Map<string, number>
+): boolean {
+  if (items.length === 0) return false;
+  for (const item of items) {
+    const available = stockMap.get(item.productId) ?? 0;
+    if (available < item.quantity) return false;
+  }
+  return true;
+}
+
+export function addCartItem(
+  items: CartItem[],
+  product: Product,
+  quantity: number
+): CartItem[] {
+  const existingIndex = items.findIndex((i) => i.productId === product.id);
+  const existingQty =
+    existingIndex >= 0 ? items[existingIndex].quantity : 0;
+
+  if (!validateCartItem(product, quantity, existingQty)) {
+    throw new InsufficientStockError(
+      product.id,
+      quantity + existingQty,
+      product.stock
+    );
+  }
+
+  const newItem: CartItem = {
+    productId: product.id,
+    name: product.name,
+    priceSnapshot: product.price,
+    quantity,
+    imageUrl: product.imageUrl,
+  };
+
+  if (existingIndex >= 0) {
+    const updated = [...items];
+    updated[existingIndex] = {
+      ...updated[existingIndex],
+      quantity: updated[existingIndex].quantity + quantity,
+    };
+    return updated;
+  }
+
+  return [...items, newItem];
+}
+
+export function removeCartItem(items: CartItem[], productId: string): CartItem[] {
+  return items.filter((i) => i.productId !== productId);
+}
+
+export function updateCartItemQuantity(
+  items: CartItem[],
+  productId: string,
+  quantity: number,
+  product: Product
+): CartItem[] {
+  if (quantity <= 0) {
+    return removeCartItem(items, productId);
+  }
+  if (quantity > product.stock) {
+    throw new InsufficientStockError(productId, quantity, product.stock);
+  }
+  return items.map((item) =>
+    item.productId === productId ? { ...item, quantity } : item
+  );
+}
+
+export function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}

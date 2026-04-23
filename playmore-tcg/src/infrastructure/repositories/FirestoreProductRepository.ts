@@ -1,0 +1,153 @@
+/**
+ * [LAYER: INFRASTRUCTURE]
+ */
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  limit,
+  startAfter,
+  runTransaction,
+  serverTimestamp,
+  type QueryDocumentSnapshot,
+} from 'firebase/firestore';
+import { getDB } from '../FirebaseInitializer';
+import { COLLECTIONS } from '@utils/constants';
+import type { IProductRepository } from '@domain/repositories';
+import type { Product } from '@domain/models';
+import { ProductNotFoundError } from '@domain/errors';
+
+function docToProduct(docSnap: QueryDocumentSnapshot): Product {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name,
+    description: data.description,
+    price: data.price,
+    category: data.category,
+    stock: data.stock,
+    imageUrl: data.imageUrl,
+    set: data.set,
+    rarity: data.rarity,
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+    updatedAt: data.updatedAt?.toDate() ?? new Date(),
+  };
+}
+
+class FirestoreProductRepository implements IProductRepository {
+  private db: ReturnType<typeof getDB> | null = null;
+  private coll: any | null = null;
+
+  /**
+   * Get or create the Firestore instance
+   * This ensures we use the singleton instance, not create our own
+   */
+  private async getDBInstance() {
+    if (!this.db) {
+      this.db = await getDB();
+    }
+    return this.db;
+  }
+
+  /**
+   * Get or create the collection reference
+   * Lazy-loaded to prevent premature Firebase initialization
+   */
+  private async getCollection() {
+    if (!this.coll) {
+      const db = await this.getDBInstance();
+      this.coll = collection(db, COLLECTIONS.PRODUCTS);
+    }
+    return this.coll;
+  }
+
+  async getAll(options?: {
+    category?: string;
+    limit?: number;
+    cursor?: string;
+  }): Promise<{ products: Product[]; nextCursor?: string }> {
+    const db = await this.getDBInstance();
+    const coll = this.coll || collection(db, COLLECTIONS.PRODUCTS);
+
+    const q = query(
+      coll,
+      orderBy('createdAt', 'desc'),
+      ...(options?.category ? [where('category', '==', options.category)] : []),
+      ...(options?.cursor
+        ? [startAfter(await getDoc(doc(coll, options.cursor)))]
+        : []),
+      limit(options?.limit ?? 20)
+    );
+
+    const snapshot = await getDocs(q);
+    const products = snapshot.docs.map(docToProduct);
+    const nextCursor =
+      snapshot.docs.length > 0
+        ? snapshot.docs[snapshot.docs.length - 1].id
+        : undefined;
+
+    return { products, nextCursor };
+  }
+
+  async getById(id: string): Promise<Product | null> {
+    const db = await this.getDBInstance();
+    const coll = this.coll || collection(db, COLLECTIONS.PRODUCTS);
+    
+    const docSnap = await getDoc(doc(coll, id));
+    if (!docSnap.exists()) return null;
+    return docToProduct(docSnap);
+  }
+
+  async create(
+    product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<Product> {
+    const db = await this.getDBInstance();
+    const coll = this.coll || collection(db, COLLECTIONS.PRODUCTS);
+    
+    const ref = await addDoc(coll, {
+      ...product,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return this.getById(ref.id) as Promise<Product>;
+  }
+
+  async update(id: string, updates: Partial<Product>): Promise<Product> {
+    const db = await this.getDBInstance();
+    const coll = this.coll || collection(db, COLLECTIONS.PRODUCTS);
+    const ref = doc(coll, id);
+    
+    await updateDoc(ref, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+    const updated = await this.getById(id);
+    if (!updated) throw new ProductNotFoundError(id);
+    return updated;
+  }
+
+  async delete(id: string): Promise<void> {
+    const db = await this.getDBInstance();
+    const coll = this.coll || collection(db, COLLECTIONS.PRODUCTS);
+    await deleteDoc(doc(coll, id));
+  }
+
+  async updateStock(id: string, delta: number): Promise<void> {
+    const db = await this.getDBInstance();
+    const coll = this.coll || collection(db, COLLECTIONS.PRODUCTS);
+    const ref = doc(coll, id);
+    
+    await runTransaction(db, async (transaction) => {
+      const docSnap = await transaction.get(ref);
+      if (!docSnap.exists()) throw new ProductNotFoundError(id);
+      const currentStock = docSnap.data().stock as number;
+      transaction.update(ref, { stock: currentStock + delta });
+    });
+  }
+}

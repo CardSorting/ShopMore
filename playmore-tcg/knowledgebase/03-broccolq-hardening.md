@@ -1,38 +1,4 @@
-# PlayMoreTCG: Sovereign Architecture & Workspace Documentation
-
-This document provides a comprehensive architectural overview of the `PlayMoreTCG` workspace. The application is built on a high-performance, deterministic Local-First paradigm, deeply hardened using `BroccoliQ` and `BroccoliDB` patterns. It guarantees 0ms latency on hot-paths, absolute concurrency control, and zero data loss on process failures.
-
----
-
-## 🏛️ System Overview & Tech Stack
-
-PlayMoreTCG is an e-commerce application engineered for extreme velocity and structural integrity.
-- **Frontend / Build System:** React 19, Vite, Tailwind CSS.
-- **Local-First Database:** `better-sqlite3` strictly typed via `kysely`.
-- **Cloud Synchronization:** Firebase / Firestore (Provider toggleable).
-- **Payment Processing:** Stripe Integration.
-
-The system features a dual-provider database architecture. By setting `VITE_DB_PROVIDER=sqlite` or `firebase`, the underlying infrastructure seamlessly swaps out without affecting the core application layers.
-
----
-
-## 🏗️ Domain-Driven Design (DDD) Layout
-
-The workspace strictly enforces bounded contexts to prevent architectural decay and infrastructure leakage.
-
-### 1. `src/domain/` (The Core Contract)
-Contains zero implementation details. Pure TypeScript interfaces (`ICartRepository`), error definitions (`CartEmptyError`), business rules (`canPlaceOrder`), and core schemas.
-
-### 2. `src/core/` (Business Logic & Orchestration)
-Contains the raw business logic. Services (`OrderService`, `CartService`) orchestrate the domain models. 
-* **Strict Lazy Initialization Container:** `container.ts` acts as the definitive service locator. It provides both `getInitialServices()` (Singleton) and `getServiceContainer()` (Factory) to completely prevent circular dependency deadlocks and lazy-load infrastructure providers.
-
-### 3. `src/infrastructure/` (Concrete Reality)
-The physical execution layer. This directory houses the `SQLite` and `Firestore` repository implementations, the Stripe payment processors, and the physical `dbProvider.ts` orchestrator.
-
----
-
-## 🛡️ BroccoliQ Local-First Hardening (The 7 Pillars)
+# 3. BroccoliQ Local-First Hardening (The 7 Pillars)
 
 The SQLite local-first infrastructure is heavily fortified using the `BroccoliDB` substrate paradigms:
 
@@ -69,16 +35,3 @@ The SQLite local-first infrastructure is heavily fortified using the `BroccoliDB
 **Files:** `core/OrderService.ts`, `SQLiteCartRepository.ts`
 * **Agent Shadow Rollbacks (Sagas):** `OrderService` treats checkout as a localized transaction. It eagerly deducts stock, processes the Stripe payment, and if the payment declines, immediately runs an inverted database write (Compensating Transaction) to fully restore the inventory, ensuring 0% inventory bleed.
 * **Memory Backpressure:** Hard boundaries (`MAX_BUFFER_SIZE = 5000` carts, `MAX_INDEX_SIZE = 10000` products) prevent Out-Of-Memory (OOM) crashes by selectively throttling writes or dynamically falling back to disk reads if the node's physical resources are exhausted.
-
----
-
-## 🔄 The Autonomous Data Flow (Checkout Example)
-
-1. **Lock:** User initiates checkout. `SovereignLocker` allocates a Re-entrant RAM Mutex, then locks the physical `hive_claims` table.
-2. **Read:** `OrderService` validates the cart against the `O(1)` memory-first Product Index.
-3. **Shadow Write:** Stock is defensively deducted via Coalesced Batching.
-4. **External Boundary:** Stripe API is called.
-5. **Saga Evaluation:**
-   - *Success:* The order is flushed to the DB, and the cart is wiped.
-   - *Failure:* The Agent Shadow triggers a Compensating Transaction, rolling back the exact stock delta to prevent data corruption.
-6. **Release:** Mutex queue is advanced, and the DB lock is dropped.

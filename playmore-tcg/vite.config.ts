@@ -8,6 +8,14 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    exclude: ['better-sqlite3'],
+  },
+  build: {
+    rollupOptions: {
+      external: ['better-sqlite3'],
+    },
+  },
   resolve: {
     alias: {
       '@domain': path.resolve(__dirname, './src/domain'),

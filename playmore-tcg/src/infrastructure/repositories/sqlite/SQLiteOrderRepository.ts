@@ -5,6 +5,7 @@
 import { Kysely } from 'kysely';
 import { getSQLiteDB } from '../../sqlite/database';
 import type { Database } from '../../sqlite/schema';
+import type { OrderTable } from '../../sqlite/schema';
 import type { IOrderRepository } from '@domain/repositories';
 import type { Order, OrderStatus } from '@domain/models';
 
@@ -15,7 +16,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
     this.db = getSQLiteDB();
   }
 
-  private mapTableToOrder(row: any): Order {
+  private mapTableToOrder(row: OrderTable): Order {
     return {
       id: row.id,
       userId: row.userId,

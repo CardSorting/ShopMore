@@ -29,7 +29,7 @@ export class CartService {
     const product = await this.productRepo.getById(productId);
     if (!product) throw new ProductNotFoundError(productId);
 
-    let cart = await this.cartRepo.getByUserId(userId);
+    const cart = await this.cartRepo.getByUserId(userId);
     const items = cart?.items ?? [];
 
     const updatedItems = addCartItem(items, product, quantity);
@@ -46,7 +46,7 @@ export class CartService {
   }
 
   async removeFromCart(userId: string, productId: string): Promise<Cart> {
-    let cart = await this.cartRepo.getByUserId(userId);
+    const cart = await this.cartRepo.getByUserId(userId);
     const items = cart?.items ?? [];
     const updatedItems = removeCartItem(items, productId);
 
@@ -69,7 +69,7 @@ export class CartService {
     const product = await this.productRepo.getById(productId);
     if (!product) throw new ProductNotFoundError(productId);
 
-    let cart = await this.cartRepo.getByUserId(userId);
+    const cart = await this.cartRepo.getByUserId(userId);
     const items = cart?.items ?? [];
 
     const updatedItems = updateCartItemQuantity(items, productId, quantity, product);

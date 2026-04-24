@@ -44,3 +44,24 @@ export class UnauthorizedError extends DomainError {
     this.name = 'UnauthorizedError';
   }
 }
+
+export class CheckoutInProgressError extends DomainError {
+  constructor() {
+    super('Checkout is already in progress. Please wait and try again.');
+    this.name = 'CheckoutInProgressError';
+  }
+}
+
+export class PaymentFailedError extends DomainError {
+  constructor(message: string = 'Payment processing failed. Your cart stock has been restored.') {
+    super(message);
+    this.name = 'PaymentFailedError';
+  }
+}
+
+export class InvalidAddressError extends DomainError {
+  constructor(message: string = 'Shipping address is incomplete or invalid') {
+    super(message);
+    this.name = 'InvalidAddressError';
+  }
+}

@@ -16,14 +16,18 @@ import {
   runTransaction,
   serverTimestamp,
   orderBy,
+  type CollectionReference,
+  type DocumentData,
+  type Firestore,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { getDB } from '../FirebaseInitializer';
 import { COLLECTIONS } from '@utils/constants';
 import type { IProductRepository } from '@domain/repositories';
 import type { Product } from '@domain/models';
-import { ProductNotFoundError } from '@domain/errors';
+import { InsufficientStockError, ProductNotFoundError } from '@domain/errors';
 
-function docToProduct(docSnap: any): Product {
+function docToProduct(docSnap: QueryDocumentSnapshot<DocumentData>): Product {
   const data = docSnap.data();
   return {
     id: docSnap.id,
@@ -40,10 +44,9 @@ function docToProduct(docSnap: any): Product {
   };
 }
 
-import { Firestore } from 'firebase/firestore';
 export class FirestoreProductRepository implements IProductRepository {
   private db: Firestore | null = null;
-  private coll: any | null = null;
+  private coll: CollectionReference<DocumentData> | null = null;
 
   /**
    * Get or create the Firestore instance
@@ -138,7 +141,9 @@ export class FirestoreProductRepository implements IProductRepository {
       const docSnap = await transaction.get(ref);
       if (!docSnap.exists()) throw new ProductNotFoundError(id);
       const currentStock = docSnap.data().stock as number;
-      transaction.update(ref, { stock: currentStock + delta });
+      const nextStock = currentStock + delta;
+      if (nextStock < 0) throw new InsufficientStockError(id, Math.abs(delta), currentStock);
+      transaction.update(ref, { stock: nextStock });
     });
   }
 
@@ -159,7 +164,9 @@ export class FirestoreProductRepository implements IProductRepository {
         const docSnap = docs[index];
         if (!docSnap.exists()) throw new ProductNotFoundError(update.id);
         const currentStock = docSnap.data().stock as number;
-        transaction.update(doc(coll, update.id), { stock: currentStock + update.delta });
+        const nextStock = currentStock + update.delta;
+        if (nextStock < 0) throw new InsufficientStockError(update.id, Math.abs(update.delta), currentStock);
+        transaction.update(doc(coll, update.id), { stock: nextStock });
       });
     });
   }

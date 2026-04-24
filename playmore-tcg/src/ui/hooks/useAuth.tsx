@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import type { User } from '@domain/models';
 import { useServices } from './useServices';
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
@@ -23,18 +23,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (loading) { // Initial load
-      setLoading(false); // Set to false once container is loaded
-      return;
-    }
-
     const unsub = services.authService.onAuthStateChanged((u) => {
       setUser(u);
       setLoading(false);
     });
     
     return unsub;
-  }, [services.authService, loading]);
+  }, [services.authService]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
@@ -67,8 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth(): AuthContextValue {
+export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
-}
+};

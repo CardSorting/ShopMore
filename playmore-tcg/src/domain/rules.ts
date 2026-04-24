@@ -1,8 +1,8 @@
 /**
  * [LAYER: DOMAIN]
  */
-import type { CartItem, Product } from './models';
-import { InsufficientStockError } from './errors';
+import type { Address, CartItem, Product } from './models';
+import { InsufficientStockError, InvalidAddressError } from './errors';
 
 export const MAX_CART_QUANTITY = 99;
 
@@ -31,6 +31,19 @@ export function canPlaceOrder(
     if (available < item.quantity) return false;
   }
   return true;
+}
+
+export function assertValidShippingAddress(address: Address): void {
+  const required: Array<keyof Address> = ['street', 'city', 'state', 'zip', 'country'];
+  for (const field of required) {
+    if (!address[field] || address[field].trim().length === 0) {
+      throw new InvalidAddressError(`Shipping address field is required: ${field}`);
+    }
+  }
+
+  if (address.country.trim().length !== 2) {
+    throw new InvalidAddressError('Country must be a two-letter ISO country code');
+  }
 }
 
 export function addCartItem(

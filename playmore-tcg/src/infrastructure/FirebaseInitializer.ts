@@ -17,10 +17,8 @@
  * - Reduces memory footprint
  */
 
-import {
-  Firestore,
-} from 'firebase/firestore';
-import { collection } from 'firebase/firestore';
+import { Firestore, collection, type CollectionReference, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
+import type { Auth } from 'firebase/auth';
 import { ensureFirebaseInitialized } from './services/AuthAdapter';
 
 // Singleton instances
@@ -54,7 +52,7 @@ export async function getDB(): Promise<Firestore> {
  * 
  * @returns {Promise<Auth>} The initialized Auth instance
  */
-export async function getAuthClient(): Promise<any> {
+export async function getAuthClient(): Promise<{ auth: Auth; db: Firestore }> {
   return ensureFirebaseInitialized();
 }
 
@@ -76,7 +74,7 @@ export function clearInstances(): void {
  * @param {string} path - Collection path (e.g., 'users', 'products')
  * @returns {Promise<CollectionReference>} Collection reference
  */
-export async function getCollections(path: string): Promise<any> {
+export async function getCollections(path: string): Promise<CollectionReference<DocumentData>> {
   const db = await getDB();
   return collection(db, path);
 }
@@ -99,11 +97,11 @@ export async function getCollections(path: string): Promise<any> {
  * ```
  */
 export const convertToFirestore = (
-  obj: any
-): Record<string, unknown> | any => {
+  obj: Record<string, unknown>
+): Record<string, unknown> => {
   return obj;
 };
 
 export const convertFromFirestore = (
-  doc: any
+  doc: QueryDocumentSnapshot<DocumentData>
 ): Record<string, unknown> => doc.data();

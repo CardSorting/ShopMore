@@ -50,3 +50,8 @@ export interface IPaymentProcessor {
     paymentMethodId?: string;
   }): Promise<{ success: boolean; transactionId: string | null }>;
 }
+
+export interface ILockProvider {
+  acquireLock(resourceId: string, owner: string, ttlMs?: number): Promise<boolean>;
+  releaseLock(resourceId: string, owner: string): Promise<void>;
+}

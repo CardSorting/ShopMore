@@ -7,6 +7,9 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
+  type CollectionReference,
+  type DocumentData,
+  type Firestore,
   type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { getDB } from '../FirebaseInitializer';
@@ -24,10 +27,9 @@ function docToCart(docSnap: QueryDocumentSnapshot): Cart {
   };
 }
 
-import { Firestore } from 'firebase/firestore';
 export class FirestoreCartRepository implements ICartRepository {
   private db: Firestore | null = null;
-  private coll: any | null = null;
+  private coll: CollectionReference<DocumentData> | null = null;
 
   /**
    * Get or create the Firestore instance

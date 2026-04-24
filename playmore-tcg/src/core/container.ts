@@ -57,12 +57,8 @@
 import { FirestoreProductRepository } from '@infrastructure/repositories/FirestoreProductRepository';
 import { FirestoreCartRepository } from '@infrastructure/repositories/FirestoreCartRepository';
 import { FirestoreOrderRepository } from '@infrastructure/repositories/FirestoreOrderRepository';
-import { SQLiteProductRepository } from '@infrastructure/repositories/sqlite/SQLiteProductRepository';
-import { SQLiteCartRepository } from '@infrastructure/repositories/sqlite/SQLiteCartRepository';
-import { SQLiteOrderRepository } from '@infrastructure/repositories/sqlite/SQLiteOrderRepository';
-import { getSelectedProvider, registerShutdownHook } from '@infrastructure/dbProvider';
+import { getSelectedProvider } from '@infrastructure/dbProvider';
 import { AuthAdapter } from '@infrastructure/services/AuthAdapter';
-import { SQLiteAuthAdapter } from '@infrastructure/services/SQLiteAuthAdapter';
 import { StripePaymentProcessor } from '@infrastructure/services/StripePaymentProcessor';
 import { ProductService } from './ProductService';
 import { CartService } from './CartService';
@@ -86,23 +82,7 @@ function createRepositories() {
   const provider = getSelectedProvider();
   
   if (provider === 'sqlite') {
-    // DB is initialized synchronously before React boots via main.tsx
-    const productRepo = new SQLiteProductRepository();
-    const cartRepo = new SQLiteCartRepository();
-    
-    // BroccoliQ Level 9: Register Sovereign Shutdown
-    registerShutdownHook(async () => {
-      await cartRepo.shutdown();
-    });
-    
-    // BroccoliQ Level 9: Sovereign Warmup (Fire and Forget)
-    productRepo.warmup().catch(e => console.error('[Hive] Warmup failed:', e));
-
-    return {
-      productRepo,
-      cartRepo,
-      orderRepo: new SQLiteOrderRepository(),
-    };
+    throw new Error('SQLite provider is server-side only and cannot be bundled into the browser client. Use VITE_DB_PROVIDER=firebase for the ecommerce web app.');
   }
 
   return {
@@ -125,7 +105,10 @@ export function getServiceContainer() {
   const provider = getSelectedProvider();
   
   // Auth selection
-  const authProvider = provider === 'sqlite' ? new SQLiteAuthAdapter() : new AuthAdapter();
+  if (provider === 'sqlite') {
+    throw new Error('SQLite auth is server-side only and cannot be used from the browser client.');
+  }
+  const authProvider = new AuthAdapter();
   const authService = new AuthService(authProvider);
   
   return {
@@ -161,7 +144,10 @@ export function getInitialServices() {
   // Auth selection
   if (!authProviderInstance) {
     const provider = getSelectedProvider();
-    authProviderInstance = provider === 'sqlite' ? new SQLiteAuthAdapter() : new AuthAdapter();
+    if (provider === 'sqlite') {
+      throw new Error('SQLite auth is server-side only and cannot be used from the browser client.');
+    }
+    authProviderInstance = new AuthAdapter();
   }
   
   if (!authServiceInstance) {

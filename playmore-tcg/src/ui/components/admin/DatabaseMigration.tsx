@@ -4,7 +4,6 @@
  */
 import { useState } from 'react';
 import { Database, Cloud, RefreshCw, CheckCircle } from 'lucide-react';
-import { MigrationService } from '@infrastructure/services/MigrationService';
 import { getSelectedProvider } from '@infrastructure/dbProvider';
 
 export function DatabaseMigration() {
@@ -23,13 +22,15 @@ export function DatabaseMigration() {
     setComplete(false);
 
     try {
+      const { MigrationService } = await import('@infrastructure/services/MigrationService');
       const migrator = new MigrationService();
       await migrator.migrateToFirebase((msg) => {
         setLogs((prev) => [...prev, msg]);
       });
       setComplete(true);
-    } catch (error: any) {
-      setLogs((prev) => [...prev, `ERROR: ${error.message}`]);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown migration failure';
+      setLogs((prev) => [...prev, `ERROR: ${message}`]);
     } finally {
       setIsMigrating(false);
     }

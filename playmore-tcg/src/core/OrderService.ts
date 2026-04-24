@@ -6,15 +6,31 @@ import type {
   IProductRepository,
   ICartRepository,
   IPaymentProcessor,
+  ILockProvider,
 } from '@domain/repositories';
 import type { Order, OrderStatus, Address } from '@domain/models';
-import { calculateCartTotal, canPlaceOrder } from '@domain/rules';
+import { assertValidShippingAddress, calculateCartTotal, canPlaceOrder } from '@domain/rules';
 import {
   CartEmptyError,
+  CheckoutInProgressError,
   InsufficientStockError,
+  PaymentFailedError,
   ProductNotFoundError,
 } from '@domain/errors';
-import { SovereignLocker } from '@infrastructure/sqlite/SovereignLocker';
+
+class InMemoryLockProvider implements ILockProvider {
+  private locks = new Set<string>();
+
+  async acquireLock(resourceId: string): Promise<boolean> {
+    if (this.locks.has(resourceId)) return false;
+    this.locks.add(resourceId);
+    return true;
+  }
+
+  async releaseLock(resourceId: string): Promise<void> {
+    this.locks.delete(resourceId);
+  }
+}
 
 export class OrderService {
   constructor(
@@ -22,14 +38,15 @@ export class OrderService {
     private productRepo: IProductRepository,
     private cartRepo: ICartRepository,
     private payment: IPaymentProcessor,
-    private locker: SovereignLocker = new SovereignLocker()
+    private locker: ILockProvider = new InMemoryLockProvider()
   ) {}
 
   async placeOrder(userId: string, shippingAddress: Address, paymentMethodId?: string): Promise<Order> {
+    assertValidShippingAddress(shippingAddress);
     const lockId = `checkout_${userId}`;
     const acquired = await this.locker.acquireLock(lockId, userId, 30000); // 30 second lock
     if (!acquired) {
-      throw new Error('Checkout is already in progress for this user.');
+      throw new CheckoutInProgressError();
     }
 
     try {
@@ -77,7 +94,6 @@ export class OrderService {
 
     if (!paymentResult.success || !paymentResult.transactionId) {
       // BroccoliDB Agent Shadow: Rollback the unit of work (Compensating Transaction)
-      console.warn(`[OrderService] Payment failed for ${userId}. Rolling back stock deduction.`);
       if (this.productRepo.batchUpdateStock) {
         await this.productRepo.batchUpdateStock(
           cart.items.map(item => ({ id: item.productId, delta: item.quantity })) // Positive delta to restore
@@ -87,7 +103,7 @@ export class OrderService {
           await this.productRepo.updateStock(item.productId, item.quantity);
         }
       }
-      throw new Error('Payment processing failed. Your cart stock has been restored.');
+      throw new PaymentFailedError();
     }
 
     // Agent Shadow: Commit phase (Atomic Flush equivalent)

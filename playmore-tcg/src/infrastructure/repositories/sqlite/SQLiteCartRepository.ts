@@ -5,6 +5,7 @@
 import { Kysely } from 'kysely';
 import { getSQLiteDB } from '../../sqlite/database';
 import type { Database } from '../../sqlite/schema';
+import type { CartTable } from '../../sqlite/schema';
 import type { ICartRepository } from '@domain/repositories';
 import type { Cart } from '@domain/models';
 
@@ -25,7 +26,7 @@ export class SQLiteCartRepository implements ICartRepository {
     this.startFlushLoop();
   }
 
-  private mapTableToCart(row: any): Cart {
+  private mapTableToCart(row: CartTable): Cart {
     return {
       id: row.id,
       userId: row.userId,

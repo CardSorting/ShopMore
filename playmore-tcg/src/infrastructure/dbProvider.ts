@@ -2,23 +2,12 @@
  * [LAYER: INFRASTRUCTURE]
  * Database Provider Selection Logic
  */
-import { initDatabase } from './sqlite/database';
 
 export type DBProvider = 'firebase' | 'sqlite';
 
 export function getSelectedProvider(): DBProvider {
-  // Explicit override via environment variable takes precedence
-  const override = import.meta.env.VITE_DB_PROVIDER as DBProvider;
-  if (override === 'firebase' || override === 'sqlite') {
-    return override;
-  }
-
-  // Fallback to checking if Firebase is configured
-  const hasFirebase = 
-    import.meta.env.VITE_FIREBASE_API_KEY && 
-    import.meta.env.VITE_FIREBASE_PROJECT_ID;
-
-  return hasFirebase ? 'firebase' : 'sqlite';
+  const override = import.meta.env.VITE_DB_PROVIDER as DBProvider | undefined;
+  return override === 'sqlite' ? 'sqlite' : 'firebase';
 }
 
 // BroccoliQ Level 9: Final Sovereign Flush (Graceful Shutdown Registry)
@@ -58,14 +47,16 @@ function ensureHooksRegistered() {
   }
 }
 
-import { IntegrityWorker } from './sqlite/IntegrityWorker';
-
 /**
  * Initialize the selected database if necessary
  */
 export async function initializeSelectedDB() {
   const provider = getSelectedProvider();
   if (provider === 'sqlite') {
+    const [{ initDatabase }, { IntegrityWorker }] = await Promise.all([
+      import('./sqlite/database'),
+      import('./sqlite/IntegrityWorker'),
+    ]);
     ensureHooksRegistered();
     await initDatabase();
     

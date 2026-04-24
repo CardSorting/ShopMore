@@ -4,7 +4,7 @@
  */
 import { Kysely } from 'kysely';
 import { getSQLiteDB } from '../../sqlite/database';
-import type { Database } from '../../sqlite/schema';
+import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
 import type { Product, ProductCategory, CardRarity } from '@domain/models';
 import { ProductNotFoundError } from '@domain/errors';
@@ -23,7 +23,7 @@ export class SQLiteProductRepository implements IProductRepository {
     this.db = getSQLiteDB();
   }
 
-  private mapTableToProduct(row: any): Product {
+  private mapTableToProduct(row: ProductTable): Product {
     return {
       id: row.id,
       name: row.name,
@@ -186,10 +186,10 @@ export class SQLiteProductRepository implements IProductRepository {
       'name', 'description', 'price', 'category', 'stock', 'imageUrl', 'set', 'rarity'
     ];
 
-    const finalUpdates: any = { updatedAt: now };
+    const finalUpdates: Partial<ProductTable> = { updatedAt: now };
     for (const field of validFields) {
       if (updates[field] !== undefined) {
-        finalUpdates[field] = updates[field] === undefined ? null : updates[field];
+        Object.assign(finalUpdates, { [field]: updates[field] ?? null });
       }
     }
 
@@ -222,9 +222,12 @@ export class SQLiteProductRepository implements IProductRepository {
 
       if (!product) throw new ProductNotFoundError(id);
 
+      const nextStock = product.stock + delta;
+      if (nextStock < 0) throw new ProductNotFoundError(id);
+
       await trx
         .updateTable('products')
-        .set({ stock: product.stock + delta })
+        .set({ stock: nextStock })
         .where('id', '=', id)
         .execute();
     });
@@ -250,9 +253,12 @@ export class SQLiteProductRepository implements IProductRepository {
 
         if (!product) throw new ProductNotFoundError(update.id);
 
+        const nextStock = product.stock + update.delta;
+        if (nextStock < 0) throw new ProductNotFoundError(update.id);
+
         await trx
           .updateTable('products')
-          .set({ stock: product.stock + update.delta })
+          .set({ stock: nextStock })
           .where('id', '=', update.id)
           .execute();
       }

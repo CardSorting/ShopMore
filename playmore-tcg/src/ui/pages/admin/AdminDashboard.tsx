@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { useServices } from '../../hooks/useServices';
 import type { Product, Order } from '@domain/models';
 import { Package, ShoppingBag, AlertTriangle, DollarSign } from 'lucide-react';
-import { DatabaseMigration } from '../../components/admin/DatabaseMigration';
 
 export function AdminDashboard() {
   const services = useServices();
@@ -78,8 +77,6 @@ export function AdminDashboard() {
           </ul>
         </div>
       )}
-
-      <DatabaseMigration />
     </div>
   );
 }

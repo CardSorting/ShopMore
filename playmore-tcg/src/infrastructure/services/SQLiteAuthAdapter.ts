@@ -7,7 +7,11 @@ import bcrypt from 'bcryptjs';
 import { getSQLiteDB } from '../sqlite/database';
 import type { Database } from '../sqlite/schema';
 import type { IAuthProvider } from '@domain/repositories';
-import type { User } from '@domain/models';
+import type { User, UserRole } from '@domain/models';
+
+function toUserRole(role: string): UserRole {
+  return role === 'admin' ? 'admin' : 'customer';
+}
 
 export class SQLiteAuthAdapter implements IAuthProvider {
   private db: Kysely<Database>;
@@ -20,7 +24,7 @@ export class SQLiteAuthAdapter implements IAuthProvider {
     if (savedUser) {
       try {
         this.currentUser = JSON.parse(savedUser);
-      } catch (e) {
+      } catch {
         localStorage.removeItem('pm_tcg_user');
       }
     }
@@ -50,7 +54,7 @@ export class SQLiteAuthAdapter implements IAuthProvider {
       id: userRow.id,
       email: userRow.email,
       displayName: userRow.displayName,
-      role: userRow.role as any,
+      role: toUserRole(userRow.role),
       createdAt: new Date(userRow.createdAt),
     };
 

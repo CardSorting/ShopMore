@@ -1,7 +1,7 @@
 /**
  * [LAYER: UI]
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import type { Order } from '@domain/models';
@@ -21,18 +21,20 @@ export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-    loadOrders();
-  }, [user]);
-
-  async function loadOrders() {
+  const loadOrders = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const result = await services.orderService.getOrders(user.id);
-    setOrders(result);
-    setLoading(false);
-  }
+    try {
+      const result = await services.orderService.getOrders(user.id);
+      setOrders(result);
+    } finally {
+      setLoading(false);
+    }
+  }, [services.orderService, user]);
+
+  useEffect(() => {
+    void loadOrders();
+  }, [loadOrders]);
 
   if (loading) return <div className="max-w-7xl mx-auto p-8 text-center">Loading...</div>;
 

@@ -102,10 +102,10 @@ export class SovereignLocker {
       this.memoryLocks.set(resourceId, mutex);
     }
     
-    let releaseFn: (() => void) | null = null;
+    let releaseLock: () => void;
     try {
-      releaseFn = await mutex.acquire(); // Blocks if another request in this process is holding it
-    } catch (err) {
+      releaseLock = await mutex.acquire(); // Blocks if another request in this process is holding it
+    } catch {
       return false; // Timeout
     }
     const nowMs = Date.now();
@@ -132,13 +132,13 @@ export class SovereignLocker {
         })
         .execute();
         
-      this.activeReleases.set(`${resourceId}:${owner}`, releaseFn);
+      this.activeReleases.set(`${resourceId}:${owner}`, releaseLock);
       return true;
-    } catch (err: any) {
-      if (releaseFn) releaseFn(); // Release RAM lock if DB lock fails
+    } catch (err: unknown) {
+      releaseLock(); // Release RAM lock if DB lock fails
       
       // UNIQUE constraint failed
-      if (err.message && err.message.includes('UNIQUE')) {
+      if (err instanceof Error && err.message.includes('UNIQUE')) {
         return false;
       }
       throw err;

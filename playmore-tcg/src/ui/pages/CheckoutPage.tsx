@@ -8,8 +8,17 @@ import { useAuth } from '../hooks/useAuth';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../../infrastructure/services/StripePaymentProcessor';
+import type { Address } from '@domain/models';
+import { validateAddress } from '@utils/validators';
 
-function CheckoutForm({ address, onSuccess, onPlaceOrder, isPlacing }: any) {
+interface CheckoutFormProps {
+  address: Address;
+  onSuccess: (paymentMethodId: string) => Promise<void>;
+  onPlaceOrder: (isPlacing: boolean) => void;
+  isPlacing: boolean;
+}
+
+function CheckoutForm({ address, onSuccess, onPlaceOrder, isPlacing }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
@@ -48,13 +57,13 @@ function CheckoutForm({ address, onSuccess, onPlaceOrder, isPlacing }: any) {
       } else {
         await onSuccess(paymentMethod.id);
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       onPlaceOrder(false);
     }
   };
 
-  const isAddressValid = address.street && address.city && address.state && address.zip;
+  const isAddressValid = validateAddress(address).valid;
 
   return (
     <form onSubmit={handleSubmit} className="border-t pt-6">
@@ -93,7 +102,7 @@ export function CheckoutPage() {
   const services = useServices();
   
   const [step, setStep] = useState<'shipping' | 'payment' | 'success'>('shipping');
-  const [address, setAddress] = useState({
+  const [address, setAddress] = useState<Address>({
     street: '',
     city: '',
     state: '',

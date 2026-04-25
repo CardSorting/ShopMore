@@ -66,6 +66,13 @@ export class PaymentFailedError extends DomainError {
   }
 }
 
+export class CheckoutReconciliationError extends DomainError {
+  constructor(message: string = 'Payment succeeded, but checkout could not be fully finalized. Please contact support before retrying.') {
+    super(message);
+    this.name = 'CheckoutReconciliationError';
+  }
+}
+
 export class InvalidAddressError extends DomainError {
   constructor(message: string = 'Shipping address is incomplete or invalid') {
     super(message);

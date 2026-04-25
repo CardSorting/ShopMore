@@ -1,7 +1,7 @@
 /**
  * [LAYER: UI]
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useServices } from '../hooks/useServices';
 import type { Product } from '@domain/models';
 import { Search, Filter } from 'lucide-react';
@@ -23,7 +23,7 @@ export function ProductsPage() {
     { id: 'booster-boxes', name: 'Booster Boxes' },
   ];
 
-  const loadProducts = async (cursor?: string) => {
+  const loadProducts = useCallback(async (cursor?: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -39,11 +39,11 @@ export function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [category, services.productService]);
 
   useEffect(() => {
-    loadProducts();
-  }, [services, category]);
+    void loadProducts();
+  }, [loadProducts]);
 
   const handleSearch = async (value: string) => {
     setSearch(value);
@@ -166,7 +166,7 @@ export function ProductsPage() {
             {nextCursor && !search && (
               <div className="mt-8 text-center">
                 <button
-                  onClick={() => loadProducts(nextCursor)}
+                  onClick={() => void loadProducts(nextCursor)}
                   className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
                 >
                   Load More

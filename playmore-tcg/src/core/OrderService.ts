@@ -10,8 +10,10 @@ import type {
 } from '@domain/repositories';
 import type { Order, OrderStatus, Address } from '@domain/models';
 import { assertValidShippingAddress, calculateCartTotal, canPlaceOrder } from '@domain/rules';
+import { coalesceCartStockDeductions } from '@domain/rules';
 import {
   CartEmptyError,
+  CheckoutReconciliationError,
   CheckoutInProgressError,
   InsufficientStockError,
   PaymentFailedError,
@@ -44,6 +46,8 @@ export class OrderService {
   async placeOrder(userId: string, shippingAddress: Address, paymentMethodId?: string): Promise<Order> {
     assertValidShippingAddress(shippingAddress);
     const lockId = `checkout_${userId}`;
+    const checkoutAttemptId = crypto.randomUUID();
+    const idempotencyKey = `checkout:${userId}:${checkoutAttemptId}`;
     const acquired = await this.locker.acquireLock(lockId, userId, 30000); // 30 second lock
     if (!acquired) {
       throw new CheckoutInProgressError();
@@ -72,14 +76,14 @@ export class OrderService {
     }
 
     // BroccoliQ Level 6: Builder's Punch (Coalescing)
+    const stockDeductions = coalesceCartStockDeductions(cart.items);
+
     if (this.productRepo.batchUpdateStock) {
-      await this.productRepo.batchUpdateStock(
-        cart.items.map(item => ({ id: item.productId, delta: -item.quantity }))
-      );
+      await this.productRepo.batchUpdateStock(stockDeductions);
     } else {
       // Deduct stock iteratively (fallback)
-      for (const item of cart.items) {
-        await this.productRepo.updateStock(item.productId, -item.quantity);
+      for (const update of stockDeductions) {
+        await this.productRepo.updateStock(update.id, update.delta);
       }
     }
 
@@ -88,19 +92,20 @@ export class OrderService {
     // Process payment (External boundary)
     const paymentResult = await this.payment.processPayment({
       amount: total,
-      orderId: 'pending', // Order not physically created yet
+      orderId: checkoutAttemptId,
       paymentMethodId,
+      idempotencyKey,
     });
 
     if (!paymentResult.success || !paymentResult.transactionId) {
       // BroccoliDB Agent Shadow: Rollback the unit of work (Compensating Transaction)
       if (this.productRepo.batchUpdateStock) {
         await this.productRepo.batchUpdateStock(
-          cart.items.map(item => ({ id: item.productId, delta: item.quantity })) // Positive delta to restore
+          stockDeductions.map(update => ({ id: update.id, delta: -update.delta }))
         );
       } else {
-        for (const item of cart.items) {
-          await this.productRepo.updateStock(item.productId, item.quantity);
+        for (const update of stockDeductions) {
+          await this.productRepo.updateStock(update.id, -update.delta);
         }
       }
       throw new PaymentFailedError();
@@ -108,24 +113,32 @@ export class OrderService {
 
     // Agent Shadow: Commit phase (Atomic Flush equivalent)
     // Create order only after successful payment
-    const order = await this.orderRepo.create({
-      userId,
-      items: cart.items.map((item) => ({
-        productId: item.productId,
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.priceSnapshot,
-      })),
-      total,
-      status: 'confirmed', // Created directly as confirmed
-      shippingAddress,
-      paymentTransactionId: paymentResult.transactionId,
-    });
+    try {
+      const order = await this.orderRepo.create({
+        userId,
+        items: cart.items.map((item) => ({
+          productId: item.productId,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.priceSnapshot,
+        })),
+        total,
+        status: 'confirmed', // Created directly as confirmed
+        shippingAddress,
+        paymentTransactionId: paymentResult.transactionId,
+      });
 
-    // Clear cart
-    await this.cartRepo.clear(userId);
+      // Clear cart
+      await this.cartRepo.clear(userId);
 
-    return order;
+      return order;
+    } catch (err) {
+      throw new CheckoutReconciliationError(
+        err instanceof Error
+          ? `Payment ${paymentResult.transactionId} succeeded, but checkout finalization failed: ${err.message}`
+          : `Payment ${paymentResult.transactionId} succeeded, but checkout finalization failed.`
+      );
+    }
     } finally {
       await this.locker.releaseLock(lockId, userId);
     }

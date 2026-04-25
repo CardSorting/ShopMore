@@ -1,7 +1,7 @@
 /**
  * [LAYER: UI]
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useServices } from '../../hooks/useServices';
 import type { Order, OrderStatus } from '@domain/models';
 import { ChevronDown } from 'lucide-react';
@@ -20,16 +20,16 @@ export function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  async function loadOrders() {
+  const loadOrders = useCallback(async () => {
     setLoading(true);
     const result = await services.orderService.getAllOrders({ limit: 100 });
     setOrders(result.orders);
     setLoading(false);
-  }
+  }, [services.orderService]);
+
+  useEffect(() => {
+    void loadOrders();
+  }, [loadOrders]);
 
   async function handleStatusChange(id: string, status: OrderStatus) {
     setUpdating(id);

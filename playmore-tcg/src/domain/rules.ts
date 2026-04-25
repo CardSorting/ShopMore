@@ -105,6 +105,24 @@ export function canPlaceOrder(
   return true;
 }
 
+export function coalesceCartStockDeductions(items: CartItem[]): { id: string; delta: number }[] {
+  const deltas = new Map<string, number>();
+  for (const item of items) {
+    deltas.set(item.productId, (deltas.get(item.productId) ?? 0) - item.quantity);
+  }
+  return Array.from(deltas.entries()).map(([id, delta]) => ({ id, delta }));
+}
+
+export function coalesceStockUpdates(updates: { id: string; delta: number }[]): { id: string; delta: number }[] {
+  const deltas = new Map<string, number>();
+  for (const update of updates) {
+    deltas.set(update.id, (deltas.get(update.id) ?? 0) + update.delta);
+  }
+  return Array.from(deltas.entries())
+    .filter(([, delta]) => delta !== 0)
+    .map(([id, delta]) => ({ id, delta }));
+}
+
 export function assertValidShippingAddress(address: Address): void {
   const required: Array<keyof Address> = ['street', 'city', 'state', 'zip', 'country'];
   for (const field of required) {

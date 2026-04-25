@@ -48,6 +48,7 @@ export interface IPaymentProcessor {
     amount: number;
     orderId: string;
     paymentMethodId?: string;
+    idempotencyKey: string;
   }): Promise<{ success: boolean; transactionId: string | null }>;
 }
 

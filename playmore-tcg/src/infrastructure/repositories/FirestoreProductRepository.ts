@@ -26,6 +26,7 @@ import { COLLECTIONS } from '@utils/constants';
 import type { IProductRepository } from '@domain/repositories';
 import type { Product, ProductDraft, ProductUpdate } from '@domain/models';
 import { InsufficientStockError, ProductNotFoundError } from '@domain/errors';
+import { coalesceStockUpdates } from '@domain/rules';
 
 function docToProduct(docSnap: QueryDocumentSnapshot<DocumentData>): Product {
   const data = docSnap.data();
@@ -164,7 +165,8 @@ export class FirestoreProductRepository implements IProductRepository {
   }
 
   async batchUpdateStock(updates: { id: string; delta: number }[]): Promise<void> {
-    if (updates.length === 0) return;
+    const coalescedUpdates = coalesceStockUpdates(updates);
+    if (coalescedUpdates.length === 0) return;
 
     const db = await this.getDBInstance();
     const coll = this.coll || collection(db, COLLECTIONS.PRODUCTS);
@@ -172,11 +174,11 @@ export class FirestoreProductRepository implements IProductRepository {
     await runTransaction(db, async (transaction) => {
       // Step 1: Read all documents
       const docs = await Promise.all(
-        updates.map(update => transaction.get(doc(coll, update.id)))
+        coalescedUpdates.map(update => transaction.get(doc(coll, update.id)))
       );
 
       // Step 2: Write all updates
-      updates.forEach((update, index) => {
+      coalescedUpdates.forEach((update, index) => {
         const docSnap = docs[index];
         if (!docSnap.exists()) throw new ProductNotFoundError(update.id);
         const currentStock = docSnap.data().stock as number;

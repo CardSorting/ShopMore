@@ -102,4 +102,77 @@
 
 - The 5 hook dependency warnings remain unchanged and should be addressed in a dedicated hook-stability pass.
 - The browser checkout path still fails closed because payment capture requires a trusted backend boundary; this pass improved UI loading/error handling but did not add a backend payment endpoint.
-- The main production chunk remains above Vite's 500 kB warning threshold at 681.41 kB; further bundle reduction should target Firebase/lucide/shared dependency splitting.
+
+## Third Deep Audit / Production Hardening Pass — 2026-04-25
+
+### Verification Snapshot
+
+- `npm run lint` completed with 0 errors and 0 warnings after the third-pass hook-stability changes.
+- `npm run build` completed successfully.
+- The production build emitted lazy route chunks for auth, product, checkout, order, and admin pages.
+- The production build still reports Vite's >500 kB chunk warning for `dist/assets/index-Cif9KhqJ.js` at 682.44 kB gzip 208.30 kB.
+- `npm audit --omit=dev --json` reported 0 production vulnerabilities across 141 production dependencies.
+
+### Strategic Audit Record
+
+- Updated `/Users/bozoegg/Desktop/PlayMoreTCG/scratchpad.md` with the required strategic review sections for this audit cycle:
+  - `Requirement Analysis`
+  - `The Architect review`
+  - `The Critic review`
+  - `The SRE review`
+- The scratchpad records the third-pass focus on checkout reconciliation, idempotency metadata, validation drift, local auth persistence risk, duplicate stock coalescing, hook warnings, and SKL evidence requirements.
+
+### Domain
+
+- Updated `src/domain/repositories.ts` so `IPaymentProcessor.processPayment` now requires an `idempotencyKey` parameter in addition to amount, order id, and optional payment method id.
+- Added `CheckoutReconciliationError` to `src/domain/errors.ts` for the specific case where payment succeeds but checkout finalization fails.
+- Added pure stock-coalescing helpers to `src/domain/rules.ts`:
+  - `coalesceCartStockDeductions(items)` converts cart lines into product stock deltas.
+  - `coalesceStockUpdates(updates)` merges duplicate product deltas and drops zero-net updates.
+- Domain remains free of Firestore, SQLite, Stripe, browser APIs, timers, and logging imports.
+
+### Core
+
+- Updated `src/core/AuthService.ts` to centralize sign-in/sign-up validation before delegating to auth infrastructure:
+  - email format validation;
+  - password presence for sign-in;
+  - password strength validation for sign-up;
+  - display-name validation for sign-up;
+  - email normalization to lowercase/trimmed form before provider calls.
+- Updated `src/core/OrderService.ts` checkout orchestration:
+  - generates a checkout attempt id with `crypto.randomUUID()`;
+  - derives an idempotency key from user id and checkout attempt id;
+  - passes the attempt id and idempotency key to the payment processor boundary;
+  - uses domain coalescing for stock deductions and compensation updates;
+  - throws `CheckoutReconciliationError` when payment succeeds but order creation or cart clearing fails.
+
+### Infrastructure
+
+- Updated `src/infrastructure/services/StripePaymentProcessor.ts` to implement the expanded payment contract requiring `idempotencyKey`.
+- Updated `src/infrastructure/repositories/FirestoreProductRepository.ts` so `batchUpdateStock` coalesces duplicate stock deltas before transaction reads/writes.
+- Updated `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts` so `batchUpdateStock` coalesces duplicate stock deltas before the SQLite transaction loop.
+- Updated `src/infrastructure/services/SQLiteAuthAdapter.ts`:
+  - sign-in normalizes email before lookup;
+  - sign-up normalizes email before insert;
+  - display names are trimmed before persistence;
+  - duplicate/insert failures are mapped to a generic account-creation error.
+
+### UI
+
+- Updated `src/ui/pages/RegisterPage.tsx` to use the shared validator utilities for display name, email, and password strength before calling auth.
+- Updated `src/ui/pages/LoginPage.tsx` to validate email format and password presence before calling auth.
+- Updated `src/ui/pages/admin/AdminProductForm.tsx`:
+  - uses shared price/stock validators before saving;
+  - guards against invalid numeric parsing;
+  - renders save failures inline instead of silently resetting the saving state;
+  - wraps edit-load logic with `useCallback` and an effect dependency list that satisfies React hooks linting.
+- Updated hook stability in `ProductDetailPage`, `ProductsPage`, `AdminOrders`, and `AdminProducts` by wrapping async load functions in `useCallback` and using complete effect dependencies.
+- The previous five `react-hooks/exhaustive-deps` warnings were reduced to zero.
+
+### Remaining Known Warnings / Risks After Third Pass
+
+- Checkout still fails closed until a trusted backend/Cloud Function/Firebase extension payment-confirmation path is implemented.
+- The new `idempotencyKey` is passed through the payment contract, but true payment idempotency must be enforced by the future trusted backend/payment provider call.
+- `CheckoutReconciliationError` surfaces paid-but-not-finalized failures, but no durable reconciliation queue/table has been added in this browser-only pass.
+- The local SQLite auth adapter still stores current user state in `localStorage`; privileged production decisions must continue to be enforced by trusted server/rules boundaries.
+- The main production chunk remains above Vite's 500 kB warning threshold at 682.44 kB gzip 208.30 kB.

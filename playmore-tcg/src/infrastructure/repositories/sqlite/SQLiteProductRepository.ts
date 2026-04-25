@@ -8,6 +8,7 @@ import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
 import type { Product, ProductCategory, CardRarity, ProductDraft, ProductUpdate } from '@domain/models';
 import { InsufficientStockError, ProductNotFoundError } from '@domain/errors';
+import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
 
 export class SQLiteProductRepository implements IProductRepository {
@@ -242,11 +243,12 @@ export class SQLiteProductRepository implements IProductRepository {
    * to bypass sequential IO latency.
    */
   async batchUpdateStock(updates: { id: string, delta: number }[]): Promise<void> {
-    if (updates.length === 0) return;
+    const coalescedUpdates = coalesceStockUpdates(updates);
+    if (coalescedUpdates.length === 0) return;
 
     await this.db.transaction().execute(async (trx) => {
       // We lock rows or simply read current state and write
-      for (const update of updates) {
+      for (const update of coalescedUpdates) {
         const product = await trx
           .selectFrom('products')
           .select('stock')

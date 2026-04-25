@@ -1,7 +1,7 @@
 /**
  * [LAYER: UI]
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useServices } from '../../hooks/useServices';
 import type { Product } from '@domain/models';
@@ -12,16 +12,16 @@ export function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  async function loadProducts() {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     const result = await services.productService.getProducts({ limit: 100 });
     setProducts(result.products);
     setLoading(false);
-  }
+  }, [services.productService]);
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this product?')) return;

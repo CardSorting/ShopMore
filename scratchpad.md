@@ -105,6 +105,66 @@ Phase 4: Order history + polish
 
 # STRATEGIC REVIEW
 
+## Requirement Analysis
+
+The user is asking for another deeper production-hardening audit of the PlayMoreTCG ecommerce site, with emphasis on doubling down on existing hardening concepts rather than introducing superficial feature work. The next implementation pass should prioritize security, data integrity, checkout/payment correctness, validation consistency, and production reliability.
+
+Key requirements verified from the current codebase and knowledge ledger:
+- Preserve JoyZoning boundaries: Domain remains pure, Core orchestrates use cases, Infrastructure implements adapters, UI renders state and dispatches actions, Plumbing stays dependency-free.
+- Continue the established production-hardening trajectory documented in `.wiki/production-hardening-pass-2026-04-25.md`.
+- Focus on unresolved risks: checkout idempotency/reconciliation, trusted payment boundary, inconsistent auth/input validation, local auth persistence risk, duplicate stock mutation coalescing, hook warnings, and remaining bundle/security diagnostics.
+- Maintain evidence-based SKL updates after implementation, with exact changed files and verification commands/results.
+
+## The Architect review
+
+Layer-by-layer architecture implications for the next pass:
+
+- **Domain**: Add or refine pure contracts for checkout attempts/idempotency and cart stock coalescing. Domain must not know about Stripe, Firestore, SQLite, localStorage, timers, or logging.
+- **Core**: Refactor checkout orchestration into explicit saga phases. Core can coordinate inventory, payment, order persistence, cart clearing, compensation, and reconciliation errors through interfaces only.
+- **Infrastructure**: Harden adapters by implementing the expanded contracts: stable payment idempotency metadata, defensive duplicate-stock coalescing, safer SQLite auth email normalization/error mapping, and session revalidation where possible.
+- **UI**: Integrate existing validators into login/register/admin product forms for usability, while keeping Domain/Core authoritative. Resolve hook dependency warnings without introducing direct Infrastructure imports.
+- **Plumbing**: Reuse or extend dependency-free validators/parsers where policy is generic; promote security/business policy to Domain/Core when it affects correctness.
+
+Architectural guardrails:
+- Do not move payment capture into UI or browser infrastructure.
+- Do not let UI-local validation become the only enforcement point.
+- Do not trust localStorage role/user data for privileged decisions.
+- Use Domain interfaces to bridge Core and Infrastructure.
+
+## The Critic review
+
+Primary objections and risk probes:
+
+1. **Checkout saga risk**: Current flow deducts inventory before payment and rolls back on payment failure, but paid-after-payment failures remain under-modeled. The next pass should add explicit post-payment failure handling or reconciliation signaling.
+2. **Idempotency gap**: Retried checkout submissions may duplicate payment/order attempts unless the payment boundary receives stable idempotency metadata.
+3. **Validation drift**: Registration UI checks 6-character passwords while stronger validators exist elsewhere. Security policy must be centralized to avoid bypass by alternate callers.
+4. **Local auth trust issue**: `SQLiteAuthAdapter` restores a serialized user from localStorage, including role. That state is user-controlled and should not be treated as authoritative for admin operations.
+5. **Stock update semantics**: Batch stock updates are atomic but not obviously duplicate-safe if a cart contains repeated product IDs or if future callers pass duplicate updates.
+6. **Remaining lint warnings**: React hook dependency warnings can create stale data and should not remain in a production-hardening track.
+
+Acceptance criteria for the next pass:
+- Build and lint remain passing.
+- No new Domain external imports.
+- Auth and product forms use consistent validation feedback.
+- Checkout failure paths are more explicit and easier to reconcile.
+- SKL records exact facts, not aspirational claims.
+
+## The SRE review
+
+Operational hardening priorities:
+
+- **Reliability**: Ensure checkout has deterministic lock release, duplicate-submit protection, idempotency metadata, and clear reconciliation errors for partial failures.
+- **Observability**: Use the existing environment-gated logger for operationally meaningful events without leaking sensitive payment/auth details in production UI.
+- **Failure handling**: Separate payment-declined, inventory-unavailable, order-persist-failed, and cart-clear-failed cases so operators can understand blast radius.
+- **Security**: Normalize auth inputs, avoid account enumeration where possible, and avoid trusting browser-persisted roles.
+- **Data integrity**: Coalesce stock deltas, reject invalid numeric input before persistence, and keep repository mutations atomic.
+- **Verification**: Run `npm run lint`, `npm run build`, and `npm audit --omit=dev --json`; document any unchanged warnings/risks.
+
+Rollback strategy:
+- Keep changes contract-driven and localized by layer.
+- If checkout saga refactor fails verification, revert Core changes independently from UI validation changes.
+- Infrastructure adapter hardening should remain compatible with existing Domain/Core call sites where possible.
+
 ## Stability Protocol Assessment
 
 ### What could go wrong?

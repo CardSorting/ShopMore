@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LogIn, AlertCircle } from 'lucide-react';
+import { validateEmail } from '@utils/validators';
 
 export function LoginPage() {
   const { signIn } = useAuth();
@@ -17,6 +18,15 @@ export function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      setError(emailValidation.message ?? 'Email is invalid');
+      return;
+    }
+    if (!password) {
+      setError('Password is required');
+      return;
+    }
     setLoading(true);
     try {
       await signIn(email, password);

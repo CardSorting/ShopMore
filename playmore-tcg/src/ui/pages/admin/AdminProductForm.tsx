@@ -1,11 +1,12 @@
 /**
  * [LAYER: UI]
  */
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useServices } from '../../hooks/useServices';
 import type { Product, ProductCategory, CardRarity } from '@domain/models';
 import { Save, ArrowLeft } from 'lucide-react';
+import { validatePriceCents, validateStock } from '@utils/validators';
 
 const CATEGORIES: ProductCategory[] = ['booster', 'single', 'deck', 'accessory', 'box'];
 const RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
@@ -27,10 +28,11 @@ export function AdminProductForm() {
     rarity: '' as CardRarity | '',
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadProduct = useCallback(async () => {
     if (!id) return;
-      services.productService.getProduct(id).then((p: Product) => {
+    const p: Product = await services.productService.getProduct(id);
       setForm({
         name: p.name,
         description: p.description,
@@ -41,8 +43,11 @@ export function AdminProductForm() {
         set: p.set ?? '',
         rarity: p.rarity ?? '',
       });
-    });
-  }, [id]);
+  }, [id, services.productService]);
+
+  useEffect(() => {
+    void loadProduct();
+  }, [loadProduct]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -53,14 +58,27 @@ export function AdminProductForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     setSaving(true);
+
+    const parsedPrice = Number(form.price);
+    const price = Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) : NaN;
+    const stock = Number(form.stock);
+    const priceValidation = validatePriceCents(price);
+    const stockValidation = validateStock(stock);
+
+    if (!priceValidation.valid || !stockValidation.valid) {
+      setError(priceValidation.message ?? stockValidation.message ?? 'Product values are invalid');
+      setSaving(false);
+      return;
+    }
 
     const data = {
       name: form.name,
       description: form.description,
-      price: Math.round(parseFloat(form.price) * 100),
+      price,
       category: form.category,
-      stock: parseInt(form.stock, 10),
+      stock,
       imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400',
       set: form.set || undefined,
       rarity: (form.rarity as CardRarity) || undefined,
@@ -73,6 +91,8 @@ export function AdminProductForm() {
         await services.productService.createProduct(data);
       }
       navigate('/admin/products');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save product');
     } finally {
       setSaving(false);
     }
@@ -92,6 +112,11 @@ export function AdminProductForm() {
       </h1>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-sm border max-w-2xl space-y-4">
+        {error && (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
           <input

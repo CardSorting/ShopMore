@@ -1,7 +1,7 @@
 /**
  * [LAYER: UI]
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
@@ -17,10 +17,15 @@ export function ProductDetailPage() {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
 
-  useEffect(() => {
+  const loadProduct = useCallback(async () => {
     if (!id) return;
-    services.productService.getProduct(id).then(setProduct);
-  }, [id]);
+    const loaded = await services.productService.getProduct(id);
+    setProduct(loaded);
+  }, [id, services.productService]);
+
+  useEffect(() => {
+    void loadProduct();
+  }, [loadProduct]);
 
   async function handleAddToCart() {
     if (!user || !product) return;

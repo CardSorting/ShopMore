@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { UserPlus, AlertCircle } from 'lucide-react';
+import { validateDisplayName, validateEmail, validatePassword } from '@utils/validators';
 
 export function RegisterPage() {
   const { signUp } = useAuth();
@@ -19,12 +20,23 @@ export function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (password !== confirm) {
-      setError('Passwords do not match');
+    const nameValidation = validateDisplayName(displayName);
+    if (!nameValidation.valid) {
+      setError(nameValidation.message ?? 'Display name is invalid');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      setError(emailValidation.message ?? 'Email is invalid');
+      return;
+    }
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      setError(passwordValidation.message ?? 'Password is invalid');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match');
       return;
     }
     setLoading(true);

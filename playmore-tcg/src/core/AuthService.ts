@@ -4,6 +4,7 @@
 import type { IAuthProvider } from '@domain/repositories';
 import type { User } from '@domain/models';
 import { AuthError, UnauthorizedError } from '@domain/errors';
+import { validateDisplayName, validateEmail, validatePassword } from '@utils/validators';
 
 export class AuthService {
   constructor(private provider: IAuthProvider) {}
@@ -13,7 +14,10 @@ export class AuthService {
   }
 
   async signIn(email: string, password: string): Promise<User> {
-    return this.provider.signIn(email, password);
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) throw new AuthError(emailValidation.message);
+    if (!password) throw new AuthError('Password is required');
+    return this.provider.signIn(email.trim().toLowerCase(), password);
   }
 
   async signUp(
@@ -21,7 +25,13 @@ export class AuthService {
     password: string,
     displayName: string
   ): Promise<User> {
-    return this.provider.signUp(email, password, displayName);
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) throw new AuthError(emailValidation.message);
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) throw new AuthError(passwordValidation.message);
+    const nameValidation = validateDisplayName(displayName);
+    if (!nameValidation.valid) throw new AuthError(nameValidation.message);
+    return this.provider.signUp(email.trim().toLowerCase(), password, displayName.trim());
   }
 
   async signOut(): Promise<void> {

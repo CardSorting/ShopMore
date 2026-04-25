@@ -35,10 +35,11 @@ export class SQLiteAuthAdapter implements IAuthProvider {
   }
 
   async signIn(email: string, password: string): Promise<User> {
+    const normalizedEmail = email.trim().toLowerCase();
     const userRow = await this.db
       .selectFrom('users')
       .selectAll()
-      .where('email', '=', email)
+      .where('email', '=', normalizedEmail)
       .executeTakeFirst();
 
     if (!userRow) {
@@ -65,25 +66,30 @@ export class SQLiteAuthAdapter implements IAuthProvider {
   async signUp(email: string, password: string, displayName: string): Promise<User> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
+    const normalizedEmail = email.trim().toLowerCase();
     
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await this.db
-      .insertInto('users')
-      .values({
-        id,
-        email,
-        passwordHash,
-        displayName,
-        role: 'customer',
-        createdAt: now,
-      })
-      .execute();
+    try {
+      await this.db
+        .insertInto('users')
+        .values({
+          id,
+          email: normalizedEmail,
+          passwordHash,
+          displayName: displayName.trim(),
+          role: 'customer',
+          createdAt: now,
+        })
+        .execute();
+    } catch {
+      throw new Error('Unable to create account with those credentials');
+    }
 
     const user: User = {
       id,
-      email,
-      displayName,
+      email: normalizedEmail,
+      displayName: displayName.trim(),
       role: 'customer',
       createdAt: new Date(now),
     };

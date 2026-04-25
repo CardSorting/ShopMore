@@ -5,6 +5,7 @@ export class StripePaymentProcessor implements IPaymentProcessor {
     amount: number;
     orderId: string;
     paymentMethodId?: string;
+    idempotencyKey: string;
   }): Promise<{ success: boolean; transactionId: string | null }> {
     if (!params.paymentMethodId) {
       throw new Error('Payment method is required for real processing.');

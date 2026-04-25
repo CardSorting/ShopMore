@@ -1,8 +1,10 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
 import type { Product, ProductCategory, CardRarity } from '@domain/models';
 import { Save, ArrowLeft } from 'lucide-react';
@@ -13,7 +15,7 @@ const RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
 
 export function AdminProductForm() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const router = useRouter();
   const services = useServices();
   const isEdit = Boolean(id);
 
@@ -90,7 +92,7 @@ export function AdminProductForm() {
       } else {
         await services.productService.createProduct(data);
       }
-      navigate('/admin/products');
+      router.push('/admin/products');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save product');
     } finally {
@@ -101,7 +103,7 @@ export function AdminProductForm() {
   return (
     <div>
       <button
-        onClick={() => navigate('/admin/products')}
+        onClick={() => router.push('/admin/products')}
         className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
       >
         <ArrowLeft className="w-4 h-4" />

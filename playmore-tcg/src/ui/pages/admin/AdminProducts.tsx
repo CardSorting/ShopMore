@@ -1,8 +1,10 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useServices } from '../../hooks/useServices';
 import type { Product } from '@domain/models';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
@@ -44,7 +46,7 @@ export function AdminProducts() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
         <Link
-          to="/admin/products/new"
+          href="/admin/products/new"
           className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm flex items-center gap-2 hover:bg-primary-700"
         >
           <Plus className="w-4 h-4" />
@@ -93,7 +95,7 @@ export function AdminProducts() {
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
                     <Link
-                      to={`/admin/products/${p.id}/edit`}
+                      href={`/admin/products/${p.id}/edit`}
                       className="text-gray-500 hover:text-primary-600"
                     >
                       <Pencil className="w-4 h-4" />

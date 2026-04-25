@@ -1,15 +1,18 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
 import { UserPlus, AlertCircle } from 'lucide-react';
 import { validateDisplayName, validateEmail, validatePassword } from '@utils/validators';
 
 export function RegisterPage() {
   const { signUp } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +45,7 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await signUp(email, password, displayName);
-      navigate('/');
+      router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -111,7 +114,7 @@ export function RegisterPage() {
         </form>
         <p className="text-center text-sm text-gray-500 mt-4">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
+          <Link href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
             Sign in
           </Link>
         </p>

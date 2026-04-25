@@ -20,12 +20,14 @@ export class SQLiteAuthAdapter implements IAuthProvider {
 
   constructor() {
     this.db = getSQLiteDB();
-    const savedUser = localStorage.getItem('pm_tcg_user');
-    if (savedUser) {
-      try {
-        this.currentUser = JSON.parse(savedUser);
-      } catch {
-        localStorage.removeItem('pm_tcg_user');
+    if (typeof localStorage !== 'undefined') {
+      const savedUser = localStorage.getItem('pm_tcg_user');
+      if (savedUser) {
+        try {
+          this.currentUser = JSON.parse(savedUser);
+        } catch {
+          localStorage.removeItem('pm_tcg_user');
+        }
       }
     }
   }
@@ -67,7 +69,7 @@ export class SQLiteAuthAdapter implements IAuthProvider {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const normalizedEmail = email.trim().toLowerCase();
-    
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     try {
@@ -114,9 +116,9 @@ export class SQLiteAuthAdapter implements IAuthProvider {
   private setCurrentUser(user: User | null) {
     this.currentUser = user;
     if (user) {
-      localStorage.setItem('pm_tcg_user', JSON.stringify(user));
+      if (typeof localStorage !== 'undefined') localStorage.setItem('pm_tcg_user', JSON.stringify(user));
     } else {
-      localStorage.removeItem('pm_tcg_user');
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('pm_tcg_user');
     }
     this.authListeners.forEach(l => l(user));
   }

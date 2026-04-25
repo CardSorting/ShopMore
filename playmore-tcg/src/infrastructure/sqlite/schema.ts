@@ -5,7 +5,7 @@
 
 
 export interface ProductTable {
-  id: string; // Using string to match Firebase IDs
+  id: string;
   name: string;
   description: string;
   price: number;

@@ -7,7 +7,7 @@ import type { Order } from '@domain/models';
 import { PaymentFailedError } from '@domain/errors';
 
 export class TrustedCheckoutGateway implements ICheckoutGateway {
-  constructor(private readonly endpoint: string | undefined = import.meta.env.VITE_CHECKOUT_ENDPOINT) {}
+  constructor(private readonly endpoint: string | undefined = process.env.CHECKOUT_ENDPOINT) { }
 
   async finalizeCheckout(params: Parameters<ICheckoutGateway['finalizeCheckout']>[0]): Promise<Order> {
     if (!this.endpoint) {

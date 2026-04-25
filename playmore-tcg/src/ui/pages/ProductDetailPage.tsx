@@ -1,8 +1,11 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import type { Product } from '@domain/models';
@@ -40,7 +43,7 @@ export function ProductDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Link to="/products" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
+      <Link href="/products" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
         <ArrowLeft className="w-4 h-4" />
         Back to Products
       </Link>
@@ -97,7 +100,7 @@ export function ProductDetailPage() {
               </button>
             </div>
           ) : (
-            <Link to="/login" className="inline-block bg-primary-600 text-white px-6 py-2.5 rounded-md font-medium hover:bg-primary-700">
+            <Link href="/login" className="inline-block bg-primary-600 text-white px-6 py-2.5 rounded-md font-medium hover:bg-primary-700">
               Sign in to Add to Cart
             </Link>
           )}

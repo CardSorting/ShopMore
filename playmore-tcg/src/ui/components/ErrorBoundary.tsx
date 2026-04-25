@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * [LAYER: UI]
  * 
@@ -58,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-600 mb-6">
               We're sorry, but an unexpected error occurred. The application may need to be refreshed.
             </p>
-            {import.meta.env.DEV && (
+            {process.env.NODE_ENV === 'development' && (
               <div className="bg-gray-50 rounded-md p-4 mb-6 text-left">
                 <p className="text-sm font-medium text-gray-700 mb-2">Error details:</p>
                 <p className="text-sm text-gray-600 font-mono break-all">

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * [LAYER: UI]
  * Lazy Stripe Elements payment form for checkout presentation only.

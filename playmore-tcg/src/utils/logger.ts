@@ -5,7 +5,7 @@
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const isDevelopment = import.meta.env.DEV === true;
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 function emit(level: LogLevel, message: string, context?: unknown) {
   if (!isDevelopment && (level === 'debug' || level === 'info')) {

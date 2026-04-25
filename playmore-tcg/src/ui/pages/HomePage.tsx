@@ -1,8 +1,10 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useServices } from '../hooks/useServices';
 import type { Product } from '@domain/models';
 import { ArrowRight, Sparkles, Shield, Truck } from 'lucide-react';
@@ -29,7 +31,7 @@ export function HomePage() {
             Discover booster boxes, rare singles, and accessories for Pokemon, MTG, and more.
           </p>
           <Link
-            to="/products"
+            href="/products"
             className="inline-flex items-center gap-2 bg-white text-primary-700 px-6 py-3 rounded-lg font-medium hover:bg-primary-50 transition"
           >
             Shop Now
@@ -70,7 +72,7 @@ export function HomePage() {
               {featured.map((p) => (
                 <Link
                   key={p.id}
-                  to={`/products/${p.id}`}
+                  href={`/products/${p.id}`}
                   className="bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-md transition group"
                 >
                   <div className="aspect-square overflow-hidden">

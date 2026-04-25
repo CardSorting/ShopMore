@@ -1,10 +1,12 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
 import { useEffect, useState } from 'react';
 import { useServices } from '../hooks/useServices';
 import type { Product } from '@domain/models';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Trash2, ChevronRight } from 'lucide-react';
 import { logger } from '@utils/logger';
 
@@ -166,7 +168,7 @@ export function CartPage() {
                     <span>${((total + 599) / 100).toFixed(2)}</span>
                   </div>
                 </div>
-                <Link to="/checkout" className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 transition flex items-center justify-center gap-2">
+                <Link href="/checkout" className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 transition flex items-center justify-center gap-2">
                   Proceed to Checkout
                   <ChevronRight className="w-4 h-4" />
                 </Link>
@@ -176,7 +178,7 @@ export function CartPage() {
         ) : (
           <div className="text-center py-12 text-gray-500">
             <p>Your cart is empty</p>
-            <Link to="/products" className="mt-4 inline-block text-primary-600 hover:text-primary-700">
+            <Link href="/products" className="mt-4 inline-block text-primary-600 hover:text-primary-700">
               Start Shopping
             </Link>
           </div>

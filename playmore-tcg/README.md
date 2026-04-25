@@ -1,6 +1,6 @@
 # PlayMoreTCG — E-Commerce Platform
 
-A full-stack ecommerce application for trading card game products, built with **React**, **TypeScript**, **Vite**, **Tailwind CSS**, **Firebase Authentication**, and **Cloud Firestore**.
+A full-stack ecommerce application for trading card game products, built with **Next.js**, **React**, **TypeScript**, **Tailwind CSS**, and **SQLite**.
 
 ## Architecture (Joy-Zoning)
 
@@ -8,7 +8,7 @@ A full-stack ecommerce application for trading card game products, built with **
 |---|---|---|
 | **Domain** | `src/domain/` | Pure business logic: models, rules, errors, repository contracts |
 | **Core** | `src/core/` | Application orchestration: services coordinate domain + infrastructure |
-| **Infrastructure** | `src/infrastructure/` | Adapters: Firebase Auth, Firestore repositories, payment processors |
+| **Infrastructure** | `src/infrastructure/` | Adapters: SQLite repositories, API-backed client services, payment processors |
 | **UI** | `src/ui/` | React components, pages, hooks, layouts |
 | **Plumbing** | `src/utils/` | Stateless helpers: constants, formatters, validators |
 
@@ -33,12 +33,11 @@ A full-stack ecommerce application for trading card game products, built with **
 
 | Concern | Technology |
 |---|---|
-| Framework | React 19 + TypeScript |
-| Bundler | Vite 6 |
+| Framework | Next.js App Router + React 19 + TypeScript |
 | Styling | Tailwind CSS 4 |
-| Router | React Router DOM |
-| Auth | Firebase Authentication |
-| Database | Cloud Firestore |
+| Router | Next.js App Router |
+| Auth | SQLite-backed auth via Next API routes and HTTP-only session cookie |
+| Database | SQLite via better-sqlite3 + Kysely |
 | Icons | Lucide React |
 
 ## Quick Start
@@ -48,19 +47,16 @@ A full-stack ecommerce application for trading card game products, built with **
 npm install
 ```
 
-### 2. Configure Firebase
-Copy `.env.example` to `.env` and fill in your Firebase project credentials:
+### 2. Configure Environment
+Copy `.env.example` to `.env` and adjust local values if needed:
 ```bash
 cp .env.example .env
 ```
 
 Required environment variables:
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
+- `SQLITE_DATABASE_PATH`
+- `SESSION_SECRET`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (optional until Stripe checkout is configured)
 
 ### 3. Seed Mock Products
 ```bash
@@ -77,20 +73,9 @@ npm run dev
 npm run build
 ```
 
-## Firestore Security Rules
-
-Deploy `firestore.rules` to enforce:
-- **Products**: public read, admin-only write
-- **Carts**: user-scoped read/write
-- **Orders**: users read their own, admins read all + update status
-
-```bash
-firebase deploy --only firestore:rules
-```
-
 ## Admin Setup
 
-The first user created via Firebase Auth can be promoted to admin by setting a custom claim. Use the Firebase Admin SDK or Firebase Console to set `admin: true` on a user's token. After that, the `/admin` route will be accessible.
+Users are stored in SQLite. Promote a user by updating their `role` column to `admin` in the `users` table.
 
 ## Project Structure
 
@@ -98,10 +83,10 @@ The first user created via Firebase Auth can be promoted to admin by setting a c
 src/
 ├── domain/          # Models, rules, errors, repository interfaces
 ├── core/            # Services (CartService, OrderService, etc.)
-├── infrastructure/  # Firebase config, repositories, auth adapter
-├── ui/              # Pages, components, hooks, layouts, router
+├── app/             # Next.js routes and API route handlers
+├── infrastructure/  # SQLite repositories, server session/database helpers
+├── ui/              # Pages, components, hooks, layouts
 ├── utils/           # Constants, helpers
-├── main.tsx         # App entry point
 └── index.css        # Tailwind theme
 ```
 

@@ -11,13 +11,13 @@ let dbInstance: Kysely<Database> | null = null;
 export function getSQLiteDB(): Kysely<Database> {
   if (dbInstance) return dbInstance;
 
-  const sqlite = new SQLite('playmore.db');
-  
+  const sqlite = new SQLite(process.env.SQLITE_DATABASE_PATH ?? 'playmore.db');
+
   // Enable WAL mode for performance
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('synchronous = NORMAL');
   sqlite.pragma('foreign_keys = ON');
-  
+
   const dialect = new SqliteDialect({
     database: sqlite,
   });

@@ -1,8 +1,10 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
 import { lazy, Suspense, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
@@ -53,10 +55,10 @@ export function CheckoutPage() {
         <p className="text-gray-500 mb-2">Thank you for your purchase.</p>
         <p className="text-sm font-mono text-gray-400 mb-6">Order #{orderId.slice(0, 16)}</p>
         <div className="flex gap-3 justify-center">
-          <Link to="/orders" className="bg-primary-600 text-white px-6 py-2.5 rounded-md font-medium hover:bg-primary-700">
+          <Link href="/orders" className="bg-primary-600 text-white px-6 py-2.5 rounded-md font-medium hover:bg-primary-700">
             View Orders
           </Link>
-          <Link to="/products" className="bg-white border text-gray-700 px-6 py-2.5 rounded-md font-medium hover:bg-gray-50">
+          <Link href="/products" className="bg-white border text-gray-700 px-6 py-2.5 rounded-md font-medium hover:bg-gray-50">
             Keep Shopping
           </Link>
         </div>
@@ -66,7 +68,7 @@ export function CheckoutPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Link to="/cart" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
+      <Link href="/cart" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
         <ArrowLeft className="w-4 h-4" />
         Back to Cart
       </Link>

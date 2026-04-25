@@ -6,7 +6,7 @@
  * ARCHITECTURAL COMPLIANCE:
  * - ZERO eager exports - all services lazy-initialized
  * - Eliminates infinite loop risk from circular dependencies
- * - Prevents Firebase init timing issues
+ * - Prevents database init timing issues
  * - Singleton pattern enforced via module-level caching
  * - JoyZoning compliant: UI imports Domain ONLY via hooks
  * 
@@ -25,11 +25,11 @@
  * - Default: Used by useServices() hook for production app behavior
  * 
  * SINGLETON STATE MANAGEMENT:
- * - authServiceInstance: AuthAdapter (shared across app)
- * - authProviderInstance: AuthAdapter (firebase init cached)
- * - productsRepo: FirestoreProductRepository (cached singleton - shared)
- * - cartRepo: FirestoreCartRepository (cached singleton - shared)
- * - ordersRepo: FirestoreOrderRepository (cached singleton - shared)
+ * - authServiceInstance: AuthService (shared across app)
+ * - authProviderInstance: SQLiteAuthAdapter (cached)
+ * - productsRepo: SQLiteProductRepository (cached singleton - shared)
+ * - cartRepo: SQLiteCartRepository (cached singleton - shared)
+ * - ordersRepo: SQLiteOrderRepository (cached singleton - shared)
  * 
  * NOISE IMPORTS ELIMINATED:
  * - Core is the composition root and intentionally wires infrastructure adapters
@@ -37,7 +37,7 @@
  * - No UI polluting any layer
  * 
  * INITIALIZATION ORDER:
- * 1. Firebase initialized lazily by first service using it
+ * 1. SQLite initialized server-side before first service using it
  * 2. Repository instances cached on first creation (singleton)
  * 3. Services created on-demand via getInitialServices() hook
  * 4. UI components use useServices() hook only
@@ -54,13 +54,11 @@
  * - Factory pattern preserved for testing scenarios
  */
 
-import { FirestoreProductRepository } from '@infrastructure/repositories/FirestoreProductRepository';
-import { FirestoreCartRepository } from '@infrastructure/repositories/FirestoreCartRepository';
-import { FirestoreOrderRepository } from '@infrastructure/repositories/FirestoreOrderRepository';
-import { getSelectedProvider } from '@infrastructure/dbProvider';
-import { AuthAdapter } from '@infrastructure/services/AuthAdapter';
+import { SQLiteProductRepository } from '@infrastructure/repositories/sqlite/SQLiteProductRepository';
+import { SQLiteCartRepository } from '@infrastructure/repositories/sqlite/SQLiteCartRepository';
+import { SQLiteOrderRepository } from '@infrastructure/repositories/sqlite/SQLiteOrderRepository';
+import { SQLiteAuthAdapter } from '@infrastructure/services/SQLiteAuthAdapter';
 import { StripePaymentProcessor } from '@infrastructure/services/StripePaymentProcessor';
-import { TrustedCheckoutGateway } from '@infrastructure/services/TrustedCheckoutGateway';
 import { ProductService } from './ProductService';
 import { CartService } from './CartService';
 import { OrderService } from './OrderService';
@@ -87,16 +85,10 @@ let paymentProcessorInstance: IPaymentProcessor | null = null;
  * Helper to create the correct repository based on provider
  */
 function createRepositories() {
-  const provider = getSelectedProvider();
-  
-  if (provider === 'sqlite') {
-    throw new Error('SQLite provider is server-side only and cannot be bundled into the browser client. Use VITE_DB_PROVIDER=firebase for the ecommerce web app.');
-  }
-
   return {
-    productRepo: new FirestoreProductRepository(),
-    cartRepo: new FirestoreCartRepository(),
-    orderRepo: new FirestoreOrderRepository(),
+    productRepo: new SQLiteProductRepository(),
+    cartRepo: new SQLiteCartRepository(),
+    orderRepo: new SQLiteOrderRepository(),
   };
 }
 
@@ -110,15 +102,9 @@ function createRepositories() {
  */
 export function getServiceContainer() {
   const { productRepo, cartRepo, orderRepo } = createRepositories();
-  const provider = getSelectedProvider();
-  
-  // Auth selection
-  if (provider === 'sqlite') {
-    throw new Error('SQLite auth is server-side only and cannot be used from the browser client.');
-  }
-  const authProvider = new AuthAdapter();
+  const authProvider = new SQLiteAuthAdapter();
   const authService = new AuthService(authProvider);
-  
+
   return {
     authProvider,
     authService,
@@ -128,9 +114,7 @@ export function getServiceContainer() {
       orderRepo,
       productRepo,
       cartRepo,
-      new StripePaymentProcessor(),
-      undefined,
-      new TrustedCheckoutGateway()
+      new StripePaymentProcessor()
     ),
   };
 }
@@ -150,16 +134,12 @@ export function getInitialServices() {
     cartRepoInstance = cartRepo;
     orderRepoInstance = orderRepo;
   }
-  
+
   // Auth selection
   if (!authProviderInstance) {
-    const provider = getSelectedProvider();
-    if (provider === 'sqlite') {
-      throw new Error('SQLite auth is server-side only and cannot be used from the browser client.');
-    }
-    authProviderInstance = new AuthAdapter();
+    authProviderInstance = new SQLiteAuthAdapter();
   }
-  
+
   if (!authServiceInstance) {
     authServiceInstance = new AuthService(authProviderInstance!);
   }
@@ -167,7 +147,7 @@ export function getInitialServices() {
   if (!paymentProcessorInstance) {
     paymentProcessorInstance = new StripePaymentProcessor();
   }
-  
+
   return {
     authProvider: authProviderInstance!,
     authService: authServiceInstance,
@@ -177,9 +157,7 @@ export function getInitialServices() {
       orderRepoInstance!,
       productRepoInstance!,
       cartRepoInstance!,
-      paymentProcessorInstance,
-      undefined,
-      new TrustedCheckoutGateway()
+      paymentProcessorInstance
     ),
   };
 }

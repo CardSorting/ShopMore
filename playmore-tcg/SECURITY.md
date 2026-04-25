@@ -12,18 +12,13 @@ This document outlines security best practices for the PlayMoreTCG application, 
 - **`.env.local`**: Local configuration with actual credentials (NOT committed, gitignored)
 - **Other `.env.*.local`**: Branch/environment-specific configurations (gitignored)
 
-### Firebase Credentials
+### Application Secrets
 
-The application uses Firebase for authentication and Firestore database. All Firebase credentials are managed through environment variables:
+The application uses SQLite for persistence and HTTP-only cookies for session state. Keep server-only secrets in `.env.local` or your deployment secret manager:
 
 ```env
-VITE_FIREBASE_API_KEY=your_api_key_here
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+SESSION_SECRET=replace_with_a_long_random_secret
+SQLITE_DATABASE_PATH=playmore.db
 ```
 
 ## Security Practices
@@ -37,8 +32,8 @@ VITE_FIREBASE_APP_ID=your_app_id
 
 ### ❌ What Must NOT Be Committed
 
-- `.env.local` - Actual Firebase credentials
-- Any file containing `AIza` API keys
+- `.env.local` - Actual deployment secrets
+- SQLite database files containing production/customer data
 - API secrets, tokens, or passwords
 - `*.local` files
 - `.env` files (unless they only contain placeholders)
@@ -63,7 +58,7 @@ The `.gitignore` file includes the following patterns to prevent credential leak
    cp .env .env.local
    ```
 
-2. Edit `.env.local` with your actual Firebase credentials
+2. Edit `.env.local` with your actual deployment secrets
 3. Verify the file is not committed using `git status`
 4. The application will load credentials from `.env.local` automatically
 
@@ -71,9 +66,9 @@ The `.gitignore` file includes the following patterns to prevent credential leak
 
 ⚠️ **IMPORTANT**: When deploying to production, NEVER use environment variables. Instead:
 
-1. Configure Firebase Console with your credentials
-2. Use Firebase Hosting's environment variables feature
-3. For Web Apps, Firebase will handle authentication automatically
+1. Configure your hosting provider with `SESSION_SECRET` and database path/storage
+2. Keep SQLite database files on persistent, private storage
+3. Serve the app over HTTPS so secure cookies can be used in production
 
 ## Credential Protection Checklist
 
@@ -88,7 +83,6 @@ The `.gitignore` file includes the following patterns to prevent credential leak
 
 ❌ **Don't**:
 - Commit `.env.local` or any file with real credentials
-- Share Firebase API keys via public chat or email
 - Hardcode secrets in plain text files
 - Push sensitive data to public repositories
 
@@ -96,19 +90,18 @@ The `.gitignore` file includes the following patterns to prevent credential leak
 - Use `.env` for templates and `.env.local` for actual credentials
 - Review git history before committing sensitive changes
 - Rotate credentials if they are exposed
-- Use Firebase's built-in security rules and authentication
+- Keep authentication and database access server-side through Next API routes
 
 ## Additional Resources
 
-- [Firebase Security Best Practices](https://firebase.google.com/docs/rules/samples)
-- [Environment Variables in Vite](https://vitejs.dev/guide/env-and-mode.html)
+- [Next.js Environment Variables](https://nextjs.org/docs/app/guides/environment-variables)
 - [OWASP Secret Scanning](https://owasp.org/www-project-secret-skanning/)
 
 ## Support
 
 If you believe credentials have been exposed:
 
-1. Immediately regenerate Firebase API keys in Firebase Console
+1. Immediately rotate affected secrets
 2. Update your `.env.local` file
 3. Rotate any affected tokens if applicable
 4. Review git history for any committed secrets

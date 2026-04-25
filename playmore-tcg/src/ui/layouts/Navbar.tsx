@@ -1,48 +1,51 @@
+'use client';
+
 /**
  * [LAYER: UI]
  */
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
 import { ShoppingCart, Package, LogIn, LogOut, Shield, User, Home } from 'lucide-react';
 
 export function Navbar() {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    router.push('/');
   };
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
-          <Link to="/" className="flex items-center gap-2 text-primary-700 font-bold text-xl">
+          <Link href="/" className="flex items-center gap-2 text-primary-700 font-bold text-xl">
             <Package className="w-6 h-6" />
             PlayMoreTCG
           </Link>
 
           <div className="flex items-center gap-4">
-            <Link to="/" className="text-gray-600 hover:text-primary-600 flex items-center gap-1 text-sm">
+            <Link href="/" className="text-gray-600 hover:text-primary-600 flex items-center gap-1 text-sm">
               <Home className="w-4 h-4" />
               Home
             </Link>
-            <Link to="/products" className="text-gray-600 hover:text-primary-600 text-sm">
+            <Link href="/products" className="text-gray-600 hover:text-primary-600 text-sm">
               Products
             </Link>
-            <Link to="/cart" className="text-gray-600 hover:text-primary-600 flex items-center gap-1 text-sm">
+            <Link href="/cart" className="text-gray-600 hover:text-primary-600 flex items-center gap-1 text-sm">
               <ShoppingCart className="w-4 h-4" />
               Cart
             </Link>
 
             {user ? (
               <>
-                <Link to="/orders" className="text-gray-600 hover:text-primary-600 text-sm">
+                <Link href="/orders" className="text-gray-600 hover:text-primary-600 text-sm">
                   Orders
                 </Link>
                 {user.role === 'admin' && (
-                  <Link to="/admin" className="text-primary-600 hover:text-primary-700 flex items-center gap-1 text-sm font-medium">
+                  <Link href="/admin" className="text-primary-600 hover:text-primary-700 flex items-center gap-1 text-sm font-medium">
                     <Shield className="w-4 h-4" />
                     Admin
                   </Link>
@@ -63,7 +66,7 @@ export function Navbar() {
               </>
             ) : (
               <Link
-                to="/login"
+                href="/login"
                 className="text-sm bg-primary-600 text-white px-3 py-1.5 rounded-md hover:bg-primary-700 flex items-center gap-1"
               >
                 <LogIn className="w-4 h-4" />

@@ -7,7 +7,7 @@
  */
 
 import { useMemo } from 'react';
-import { getInitialServices } from '@core/container';
+import { createApiClientServices } from '@ui/apiClientServices';
 
 /**
  * Hook to access core services with memoization
@@ -15,6 +15,6 @@ import { getInitialServices } from '@core/container';
  */
 export function useServices() {
   return useMemo(() => {
-    return getInitialServices();
+    return createApiClientServices();
   }, []);
 }

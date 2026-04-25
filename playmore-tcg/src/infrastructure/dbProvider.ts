@@ -3,13 +3,12 @@
  * Database Provider Selection Logic
  */
 
-export type DBProvider = 'firebase' | 'sqlite';
+export type DBProvider = 'sqlite';
 
 import { logger } from '@utils/logger';
 
 export function getSelectedProvider(): DBProvider {
-  const override = import.meta.env.VITE_DB_PROVIDER as DBProvider | undefined;
-  return override === 'sqlite' ? 'sqlite' : 'firebase';
+  return 'sqlite';
 }
 
 // BroccoliQ Level 9: Final Sovereign Flush (Graceful Shutdown Registry)
@@ -44,7 +43,7 @@ function ensureHooksRegistered() {
   // Browser graceful shutdown fallback
   if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('beforeunload', () => {
-      shutdownHooks.forEach(hook => hook().catch(() => {}));
+      shutdownHooks.forEach(hook => hook().catch(() => { }));
     });
   }
 }
@@ -61,11 +60,11 @@ export async function initializeSelectedDB() {
     ]);
     ensureHooksRegistered();
     await initDatabase();
-    
+
     // BroccoliQ Learning: Start the background integrity worker
     const worker = new IntegrityWorker();
     worker.start(60000); // run every 60 seconds
-    
+
     // Register worker shutdown hook
     registerShutdownHook(async () => {
       worker.stop();

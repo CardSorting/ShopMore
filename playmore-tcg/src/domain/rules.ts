@@ -2,9 +2,17 @@
  * [LAYER: DOMAIN]
  */
 import type { Address, CardRarity, CartItem, Product, ProductCategory, ProductDraft, ProductUpdate } from './models';
-import { InsufficientStockError, InvalidAddressError, InvalidProductError } from './errors';
+import { InsufficientStockError, InvalidAddressError, InvalidOrderError, InvalidProductError } from './errors';
 
 export const MAX_CART_QUANTITY = 99;
+export const MAX_ORDER_ITEMS = 99;
+export const MAX_PRODUCT_NAME_LENGTH = 120;
+export const MAX_PRODUCT_DESCRIPTION_LENGTH = 2_000;
+export const MAX_PRODUCT_IMAGE_URL_LENGTH = 2_000;
+export const MAX_PRODUCT_SET_LENGTH = 120;
+export const MAX_PRICE_CENTS = 1_000_000;
+export const MAX_STOCK_QUANTITY = 100_000;
+export const MAX_ADDRESS_FIELD_LENGTH = 120;
 
 const PRODUCT_CATEGORIES: ProductCategory[] = ['booster', 'single', 'deck', 'accessory', 'box'];
 const CARD_RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
@@ -22,7 +30,7 @@ function assertValidPrice(price: number): void {
   if (!Number.isInteger(price) || price < 0) {
     throw new InvalidProductError('Price must be a non-negative whole number of cents');
   }
-  if (price > 1_000_000) {
+  if (price > MAX_PRICE_CENTS) {
     throw new InvalidProductError('Price exceeds allowed maximum');
   }
 }
@@ -31,7 +39,7 @@ function assertValidStock(stock: number): void {
   if (!Number.isInteger(stock) || stock < 0) {
     throw new InvalidProductError('Stock must be a non-negative whole number');
   }
-  if (stock > 100_000) {
+  if (stock > MAX_STOCK_QUANTITY) {
     throw new InvalidProductError('Stock exceeds allowed maximum');
   }
 }
@@ -49,16 +57,16 @@ function assertValidRarity(rarity: CardRarity | undefined): void {
 }
 
 export function assertValidProductDraft(product: ProductDraft): void {
-  assertNonEmptyString(product.name, 'Name', 120);
-  assertNonEmptyString(product.description, 'Description', 2_000);
-  assertNonEmptyString(product.imageUrl, 'Image URL', 2_000);
+  assertNonEmptyString(product.name, 'Name', MAX_PRODUCT_NAME_LENGTH);
+  assertNonEmptyString(product.description, 'Description', MAX_PRODUCT_DESCRIPTION_LENGTH);
+  assertNonEmptyString(product.imageUrl, 'Image URL', MAX_PRODUCT_IMAGE_URL_LENGTH);
   assertValidPrice(product.price);
   assertValidStock(product.stock);
   assertValidCategory(product.category);
   assertValidRarity(product.rarity);
 
-  if (product.set && product.set.trim().length > 120) {
-    throw new InvalidProductError('Set must be 120 characters or fewer');
+  if (product.set && product.set.trim().length > MAX_PRODUCT_SET_LENGTH) {
+    throw new InvalidProductError(`Set must be ${MAX_PRODUCT_SET_LENGTH} characters or fewer`);
   }
 }
 
@@ -66,15 +74,15 @@ export function assertValidProductUpdate(updates: ProductUpdate): void {
   if (Object.keys(updates).length === 0) {
     throw new InvalidProductError('At least one product field must be provided');
   }
-  if ('name' in updates) assertNonEmptyString(updates.name, 'Name', 120);
-  if ('description' in updates) assertNonEmptyString(updates.description, 'Description', 2_000);
-  if ('imageUrl' in updates) assertNonEmptyString(updates.imageUrl, 'Image URL', 2_000);
+  if ('name' in updates) assertNonEmptyString(updates.name, 'Name', MAX_PRODUCT_NAME_LENGTH);
+  if ('description' in updates) assertNonEmptyString(updates.description, 'Description', MAX_PRODUCT_DESCRIPTION_LENGTH);
+  if ('imageUrl' in updates) assertNonEmptyString(updates.imageUrl, 'Image URL', MAX_PRODUCT_IMAGE_URL_LENGTH);
   if (updates.price !== undefined) assertValidPrice(updates.price);
   if (updates.stock !== undefined) assertValidStock(updates.stock);
   if (updates.category !== undefined) assertValidCategory(updates.category);
   if ('rarity' in updates) assertValidRarity(updates.rarity);
-  if (updates.set && updates.set.trim().length > 120) {
-    throw new InvalidProductError('Set must be 120 characters or fewer');
+  if (updates.set && updates.set.trim().length > MAX_PRODUCT_SET_LENGTH) {
+    throw new InvalidProductError(`Set must be ${MAX_PRODUCT_SET_LENGTH} characters or fewer`);
   }
 }
 
@@ -126,13 +134,37 @@ export function coalesceStockUpdates(updates: { id: string; delta: number }[]): 
 export function assertValidShippingAddress(address: Address): void {
   const required: Array<keyof Address> = ['street', 'city', 'state', 'zip', 'country'];
   for (const field of required) {
-    if (!address[field] || address[field].trim().length === 0) {
+    const value = address[field]?.trim();
+    if (!value) {
       throw new InvalidAddressError(`Shipping address field is required: ${field}`);
+    }
+    if (value.length > MAX_ADDRESS_FIELD_LENGTH) {
+      throw new InvalidAddressError(`Shipping address field is too long: ${field}`);
     }
   }
 
   if (address.country.trim().length !== 2) {
     throw new InvalidAddressError('Country must be a two-letter ISO country code');
+  }
+}
+
+export function assertValidOrderItems(items: CartItem[]): void {
+  if (items.length === 0) {
+    throw new InvalidOrderError('Order must contain at least one item');
+  }
+  if (items.length > MAX_ORDER_ITEMS) {
+    throw new InvalidOrderError(`Order cannot contain more than ${MAX_ORDER_ITEMS} items`);
+  }
+  for (const item of items) {
+    if (!item.productId.trim() || !item.name.trim() || !item.imageUrl.trim()) {
+      throw new InvalidOrderError('Order item data is incomplete');
+    }
+    if (!Number.isInteger(item.priceSnapshot) || item.priceSnapshot < 0 || item.priceSnapshot > MAX_PRICE_CENTS) {
+      throw new InvalidOrderError('Order item price is invalid');
+    }
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0 || item.quantity > MAX_CART_QUANTITY) {
+      throw new InvalidOrderError('Order item quantity is invalid');
+    }
   }
 }
 

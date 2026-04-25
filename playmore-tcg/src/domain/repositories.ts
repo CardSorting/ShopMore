@@ -52,6 +52,15 @@ export interface IPaymentProcessor {
   }): Promise<{ success: boolean; transactionId: string | null }>;
 }
 
+export interface ICheckoutGateway {
+  finalizeCheckout(params: {
+    userId: string;
+    shippingAddress: import('./models').Address;
+    paymentMethodId: string;
+    idempotencyKey: string;
+  }): Promise<Order>;
+}
+
 export interface ILockProvider {
   acquireLock(resourceId: string, owner: string, ttlMs?: number): Promise<boolean>;
   releaseLock(resourceId: string, owner: string): Promise<void>;

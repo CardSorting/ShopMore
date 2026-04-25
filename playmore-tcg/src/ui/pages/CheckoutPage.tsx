@@ -24,21 +24,24 @@ export function CheckoutPage() {
     country: 'US',
   });
   const [placing, setPlacing] = useState(false);
+  const [checkoutStatus, setCheckoutStatus] = useState<'idle' | 'authorizing' | 'finalizing'>('idle');
   const [orderId, setOrderId] = useState<string>('');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   async function handleSuccess(paymentMethodId: string) {
     if (!user) return;
     setCheckoutError(null);
+    setCheckoutStatus('finalizing');
     try {
       const normalizedAddress = { ...address, country: address.country.trim().toUpperCase() };
-      const order = await services.orderService.placeOrder(user.id, normalizedAddress, paymentMethodId);
+      const order = await services.orderService.finalizeTrustedCheckout(user.id, normalizedAddress, paymentMethodId);
       setOrderId(order.id);
       setStep('success');
     } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : 'Failed to place order');
+      setCheckoutError(err instanceof Error ? err.message : 'Checkout could not be finalized. Please try again.');
     } finally {
       setPlacing(false);
+      setCheckoutStatus('idle');
     }
   }
 
@@ -128,12 +131,21 @@ export function CheckoutPage() {
           </div>
         )}
 
+        {checkoutStatus === 'finalizing' && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+            Securely finalizing your order with the trusted checkout service. Do not refresh this page.
+          </div>
+        )}
+
         {isStripeConfigured && (
           <Suspense fallback={<div className="border-t pt-6 text-sm text-gray-500">Loading secure payment form...</div>}>
             <StripeCheckoutForm
               address={address} 
               onSuccess={handleSuccess} 
-              onPlaceOrder={setPlacing} 
+              onPlaceOrder={(isPlacing) => {
+                setPlacing(isPlacing);
+                setCheckoutStatus(isPlacing ? 'authorizing' : 'idle');
+              }} 
               isPlacing={placing} 
             />
           </Suspense>

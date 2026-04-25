@@ -10,13 +10,11 @@ export function DatabaseMigration() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [complete, setComplete] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
   const provider = getSelectedProvider();
 
   const handleMigrate = async () => {
-    if (!window.confirm('Are you sure you want to migrate all data to Firebase? This will overwrite matching records in Firestore.')) {
-      return;
-    }
-
+    setConfirmationOpen(false);
     setIsMigrating(true);
     setLogs([]);
     setComplete(false);
@@ -51,7 +49,7 @@ export function DatabaseMigration() {
         
         {provider === 'sqlite' && !complete && (
           <button
-            onClick={handleMigrate}
+            onClick={() => setConfirmationOpen(true)}
             disabled={isMigrating}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all font-medium"
           >
@@ -101,6 +99,34 @@ export function DatabaseMigration() {
           <div>
             <p className="text-sm font-semibold text-blue-900">Connected to Firebase</p>
             <p className="text-sm text-blue-800">You are currently using the cloud database. SQLite local storage is in standby.</p>
+          </div>
+        </div>
+      )}
+
+      {confirmationOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Confirm Firebase migration</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              This operation writes local SQLite data into Firebase and may overwrite matching Firestore records.
+              Run it only after verifying backups and target environment variables.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmationOpen(false)}
+                className="rounded-lg border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleMigrate}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Confirm Migration
+              </button>
+            </div>
           </div>
         </div>
       )}

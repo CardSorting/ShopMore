@@ -7,9 +7,10 @@ import type {
   ICartRepository,
   IPaymentProcessor,
   ILockProvider,
+  ICheckoutGateway,
 } from '@domain/repositories';
 import type { Order, OrderStatus, Address } from '@domain/models';
-import { assertValidShippingAddress, calculateCartTotal, canPlaceOrder } from '@domain/rules';
+import { assertValidOrderItems, assertValidShippingAddress, calculateCartTotal, canPlaceOrder } from '@domain/rules';
 import { coalesceCartStockDeductions } from '@domain/rules';
 import {
   CartEmptyError,
@@ -40,10 +41,36 @@ export class OrderService {
     private productRepo: IProductRepository,
     private cartRepo: ICartRepository,
     private payment: IPaymentProcessor,
-    private locker: ILockProvider = new InMemoryLockProvider()
+    private locker: ILockProvider = new InMemoryLockProvider(),
+    private checkoutGateway?: ICheckoutGateway
   ) {}
 
+  async finalizeTrustedCheckout(userId: string, shippingAddress: Address, paymentMethodId: string): Promise<Order> {
+    assertValidShippingAddress(shippingAddress);
+    if (!paymentMethodId.trim()) {
+      throw new PaymentFailedError('Payment method is required to finalize checkout.');
+    }
+
+    const idempotencyKey = `trusted-checkout:${userId}:${crypto.randomUUID()}`;
+    if (this.checkoutGateway) {
+      return this.checkoutGateway.finalizeCheckout({
+        userId,
+        shippingAddress,
+        paymentMethodId,
+        idempotencyKey,
+      });
+    }
+
+    throw new PaymentFailedError(
+      'Checkout finalization requires a trusted backend endpoint. Browser-side payment capture is disabled for production safety.'
+    );
+  }
+
   async placeOrder(userId: string, shippingAddress: Address, paymentMethodId?: string): Promise<Order> {
+    if (this.checkoutGateway && paymentMethodId) {
+      return this.finalizeTrustedCheckout(userId, shippingAddress, paymentMethodId);
+    }
+
     assertValidShippingAddress(shippingAddress);
     const lockId = `checkout_${userId}`;
     const checkoutAttemptId = crypto.randomUUID();
@@ -58,6 +85,8 @@ export class OrderService {
       if (!cart || cart.items.length === 0) {
         throw new CartEmptyError();
       }
+
+      assertValidOrderItems(cart.items);
 
     // Build stock map and verify availability
     const stockMap = new Map<string, number>();

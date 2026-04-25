@@ -11,6 +11,8 @@ export function AdminProducts() {
   const services = useServices();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -23,10 +25,16 @@ export function AdminProducts() {
     void loadProducts();
   }, [loadProducts]);
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this product?')) return;
-    await services.productService.deleteProduct(id);
-    await loadProducts();
+  async function confirmDelete() {
+    if (!deleteCandidate) return;
+    setDeleting(true);
+    try {
+      await services.productService.deleteProduct(deleteCandidate.id);
+      setDeleteCandidate(null);
+      await loadProducts();
+    } finally {
+      setDeleting(false);
+    }
   }
 
   if (loading) return <div className="p-4">Loading...</div>;
@@ -91,8 +99,9 @@ export function AdminProducts() {
                       <Pencil className="w-4 h-4" />
                     </Link>
                     <button
-                      onClick={() => handleDelete(p.id)}
+                      onClick={() => setDeleteCandidate(p)}
                       className="text-gray-500 hover:text-red-600"
+                      aria-label={`Delete ${p.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -103,6 +112,36 @@ export function AdminProducts() {
           </tbody>
         </table>
       </div>
+
+      {deleteCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900">Delete product?</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              This permanently removes <span className="font-medium">{deleteCandidate.name}</span> from the catalog.
+              Customers will no longer be able to view or purchase it.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteCandidate(null)}
+                disabled={deleting}
+                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete Product'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

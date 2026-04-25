@@ -79,3 +79,10 @@ export class InvalidAddressError extends DomainError {
     this.name = 'InvalidAddressError';
   }
 }
+
+export class InvalidOrderError extends DomainError {
+  constructor(message: string = 'Order data is incomplete or invalid') {
+    super(message);
+    this.name = 'InvalidOrderError';
+  }
+}

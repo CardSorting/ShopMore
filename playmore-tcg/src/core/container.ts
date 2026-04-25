@@ -60,6 +60,7 @@ import { FirestoreOrderRepository } from '@infrastructure/repositories/Firestore
 import { getSelectedProvider } from '@infrastructure/dbProvider';
 import { AuthAdapter } from '@infrastructure/services/AuthAdapter';
 import { StripePaymentProcessor } from '@infrastructure/services/StripePaymentProcessor';
+import { TrustedCheckoutGateway } from '@infrastructure/services/TrustedCheckoutGateway';
 import { ProductService } from './ProductService';
 import { CartService } from './CartService';
 import { OrderService } from './OrderService';
@@ -127,7 +128,9 @@ export function getServiceContainer() {
       orderRepo,
       productRepo,
       cartRepo,
-      new StripePaymentProcessor()
+      new StripePaymentProcessor(),
+      undefined,
+      new TrustedCheckoutGateway()
     ),
   };
 }
@@ -174,7 +177,9 @@ export function getInitialServices() {
       orderRepoInstance!,
       productRepoInstance!,
       cartRepoInstance!,
-      paymentProcessorInstance
+      paymentProcessorInstance,
+      undefined,
+      new TrustedCheckoutGateway()
     ),
   };
 }

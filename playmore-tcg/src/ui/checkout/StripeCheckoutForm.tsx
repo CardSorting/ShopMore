@@ -89,8 +89,11 @@ function StripeCheckoutFields({ address, onSuccess, onPlaceOrder, isPlacing }: S
         disabled={!stripe || isPlacing || !isAddressValid}
         className="w-full bg-primary-600 text-white py-3 rounded-md font-medium hover:bg-primary-700 disabled:opacity-50"
       >
-        {isPlacing ? 'Processing...' : 'Place Order'}
+        {isPlacing ? 'Authorizing secure payment...' : 'Authorize Payment & Place Order'}
       </button>
+      <p className="mt-3 text-xs text-gray-500">
+        Payment authorization is finalized by the trusted checkout service before stock or order records are committed.
+      </p>
     </form>
   );
 }

@@ -1,4 +1,5 @@
 import type { IPaymentProcessor } from '@domain/repositories';
+import { PaymentFailedError } from '@domain/errors';
 
 export class StripePaymentProcessor implements IPaymentProcessor {
   async processPayment(params: {
@@ -8,10 +9,10 @@ export class StripePaymentProcessor implements IPaymentProcessor {
     idempotencyKey: string;
   }): Promise<{ success: boolean; transactionId: string | null }> {
     if (!params.paymentMethodId) {
-      throw new Error('Payment method is required for real processing.');
+      throw new PaymentFailedError('Payment method is required for real processing.');
     }
 
-    throw new Error(
+    throw new PaymentFailedError(
       'Browser-side payment capture is disabled. Configure a trusted backend payment endpoint before enabling checkout.'
     );
   }

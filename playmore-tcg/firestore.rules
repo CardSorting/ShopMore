@@ -11,30 +11,32 @@ service cloud.firestore {
 
     function isValidCartItem(item) {
       return item.keys().hasOnly(['productId', 'name', 'priceSnapshot', 'quantity', 'imageUrl']) &&
-        item.productId is string &&
-        item.name is string &&
-        item.priceSnapshot is int && item.priceSnapshot >= 0 &&
+        item.productId is string && item.productId.size() > 0 &&
+        item.name is string && item.name.size() > 0 && item.name.size() <= 120 &&
+        item.priceSnapshot is int && item.priceSnapshot >= 0 && item.priceSnapshot <= 1000000 &&
         item.quantity is int && item.quantity > 0 && item.quantity <= 99 &&
-        item.imageUrl is string;
+        item.imageUrl is string && item.imageUrl.size() > 0 && item.imageUrl.size() <= 2000;
     }
 
     function isValidAddress(address) {
       return address.keys().hasOnly(['street', 'city', 'state', 'zip', 'country']) &&
-        address.street is string && address.street.size() > 0 &&
-        address.city is string && address.city.size() > 0 &&
-        address.state is string && address.state.size() > 0 &&
-        address.zip is string && address.zip.size() > 0 &&
+        address.street is string && address.street.size() > 0 && address.street.size() <= 120 &&
+        address.city is string && address.city.size() > 0 && address.city.size() <= 120 &&
+        address.state is string && address.state.size() > 0 && address.state.size() <= 120 &&
+        address.zip is string && address.zip.size() > 0 && address.zip.size() <= 120 &&
         address.country is string && address.country.size() == 2;
     }
 
     function isValidProduct(data) {
       return data.keys().hasOnly(['name', 'description', 'price', 'category', 'stock', 'imageUrl', 'set', 'rarity', 'createdAt', 'updatedAt']) &&
-        data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
-        data.description is string && data.description.size() <= 5000 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 120 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 2000 &&
         data.price is int && data.price >= 0 && data.price <= 1000000 &&
         data.category in ['booster', 'single', 'deck', 'accessory', 'box'] &&
         data.stock is int && data.stock >= 0 && data.stock <= 100000 &&
-        data.imageUrl is string;
+        data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 2000 &&
+        (!('set' in data) || data.set == null || (data.set is string && data.set.size() <= 120)) &&
+        (!('rarity' in data) || data.rarity == null || data.rarity in ['common', 'uncommon', 'rare', 'holo', 'secret']);
     }
 
     function isValidOrder(data) {
@@ -48,10 +50,14 @@ service cloud.firestore {
         (data.paymentTransactionId == null || data.paymentTransactionId is string);
     }
 
-    function isPendingClientOrder(data) {
+    function isPendingClientOrderRequest(data) {
       return isValidOrder(data) &&
         data.status == 'pending' &&
         data.paymentTransactionId == null;
+    }
+
+    function isTrustedOrderFinalization() {
+      return isAdmin();
     }
 
     // Products: anyone can read, only admins can write
@@ -77,10 +83,12 @@ service cloud.firestore {
       allow read: if isSignedIn() &&
         (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid &&
-        isPendingClientOrder(request.resource.data);
-      allow update: if isAdmin() &&
-        request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'updatedAt']) &&
+        (
+          (request.resource.data.userId == request.auth.uid && isPendingClientOrderRequest(request.resource.data)) ||
+          (isTrustedOrderFinalization() && isValidOrder(request.resource.data))
+        );
+      allow update: if isTrustedOrderFinalization() &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'paymentTransactionId', 'updatedAt']) &&
         request.resource.data.status in ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
       allow delete: if false;
     }

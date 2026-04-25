@@ -176,3 +176,64 @@
 - `CheckoutReconciliationError` surfaces paid-but-not-finalized failures, but no durable reconciliation queue/table has been added in this browser-only pass.
 - The local SQLite auth adapter still stores current user state in `localStorage`; privileged production decisions must continue to be enforced by trusted server/rules boundaries.
 - The main production chunk remains above Vite's 500 kB warning threshold at 682.44 kB gzip 208.30 kB.
+
+## Fourth Deep Audit / Production Hardening Pass — 2026-04-25
+
+### Verification Snapshot
+
+- `npm run build` completed successfully after the fourth-pass changes.
+- `npm run lint` completed with no reported ESLint errors or warnings.
+- The production build still reports Vite's existing >500 kB main chunk warning: `dist/assets/index-CLbsYcyP.js` at 684.13 kB gzip 208.75 kB.
+- `git diff --stat` verified changes across `.env.example`, Firestore rules, Domain/Core/Infrastructure checkout files, and checkout/admin UI files.
+
+### Domain
+
+- Added explicit validation constants to `src/domain/rules.ts` for cart quantity, order item count, product field lengths, address field lengths, maximum price cents, and maximum stock.
+- Updated product draft/update validation in `src/domain/rules.ts` to use those constants rather than duplicated numeric literals.
+- Hardened `assertValidShippingAddress` to reject address fields longer than 120 characters.
+- Added `assertValidOrderItems` in `src/domain/rules.ts` to validate cart/order item shape before checkout orchestration.
+- Added `InvalidOrderError` in `src/domain/errors.ts` for order/cart item invariant failures.
+- Added `ICheckoutGateway` to `src/domain/repositories.ts` as the trusted checkout finalization boundary; the Domain contract is still pure and contains no Stripe, Firebase, fetch, or browser implementation.
+
+### Core
+
+- Updated `src/core/OrderService.ts` to validate cart items with `assertValidOrderItems` before stock/payment orchestration.
+- Added `OrderService.finalizeTrustedCheckout(userId, shippingAddress, paymentMethodId)` as the preferred checkout path for browser callers.
+- `finalizeTrustedCheckout` validates shipping address and payment method input, derives an idempotency key, and delegates finalization to `ICheckoutGateway`.
+- `OrderService.placeOrder` now routes to the trusted finalization path when a checkout gateway and payment method are available, preserving the existing legacy orchestration only as a fallback path.
+- Updated `src/core/container.ts` to wire `TrustedCheckoutGateway` into `OrderService` in both factory and singleton service construction paths.
+
+### Infrastructure
+
+- Added `src/infrastructure/services/TrustedCheckoutGateway.ts` as a fetch-based adapter for `VITE_CHECKOUT_ENDPOINT`.
+- The trusted checkout adapter fails closed with `PaymentFailedError` when no endpoint is configured.
+- Updated `src/infrastructure/services/StripePaymentProcessor.ts` so browser-side payment capture failures throw `PaymentFailedError` instead of generic `Error`.
+- Updated `.env.example` with `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_CHECKOUT_ENDPOINT` placeholders.
+
+### Firestore Rules
+
+- Aligned `firestore.rules` product validation with Domain constraints:
+  - product name maximum is now 120 characters;
+  - product description must be non-empty and at most 2000 characters;
+  - product image URL must be non-empty and at most 2000 characters;
+  - optional set is capped at 120 characters;
+  - optional rarity is constrained to the Domain rarity enum.
+- Hardened cart/order item validation in rules with non-empty product id/name/image URL and maximum item price checks.
+- Hardened shipping-address rule validation with 120-character maximums on street, city, state, and zip.
+- Renamed the client-created order helper to `isPendingClientOrderRequest` to clarify that authenticated clients may only create pending orders without payment transaction ids.
+- Added `isTrustedOrderFinalization()` to document the trusted/admin finalization path for confirmed orders and transaction id updates.
+
+### UI
+
+- Updated `src/ui/pages/CheckoutPage.tsx` so successful Stripe payment-method creation calls `orderService.finalizeTrustedCheckout` rather than the legacy browser-side `placeOrder` path.
+- Added checkout status state for `authorizing` and `finalizing` UI feedback, including a non-refresh warning while the trusted checkout service finalizes the order.
+- Updated `src/ui/checkout/StripeCheckoutForm.tsx` button copy to distinguish payment authorization from trusted order finalization.
+- Replaced raw `confirm()` product deletion in `src/ui/pages/admin/AdminProducts.tsx` with explicit modal state, consequence text, cancellation, disabled deleting state, and accessible delete button labeling.
+- Replaced `window.confirm()` in `src/ui/components/admin/DatabaseMigration.tsx` with explicit confirmation modal state describing Firestore overwrite risk and backup/environment prerequisites.
+
+### Remaining Known Warnings / Risks After Fourth Pass
+
+- Checkout now depends on `VITE_CHECKOUT_ENDPOINT`; without a trusted endpoint deployed, checkout fails closed by design.
+- `TrustedCheckoutGateway` expects the server endpoint to enforce authentication, Stripe secret-key handling, idempotency, stock deduction, order finalization, cart cleanup, and durable reconciliation.
+- Firestore `isTrustedOrderFinalization()` currently maps to admin custom claims; production deployments should prefer service-account/Cloud Function execution for checkout finalization rather than human admin credentials.
+- The main client bundle remains above Vite's 500 kB warning threshold and should be addressed in a future bundle-splitting/icon-import pass.

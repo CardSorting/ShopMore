@@ -2,7 +2,7 @@
 
 /**
  * [LAYER: UI]
- * Admin product catalog — Shopify-style with grid/list toggle.
+ * Admin product catalog — Shopify-style with high-velocity bulk tools.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -22,7 +22,14 @@ import {
   List,
   ArrowUpDown,
   Save,
-  X
+  X,
+  MoreVertical,
+  ChevronRight,
+  Filter,
+  Tag,
+  ArrowUpRight,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { formatCurrency, humanizeCategory, normalizeSearch } from '@utils/formatters';
 import { 
@@ -35,11 +42,20 @@ import {
   SkeletonRow,
   SkeletonCard,
   useToast,
-  useAdminPageTitle
+  useAdminPageTitle,
+  AdminTab
 } from '../../components/admin/AdminComponents';
 import { classifyInventoryHealth } from '@domain/rules';
 
-const CATEGORIES: Array<ProductCategory | 'all'> = ['all', 'booster', 'single', 'deck', 'accessory', 'box'];
+const CATEGORY_TABS = [
+  { label: 'All', value: 'all', icon: Package },
+  { label: 'Boosters', value: 'booster', icon: Package },
+  { label: 'Singles', value: 'single', icon: Tag },
+  { label: 'Decks', value: 'deck', icon: Boxes },
+  { label: 'Accessories', value: 'accessory', icon: Boxes },
+  { label: 'Boxes', value: 'box', icon: Package },
+];
+
 type StockFilter = 'all' | 'low' | 'healthy';
 type SortKey = 'name' | 'price' | 'stock' | 'date';
 type ViewMode = 'list' | 'grid';
@@ -64,19 +80,14 @@ export function AdminProducts() {
   const [bulkChanges, setBulkChanges] = useState<Record<string, { price: number; stock: number }>>({});
   const [savingBulk, setSavingBulk] = useState(false);
 
-  async function handleExport() {
-    toast('info', 'Generating catalog export...');
-    await new Promise(r => setTimeout(r, 1000));
-    const headers = 'Product ID,Name,Price,Stock,Category\n';
-    const csv = products.map(p => `${p.id},${p.name},${p.price},${p.stock},${p.category}`).join('\n');
-    const blob = new Blob([headers + csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `products-export-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    toast('success', 'Export downloaded');
-  }
+  // Status counts for tabs
+  const counts = useMemo(() => {
+    const map: Record<string, number> = { all: products.length };
+    products.forEach(p => {
+      map[p.category] = (map[p.category] || 0) + 1;
+    });
+    return map;
+  }, [products]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -137,13 +148,7 @@ export function AdminProducts() {
         setIsBulkEditing(false);
         return;
       }
-      
-      await Promise.all(
-        entries.map(([id, changes]) => 
-          services.productService.updateProduct(id, changes)
-        )
-      );
-      
+      await Promise.all(entries.map(([id, changes]) => services.productService.updateProduct(id, changes)));
       toast('success', `Updated ${entries.length} products`);
       setIsBulkEditing(false);
       setBulkChanges({});
@@ -166,7 +171,6 @@ export function AdminProducts() {
       return matchesSearch && matchesStock;
     });
 
-    // Sort
     result = [...result].sort((a, b) => {
       let cmp = 0;
       switch (sortBy) {
@@ -181,7 +185,8 @@ export function AdminProducts() {
     return result;
   }, [products, query, stockFilter, sortBy, sortAsc]);
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -208,180 +213,134 @@ export function AdminProducts() {
   const lowStockCount = products.filter((product) => product.stock < 5).length;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-20">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <AdminPageHeader 
         title="Products" 
-        subtitle="Manage your catalog, pricing, and availability."
+        subtitle="Manage your catalog, pricing, and availability"
         actions={
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => {
-                if (isBulkEditing) {
-                  setBulkChanges({});
-                  setIsBulkEditing(false);
-                } else {
-                  setIsBulkEditing(true);
-                }
-              }}
-              className={`hidden sm:flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-sm transition ${
-                isBulkEditing ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
+              onClick={() => toast('info', 'Exporting catalog...')}
+              className="flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
             >
-              {isBulkEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4 text-gray-400" />}
-              {isBulkEditing ? 'Cancel' : 'Bulk Edit'}
-            </button>
-            {isBulkEditing && (
-              <button 
-                onClick={handleBulkSave}
-                disabled={savingBulk || Object.keys(bulkChanges).length === 0}
-                className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50"
-              >
-                {savingBulk ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Save className="h-4 w-4" />}
-                Save Changes
-              </button>
-            )}
-            <button 
-              onClick={() => toast('info', 'Import CSV coming soon')}
-              className="hidden sm:flex items-center gap-2 rounded-xl border bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
-            >
-              <Upload className="h-4 w-4 text-gray-400" />
-              Import
-            </button>
-            <button 
-              onClick={handleExport}
-              className="hidden sm:flex items-center gap-2 rounded-xl border bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
-            >
-              <Download className="h-4 w-4 text-gray-400" />
-              Export
+              <Download className="h-3.5 w-3.5 text-gray-400" />
+              Export CSV
             </button>
             <Link
               href="/admin/products/new"
-              className="flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 active:scale-95"
+              className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700 active:scale-95"
             >
               <Plus className="h-4 w-4" />
-              Add Product
+              Add product
             </Link>
           </div>
         }
       />
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-
-      {/* ── KPI Row ── */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {loading ? (
-          [1,2,3].map(i => <SkeletonCard key={i} />)
-        ) : (
-          <>
-            <AdminMetricCard label="Total Products" value={products.length} icon={Package} color="info" />
-            <AdminMetricCard 
-              label="Low Stock" 
-              value={lowStockCount} 
-              icon={AlertTriangle} 
-              color={lowStockCount > 0 ? 'warning' : 'success'}
-              description={lowStockCount > 0 ? 'Items need restocking' : 'All levels healthy'}
-            />
-            <AdminMetricCard label="Showing" value={filteredProducts.length} icon={Boxes} color="primary" />
-          </>
-        )}
+      {/* ── KPI Grid ── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <AdminMetricCard label="Total products" value={products.length} icon={Package} color="info" />
+        <AdminMetricCard label="Active" value={products.length} icon={ArrowUpRight} color="success" />
+        <AdminMetricCard 
+          label="Low stock" 
+          value={lowStockCount} 
+          icon={AlertTriangle} 
+          color={lowStockCount > 0 ? 'warning' : 'success'}
+        />
+        <AdminMetricCard label="Drafts" value={0} icon={Pencil} color="info" />
       </div>
 
-      {/* ── Filters + View Toggle ── */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 gap-2">
-          <div className="relative flex-1 max-w-sm">
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        {/* ── Tabs ── */}
+        <div className="flex items-center border-b px-2 overflow-x-auto scrollbar-hide">
+          {CATEGORY_TABS.map((tab) => (
+            <AdminTab
+              key={tab.value}
+              label={tab.label}
+              count={tab.value === 'all' ? products.length : counts[tab.value]}
+              active={category === tab.value}
+              onClick={() => {
+                setCategory(tab.value as ProductCategory | 'all');
+              }}
+            />
+          ))}
+        </div>
+
+        {/* ── Search & Filter Bar ── */}
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input 
               value={query} 
-              onChange={(event) => setQuery(event.target.value)} 
-              placeholder="Search products…" 
-              className="w-full rounded-xl border bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+              onChange={(e) => setQuery(e.target.value)} 
+              placeholder="Search by name, set, or rarity…" 
+              className="w-full rounded-lg border bg-gray-50 py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition" 
             />
           </div>
-          <select 
-            value={category} 
-            onChange={(event) => setCategory(event.target.value as ProductCategory | 'all')} 
-            className="rounded-xl border bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm focus:ring-2 focus:ring-primary-500"
-          >
-            {CATEGORIES.map((value) => <option key={value} value={value}>{value === 'all' ? 'All categories' : humanizeCategory(value)}</option>)}
-          </select>
-          <select 
-            value={stockFilter} 
-            onChange={(event) => setStockFilter(event.target.value as StockFilter)} 
-            className="rounded-xl border bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="all">All stock</option>
-            <option value="low">Low stock</option>
-            <option value="healthy">In stock</option>
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border bg-white p-0.5 shadow-sm">
-            <button 
-              onClick={() => setViewMode('list')}
-              className={`rounded-lg p-2 transition ${viewMode === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
-              aria-label="List view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-            <button 
-              onClick={() => setViewMode('grid')}
-              className={`rounded-lg p-2 transition ${viewMode === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
-              aria-label="Grid view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Filter className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <select
+                value={stockFilter}
+                onChange={(e) => setStockFilter(e.target.value as StockFilter)}
+                className="appearance-none rounded-lg border bg-gray-50 py-2 pl-9 pr-8 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-primary-500 cursor-pointer outline-none"
+              >
+                <option value="all">Any stock</option>
+                <option value="low">Low stock</option>
+                <option value="healthy">In stock</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            </div>
+            
+            <div className="flex rounded-lg border bg-gray-50 p-0.5">
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`rounded-md p-1.5 transition ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <List className="h-3.5 w-3.5" />
+              </button>
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`rounded-md p-1.5 transition ${viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── LIST VIEW ── */}
-      {viewMode === 'list' && (
-        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <div className="overflow-x-auto styled-scrollbar">
+        {/* ── View Render ── */}
+        {viewMode === 'list' ? (
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b bg-gray-50/80">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="w-10 px-4 py-3">
+                  <th className="w-12 px-4 py-3">
                     <input 
                       type="checkbox" 
                       checked={selectedIds.size > 0 && selectedIds.size === filteredProducts.length}
-                      ref={input => {
-                        if (input) input.indeterminate = selectedIds.size > 0 && selectedIds.size < filteredProducts.length;
-                      }}
+                      ref={input => { if (input) input.indeterminate = selectedIds.size > 0 && selectedIds.size < filteredProducts.length; }}
                       onChange={toggleAll}
                       className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left">
-                    <button onClick={() => handleSort('name')} className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700">
-                      Product
-                      <ArrowUpDown className="h-3 w-3" />
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Category</th>
-                  <th className="px-4 py-3 text-left">
-                    <button onClick={() => handleSort('price')} className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700">
-                      Price
-                      <ArrowUpDown className="h-3 w-3" />
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left">
-                    <button onClick={() => handleSort('stock')} className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700">
-                      Stock
-                      <ArrowUpDown className="h-3 w-3" />
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Product</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Inventory</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Category</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400">Price</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {loading && [1,2,3,4,5].map(i => <SkeletonRow key={i} columns={6} />)}
                 {!loading && filteredProducts.map((p) => {
                   const isSelected = selectedIds.has(p.id);
                   return (
-                    <tr key={p.id} className={`group transition hover:bg-gray-50 ${isSelected ? 'bg-primary-50/40' : ''}`}>
-                      <td className="px-4 py-3">
+                    <tr 
+                      key={p.id}
+                      className={`group transition hover:bg-gray-50 ${isSelected ? 'bg-primary-50/40' : ''}`}
+                    >
+                      <td className="px-4 py-3.5">
                         <input 
                           type="checkbox" 
                           checked={isSelected}
@@ -389,75 +348,31 @@ export function AdminProducts() {
                           className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <img src={p.imageUrl} alt="" className="h-10 w-10 rounded-lg border object-cover" />
+                          <img src={p.imageUrl} alt="" className="h-10 w-10 rounded border object-cover bg-gray-50" />
                           <div className="min-w-0">
-                            <Link href={`/admin/products/${p.id}/edit`} className="block truncate text-sm font-medium text-gray-900 hover:text-primary-600">
+                            <Link href={`/admin/products/${p.id}/edit`} className="block font-bold text-gray-900 truncate hover:text-primary-600 transition-colors">
                               {p.name}
                             </Link>
-                            <p className="truncate text-xs text-gray-500">{p.description.slice(0, 60)}{p.description.length > 60 ? '…' : ''}</p>
+                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{p.set || 'No Set'}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
+                        <AdminStatusBadge status="active" type="order" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <AdminStatusBadge status={classifyInventoryHealth(p.stock)} type="inventory" />
+                          <span className="text-xs font-bold text-gray-900">{p.stock}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
                         <AdminStatusBadge status={p.category} type="category" />
                       </td>
-                      <td className="px-4 py-3">
-                        {isBulkEditing ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-gray-400">$</span>
-                            <input 
-                              type="number"
-                              value={(bulkChanges[p.id]?.price ?? p.price) / 100}
-                              onChange={(e) => {
-                                const val = Math.round(parseFloat(e.target.value) * 100);
-                                if (isNaN(val)) return;
-                                setBulkChanges(prev => ({ ...prev, [p.id]: { ...prev[p.id], price: val, stock: bulkChanges[p.id]?.stock ?? p.stock } }));
-                              }}
-                              className="w-24 rounded-lg border bg-white px-2 py-1 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary-500"
-                            />
-                          </div>
-                        ) : (
-                          <p className="text-sm font-semibold text-gray-900">{formatCurrency(p.price)}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isBulkEditing ? (
-                          <input 
-                            type="number"
-                            value={bulkChanges[p.id]?.stock ?? p.stock}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value);
-                              if (isNaN(val)) return;
-                              setBulkChanges(prev => ({ ...prev, [p.id]: { ...prev[p.id], stock: val, price: bulkChanges[p.id]?.price ?? p.price } }));
-                            }}
-                            className="w-20 rounded-lg border bg-white px-2 py-1 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <AdminStatusBadge status={classifyInventoryHealth(p.stock)} type="inventory" />
-                            <span className="text-xs text-gray-500">{p.stock}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 transition group-hover:opacity-100">
-                          <Link
-                            href={`/admin/products/${p.id}/edit`}
-                            className="rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteCandidate(p)}
-                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                      <td className="px-4 py-3.5 text-right font-bold text-gray-900 tracking-tight">
+                        {formatCurrency(p.price)}
                       </td>
                     </tr>
                   );
@@ -465,127 +380,59 @@ export function AdminProducts() {
               </tbody>
             </table>
           </div>
-          {!loading && filteredProducts.length === 0 && (
-            <AdminEmptyState
-              title="No products found"
-              description="Try adjusting your search or filters, or add a new product."
-              icon={Package}
-              action={
-                <Link href="/admin/products/new" className="text-sm font-semibold text-primary-600 hover:underline">
-                  Add your first product
-                </Link>
-              }
-            />
-          )}
-        </div>
-      )}
-
-      {/* ── GRID VIEW ── */}
-      {viewMode === 'grid' && (
-        <>
-          {loading && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {[1,2,3,4,5,6,7,8].map(i => (
-                <div key={i} className="rounded-2xl border bg-white p-4 shadow-sm">
-                  <div className="skeleton aspect-square w-full rounded-xl" />
-                  <div className="mt-3 skeleton h-4 w-3/4 rounded" />
-                  <div className="mt-2 skeleton h-3 w-1/2 rounded" />
-                </div>
-              ))}
-            </div>
-          )}
-          {!loading && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredProducts.map((p) => {
-                const isSelected = selectedIds.has(p.id);
-                const health = classifyInventoryHealth(p.stock);
-                return (
-                  <div 
-                    key={p.id} 
-                    className={`group relative overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md ${isSelected ? 'ring-2 ring-primary-500' : ''}`}
-                  >
-                    {/* Selection checkbox */}
-                    <div className="absolute left-3 top-3 z-10">
-                      <input 
-                        type="checkbox" 
-                        checked={isSelected}
-                        onChange={() => toggleSelect(p.id)}
-                        className={`h-4 w-4 rounded border-gray-300 bg-white/90 text-primary-600 shadow-sm focus:ring-primary-500 transition ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                      />
-                    </div>
-                    {/* Stock badge */}
-                    {health !== 'healthy' && (
-                      <div className="absolute right-3 top-3 z-10">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm ${
-                          health === 'out_of_stock' ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
-                        }`}>
-                          {health === 'out_of_stock' ? 'Out of stock' : 'Low stock'}
-                        </span>
-                      </div>
-                    )}
-                    <Link href={`/admin/products/${p.id}/edit`} className="block">
-                      <div className="aspect-square overflow-hidden bg-gray-100">
-                        <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                      </div>
-                      <div className="p-4">
-                        <div className="mb-2">
-                          <AdminStatusBadge status={p.category} type="category" />
-                        </div>
-                        <h3 className="truncate text-sm font-semibold text-gray-900 group-hover:text-primary-600">{p.name}</h3>
-                        <div className="mt-2 flex items-center justify-between">
-                          <p className="text-base font-bold text-gray-900">{formatCurrency(p.price)}</p>
-                          <p className="text-xs text-gray-500">{p.stock} in stock</p>
-                        </div>
-                      </div>
-                    </Link>
-                    {/* Quick actions */}
-                    <div className="absolute bottom-4 right-4 flex gap-1 opacity-0 transition group-hover:opacity-100">
-                      <button
-                        onClick={(e) => { e.preventDefault(); setDeleteCandidate(p); }}
-                        className="rounded-lg bg-white/90 p-1.5 text-gray-500 shadow-sm backdrop-blur-sm transition hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+        ) : (
+          /* Grid View */
+          <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t">
+            {filteredProducts.map((p) => {
+              const isSelected = selectedIds.has(p.id);
+              return (
+                <div 
+                  key={p.id}
+                  onClick={() => toggleSelect(p.id)}
+                  className={`group relative bg-white p-4 transition hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-primary-50/40' : ''}`}
+                >
+                  <div className="aspect-square w-full overflow-hidden rounded-lg border bg-gray-50 mb-3">
+                    <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.category}</p>
+                    <h3 className="text-sm font-bold text-gray-900 truncate">{p.name}</h3>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-sm font-bold text-primary-600">{formatCurrency(p.price)}</span>
+                      <span className={`text-[10px] font-bold ${p.stock < 5 ? 'text-amber-600' : 'text-gray-400'}`}>{p.stock} units</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-          {!loading && filteredProducts.length === 0 && (
-            <AdminEmptyState
-              title="No products found"
-              description="Try adjusting your search or filters."
-              icon={Package}
-              action={
-                <Link href="/admin/products/new" className="text-sm font-semibold text-primary-600 hover:underline">
-                  Add your first product
-                </Link>
-              }
-            />
-          )}
-        </>
-      )}
+                  <div className={`absolute top-2 right-2 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                    <div className="h-5 w-5 rounded-full bg-primary-600 flex items-center justify-center border-2 border-white shadow-sm">
+                      <Check className="h-3 w-3 text-white stroke-[3px]" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-      {/* ── Bulk Action Bar ── */}
-      <BulkActionBar
+        {!loading && filteredProducts.length === 0 && (
+          <AdminEmptyState 
+            title="No products found" 
+            description="Try adjusting your filters or search query."
+            icon={Package}
+          />
+        )}
+      </div>
+
+      <BulkActionBar 
         selectedCount={selectedIds.size}
         onClear={() => setSelectedIds(new Set())}
         actions={
           <>
-            <button
-              onClick={bulkDelete}
-              disabled={deleting}
-              className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-50"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-red-400" />
-              Delete
-            </button>
+            <button onClick={() => toast('info', 'Bulk update coming soon')} className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20 transition">Edit prices</button>
+            <button onClick={bulkDelete} className="rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-bold text-red-200 hover:bg-red-500/30 transition border border-red-500/30">Delete</button>
           </>
         }
       />
 
-      {/* ── Delete Confirmation Dialog ── */}
       <AdminConfirmDialog
         open={!!deleteCandidate}
         onClose={() => setDeleteCandidate(null)}

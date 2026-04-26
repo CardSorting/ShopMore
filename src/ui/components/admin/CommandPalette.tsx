@@ -211,11 +211,11 @@ export function CommandPalette() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-sm backdrop-enter"
+        className="fixed inset-0 z-80 bg-black/40 backdrop-blur-sm backdrop-enter"
         onClick={() => setOpen(false)}
       />
       {/* Palette */}
-      <div className="fixed left-1/2 top-[20%] z-[90] w-full max-w-lg -translate-x-1/2 animate-in zoom-in-95 fade-in duration-150">
+      <div className="fixed left-1/2 top-[20%] z-90 w-full max-w-lg -translate-x-1/2 animate-in zoom-in-95 fade-in duration-150">
         <div className="overflow-hidden rounded-2xl border bg-white shadow-2xl">
           {/* Search input */}
           <div className="flex items-center gap-3 border-b px-4 py-3">

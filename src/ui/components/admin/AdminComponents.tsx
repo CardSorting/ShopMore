@@ -138,24 +138,31 @@ export function AdminMetricCard({ label, value, description, icon: Icon, trend, 
   return (
     <Wrapper 
       onClick={onClick}
-      className={`rounded-2xl border bg-white p-5 shadow-sm text-left transition ${onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200 active:scale-[0.98]' : ''}`}
+      className={`group relative overflow-hidden rounded-xl border bg-white p-5 shadow-sm text-left transition-all hover:shadow-md hover:border-gray-300 ${onClick ? 'cursor-pointer active:scale-[0.98]' : ''}`}
     >
       <div className="flex items-start justify-between">
-        <div className={`rounded-xl p-2.5 ${COLOR_MAP[color]}`}>
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">{label}</p>
+          <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{value}</h3>
+        </div>
+        <div className={`rounded-lg p-2 ${COLOR_MAP[color]}`}>
           <Icon className="h-5 w-5" />
         </div>
-        {trend && (
-          <div className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold ${trend.positive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            {trend.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {trend.value}
-          </div>
-        )}
       </div>
-      <div className="mt-4">
-        <p className="text-sm font-medium text-gray-500">{label}</p>
-        <h3 className="mt-0.5 text-2xl font-bold text-gray-900">{value}</h3>
-        {description && <p className="mt-1 text-xs text-gray-400">{description}</p>}
-      </div>
+      
+      {description && (
+        <div className="mt-4 border-t border-gray-50 pt-3">
+          {typeof description === 'string' ? (
+            <p className="text-xs font-medium text-gray-500">{description}</p>
+          ) : (
+            description
+          )}
+        </div>
+      )}
+
+      {trend && (
+        <div className={`absolute bottom-0 left-0 right-0 h-1 ${trend.positive ? 'bg-green-500' : 'bg-red-500'} opacity-0 transition-opacity group-hover:opacity-100`} />
+      )}
     </Wrapper>
   );
 }
@@ -176,57 +183,47 @@ export function AdminStatusBadge({ status, type }: AdminStatusBadgeProps) {
   if (type === 'order') {
     switch (status) {
       case 'pending':
-        colorClass = 'bg-amber-50 text-amber-700 ring-1 ring-amber-200';
+        colorClass = 'bg-amber-100 text-amber-800 ring-1 ring-amber-200';
         Icon = Clock;
         break;
       case 'confirmed':
-        colorClass = 'bg-blue-50 text-blue-700 ring-1 ring-blue-200';
+        colorClass = 'bg-blue-100 text-blue-800 ring-1 ring-blue-200';
         Icon = CheckCircle2;
         break;
       case 'shipped':
-        colorClass = 'bg-purple-50 text-purple-700 ring-1 ring-purple-200';
+        colorClass = 'bg-purple-100 text-purple-800 ring-1 ring-purple-200';
         Icon = Truck;
         break;
       case 'delivered':
-        colorClass = 'bg-green-50 text-green-700 ring-1 ring-green-200';
+        colorClass = 'bg-green-100 text-green-800 ring-1 ring-green-200';
         Icon = CheckCircle2;
         break;
       case 'cancelled':
-        colorClass = 'bg-red-50 text-red-700 ring-1 ring-red-200';
+        colorClass = 'bg-red-100 text-red-800 ring-1 ring-red-200';
         Icon = XCircle;
         break;
     }
   } else if (type === 'inventory') {
     switch (status) {
       case 'healthy':
-        colorClass = 'bg-green-50 text-green-700 ring-1 ring-green-200';
+        colorClass = 'bg-green-100 text-green-800 ring-1 ring-green-200';
         Icon = CheckCircle2;
         break;
       case 'low_stock':
-        colorClass = 'bg-amber-50 text-amber-700 ring-1 ring-amber-200';
+        colorClass = 'bg-amber-100 text-amber-800 ring-1 ring-amber-200';
         Icon = AlertTriangle;
         break;
       case 'out_of_stock':
-        colorClass = 'bg-red-50 text-red-700 ring-1 ring-red-200';
+        colorClass = 'bg-red-100 text-red-800 ring-1 ring-red-200';
         Icon = XCircle;
         break;
     }
-  } else if (type === 'category') {
-    const CATEGORY_COLORS: Record<string, string> = {
-      booster: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
-      single: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
-      deck: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-      accessory: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
-      box: 'bg-pink-50 text-pink-700 ring-1 ring-pink-200',
-    };
-    colorClass = CATEGORY_COLORS[status] || colorClass;
-    Icon = CheckCircle2;
   }
 
   const displayText = status.replace(/_/g, ' ');
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${colorClass}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${colorClass}`}>
       <Icon className="h-3 w-3" />
       {displayText}
     </span>
@@ -254,6 +251,43 @@ export function AdminEmptyState({ title, description, icon: Icon, action }: Admi
       <p className="mt-1 max-w-sm text-sm text-gray-500">{description}</p>
       {action && <div className="mt-6">{action}</div>}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   TABS — Shopify-style view switching
+   ═══════════════════════════════════════════════════════ */
+
+interface AdminTabProps {
+  label: string;
+  count?: number;
+  active: boolean;
+  onClick: () => void;
+  icon?: LucideIcon;
+}
+
+export function AdminTab({ label, count, active, onClick, icon: Icon }: AdminTabProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        relative flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-all
+        ${active 
+          ? 'border-primary-600 text-gray-900' 
+          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+        }
+      `}
+    >
+      {Icon && <Icon className={`h-4 w-4 ${active ? 'text-primary-600' : 'text-gray-400'}`} />}
+      <span>{label}</span>
+      {count !== undefined && (
+        <span className={`ml-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+          active ? 'bg-primary-50 text-primary-700' : 'bg-gray-100 text-gray-500'
+        }`}>
+          {count}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -397,7 +431,7 @@ export function AdminConfirmDialog({
     : 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm';
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+    <div className="fixed inset-0 z-60 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm backdrop-enter" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl animate-in zoom-in-95 fade-in duration-200">
         <div className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl ${variant === 'danger' ? 'bg-red-100' : 'bg-primary-100'}`}>
@@ -479,7 +513,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed right-4 top-4 z-[70] flex flex-col gap-2">
+      <div className="fixed right-4 top-4 z-70 flex flex-col gap-2">
         {toasts.map(t => {
           const style = TOAST_STYLES[t.type];
           const Icon = style.icon;
@@ -523,7 +557,7 @@ export function AdminTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void 
             <p className="text-xs font-semibold text-gray-900">Store Admin</p>
             <p className="text-[10px] text-gray-500">PlayMoreTCG</p>
           </div>
-          <div className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-primary-400 to-primary-600 shadow-sm">
+          <div className="h-8 w-8 overflow-hidden rounded-full bg-linear-to-br from-primary-400 to-primary-600 shadow-sm">
             <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white">PM</div>
           </div>
         </div>
@@ -558,7 +592,7 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-100 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm backdrop-enter" onClick={onClose} />
       <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200">
         <div className="border-b bg-gray-50 px-6 py-4">

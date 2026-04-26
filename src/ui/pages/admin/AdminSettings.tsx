@@ -3,6 +3,7 @@
 /**
  * [LAYER: UI]
  * Admin settings — Store configuration and setup checklist.
+ * Patterns modeled after Stripe and Shopify Settings.
  */
 import { useState } from 'react';
 import { 
@@ -18,203 +19,163 @@ import {
   Globe,
   Palette,
   Bell,
-  UserCheck
+  UserCheck,
+  Search,
+  Lock,
+  Smartphone,
+  Eye,
+  Languages,
+  ShoppingBag
 } from 'lucide-react';
-import { AdminPageHeader, useToast, useAdminPageTitle } from '../../components/admin/AdminComponents';
-
-interface SetupStep {
-  id: string;
-  label: string;
-  description: string;
-  icon: typeof Store;
-  completed: boolean;
-  href?: string;
-}
-
-const SETUP_STEPS: SetupStep[] = [
-  { id: 'products', label: 'Add your first product', description: 'List at least one item in your catalog.', icon: Store, completed: true, href: '/admin/products/new' },
-  { id: 'shipping', label: 'Configure shipping', description: 'Set up shipping zones, rates, and carriers.', icon: Truck, completed: false },
-  { id: 'payments', label: 'Set up payments', description: 'Connect a payment processor to accept orders.', icon: CreditCard, completed: false },
-  { id: 'domain', label: 'Add a custom domain', description: 'Connect your own domain for a professional storefront.', icon: Globe, completed: false },
-  { id: 'branding', label: 'Customize your store', description: 'Upload a logo and set your brand colors.', icon: Palette, completed: false },
-];
+import { 
+  AdminPageHeader, 
+  useToast, 
+  useAdminPageTitle,
+  AdminTab 
+} from '../../components/admin/AdminComponents';
 
 interface SettingsSection {
   id: string;
   label: string;
   description: string;
   icon: typeof Store;
+  group: 'store' | 'sales' | 'advanced';
 }
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
-  { id: 'general', label: 'General', description: 'Store name, address, and contact info', icon: Store },
-  { id: 'payments', label: 'Payments', description: 'Payment providers and checkout settings', icon: CreditCard },
-  { id: 'shipping', label: 'Shipping & delivery', description: 'Rates, zones, and fulfillment preferences', icon: Truck },
-  { id: 'notifications', label: 'Notifications', description: 'Email templates and alert preferences', icon: Bell },
-  { id: 'permissions', label: 'Permissions', description: 'Staff accounts and access control', icon: Shield },
-  { id: 'email', label: 'Customer emails', description: 'Order confirmation and marketing templates', icon: Mail },
+  // Store Group
+  { id: 'general', label: 'General', description: 'Store name, address, and time zone', icon: Store, group: 'store' },
+  { id: 'branding', label: 'Branding', description: 'Logos, colors, and design tokens', icon: Palette, group: 'store' },
+  { id: 'notifications', label: 'Notifications', description: 'Staff and customer alert preferences', icon: Bell, group: 'store' },
+  
+  // Sales Group
+  { id: 'payments', label: 'Payments', description: 'Payment providers and settlement', icon: CreditCard, group: 'sales' },
+  { id: 'shipping', label: 'Shipping', description: 'Rates, zones, and fulfillment rules', icon: Truck, group: 'sales' },
+  { id: 'checkout', label: 'Checkout', description: 'Abandoned cart and customer accounts', icon: ShoppingBag, group: 'sales' },
+
+  // Advanced Group
+  { id: 'domains', label: 'Domains', description: 'Custom domains and DNS settings', icon: Globe, group: 'advanced' },
+  { id: 'staff', label: 'Staff', description: 'Permissions and access control', icon: Shield, group: 'advanced' },
+  { id: 'security', label: 'Security', description: '2FA, audit logs, and API keys', icon: Lock, group: 'advanced' },
 ];
 
 export function AdminSettings() {
   useAdminPageTitle('Settings');
   const { toast } = useToast();
-  const completedCount = SETUP_STEPS.filter(s => s.completed).length;
-  const progressPct = Math.round((completedCount / SETUP_STEPS.length) * 100);
+  const [activeTab, setActiveTab] = useState('all');
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-10 animate-in fade-in duration-500 pb-20">
       <AdminPageHeader 
         title="Settings" 
-        subtitle="Manage your store configuration and preferences."
+        subtitle="Manage your store configuration and platform preferences"
       />
 
-      {/* ── Setup Checklist ── */}
-      <section className="rounded-2xl border bg-white shadow-sm overflow-hidden">
-        <div className="border-b bg-gradient-to-r from-primary-50 to-purple-50 px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-gray-900">Setup guide</h2>
-              <p className="mt-0.5 text-xs text-gray-500">
-                {completedCount} of {SETUP_STEPS.length} tasks completed
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-primary-700">{progressPct}%</span>
-              <div className="h-2 w-32 overflow-hidden rounded-full bg-primary-100">
-                <div 
-                  className="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-500" 
-                  style={{ width: `${progressPct}%` }} 
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {SETUP_STEPS.map((step) => {
-            const Icon = step.icon;
-            return (
-              <div key={step.id} className="flex items-center gap-4 px-6 py-4 transition hover:bg-gray-50">
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  step.completed ? 'bg-green-100' : 'bg-gray-100'
-                }`}>
-                  {step.completed 
-                    ? <CheckCircle2 className="h-4 w-4 text-green-600" /> 
-                    : <Circle className="h-4 w-4 text-gray-300" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${step.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                    {step.label}
-                  </p>
-                  <p className="text-xs text-gray-500">{step.description}</p>
-                </div>
-                {!step.completed && (
-                  <button 
-                    onClick={() => toast('info', `${step.label} — coming soon`)}
-                    className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-200"
-                  >
-                    Set up
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <div className="flex items-center border-b px-2 overflow-x-auto scrollbar-hide">
+        <AdminTab label="All Settings" active={activeTab === 'all'} onClick={() => setActiveTab('all')} />
+        <AdminTab label="Store" active={activeTab === 'store'} onClick={() => setActiveTab('store')} />
+        <AdminTab label="Sales" active={activeTab === 'sales'} onClick={() => setActiveTab('sales')} />
+        <AdminTab label="Advanced" active={activeTab === 'advanced'} onClick={() => setActiveTab('advanced')} />
+      </div>
 
-      {/* ── Settings Grid ── */}
-      <section>
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">Store settings</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {SETTINGS_SECTIONS.map((section) => {
-            const Icon = section.icon;
-            return (
-              <button
-                key={section.id}
-                onClick={() => toast('info', `${section.label} settings — coming soon`)}
-                className="group flex items-start gap-4 rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md hover:border-gray-200 active:scale-[0.98]"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 transition group-hover:bg-primary-50 group-hover:text-primary-600">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-700">{section.label}</p>
-                  <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">{section.description}</p>
-                </div>
-                <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 transition group-hover:text-gray-500" />
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      <div className="grid gap-12">
+        {/* ── Store Group ── */}
+        {(activeTab === 'all' || activeTab === 'store') && (
+          <section>
+            <div className="mb-6">
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Store Profile</h2>
+              <p className="mt-1 text-xs text-gray-500 font-medium">Control the fundamental aspects of your storefront.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {SETTINGS_SECTIONS.filter(s => s.group === 'store').map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => toast('info', `${section.label} — coming soon`)}
+                  className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md hover:border-primary-200 active:scale-[0.98]"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
+                    <section.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-gray-900 group-hover:text-primary-700">{section.label}</p>
+                    <p className="mt-1 text-xs text-gray-500 leading-relaxed font-medium">{section.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
-      {/* ── Store info card ── */}
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">Store information</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-medium text-gray-500">Store name</label>
-            <p className="mt-1 text-sm font-medium text-gray-900">PlayMoreTCG</p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500">Store URL</label>
-            <div className="mt-1 flex items-center gap-1.5">
-              <p className="text-sm font-medium text-primary-600">playmoretcg.com</p>
-              <ExternalLink className="h-3 w-3 text-gray-400" />
+        {/* ── Sales Group ── */}
+        {(activeTab === 'all' || activeTab === 'sales') && (
+          <section>
+            <div className="mb-6">
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Sales & Logistics</h2>
+              <p className="mt-1 text-xs text-gray-500 font-medium">Configure how you accept payments and deliver goods.</p>
             </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500">Contact email</label>
-            <p className="mt-1 text-sm text-gray-600">admin@playmoretcg.com</p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500">Plan</label>
-            <div className="mt-1 flex items-center gap-2">
-              <p className="text-sm font-medium text-gray-900">Pro</p>
-              <span className="rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-semibold text-primary-700">Active</span>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {SETTINGS_SECTIONS.filter(s => s.group === 'sales').map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => toast('info', `${section.label} — coming soon`)}
+                  className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md hover:border-primary-200 active:scale-[0.98]"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
+                    <section.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-gray-900 group-hover:text-primary-700">{section.label}</p>
+                    <p className="mt-1 text-xs text-gray-500 leading-relaxed font-medium">{section.description}</p>
+                  </div>
+                </button>
+              ))}
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        )}
 
-      {/* ── Team Management (Shopify Style) ── */}
-      <section className="rounded-2xl border bg-white shadow-sm">
-        <div className="border-b px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">Staff & permissions</h2>
-            <p className="text-xs text-gray-500">Manage who can access and edit your store.</p>
-          </div>
-          <button 
-            onClick={() => toast('info', 'Add staff flow coming soon')}
-            className="rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
-          >
-            Add staff member
-          </button>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {[
-            { name: 'Admin User', email: 'admin@playmoretcg.com', role: 'Owner', lastActive: 'Now' },
-            { name: 'Sarah Miller', email: 'sarah@example.com', role: 'Staff (Fulfillment)', lastActive: '2h ago' },
-            { name: 'Mike Chen', email: 'mike@example.com', role: 'Staff (Catalog)', lastActive: 'Yesterday' },
-          ].map((member) => (
-            <div key={member.email} className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
-                  <UserCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{member.name}</p>
-                  <p className="text-xs text-gray-500">{member.email}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-medium text-gray-900">{member.role}</p>
-                <p className="text-[10px] text-gray-400">Active {member.lastActive}</p>
-              </div>
+        {/* ── Advanced Group ── */}
+        {(activeTab === 'all' || activeTab === 'advanced') && (
+          <section>
+            <div className="mb-6">
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Platform & Security</h2>
+              <p className="mt-1 text-xs text-gray-500 font-medium">Manage infrastructure, domains, and access control.</p>
             </div>
-          ))}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {SETTINGS_SECTIONS.filter(s => s.group === 'advanced').map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => toast('info', `${section.label} — coming soon`)}
+                  className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md hover:border-primary-200 active:scale-[0.98]"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
+                    <section.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-gray-900 group-hover:text-primary-700">{section.label}</p>
+                    <p className="mt-1 text-xs text-gray-500 leading-relaxed font-medium">{section.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* ── Help Footer ── */}
+      <div className="rounded-xl border bg-gray-50 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm border text-primary-600">
+            <Globe className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900">Need help configuring your store?</p>
+            <p className="text-xs text-gray-500 font-medium">Check our documentation or contact our merchant support team.</p>
+          </div>
         </div>
-      </section>
+        <button className="rounded-lg bg-white border px-4 py-2 text-xs font-bold text-gray-700 shadow-sm hover:bg-gray-50 transition">
+          View Guide
+        </button>
+      </div>
     </div>
   );
 }

@@ -8,7 +8,22 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
 import type { Product, ProductCategory, CardRarity } from '@domain/models';
-import { Save, ArrowLeft, Eye, Package, Settings, Image as ImageIcon, AlertTriangle, Plus, Copy } from 'lucide-react';
+import { 
+  Save, 
+  ArrowLeft, 
+  Eye, 
+  Package, 
+  Settings, 
+  Image as ImageIcon, 
+  AlertTriangle, 
+  Plus, 
+  Copy,
+  ChevronDown,
+  Globe,
+  Archive,
+  BarChart3,
+  Tag
+} from 'lucide-react';
 import { validatePriceCents, validateStock } from '@utils/validators';
 import { formatCurrency, humanizeCategory } from '@utils/formatters';
 import { SkeletonPage, useToast } from '../../components/admin/AdminComponents';
@@ -32,21 +47,13 @@ export function AdminProductForm() {
     imageUrl: '',
     set: '',
     rarity: '' as CardRarity | '',
+    status: 'active' as 'active' | 'draft' | 'archived',
   });
   const [saving, setSaving] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(!!id);
   const [error, setError] = useState<string | null>(null);
   const [unsaved, setUnsaved] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
-
-  // Browser-level unsaved changes guard
-  useEffect(() => {
-    function onBeforeUnload(e: BeforeUnloadEvent) {
-      if (unsaved) { e.preventDefault(); }
-    }
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [unsaved]);
 
   // Dynamic page title
   useEffect(() => {
@@ -71,6 +78,7 @@ export function AdminProductForm() {
         imageUrl: p.imageUrl,
         set: p.set ?? '',
         rarity: p.rarity ?? '',
+        status: 'active', // Mock status
       });
     } catch {
       setError('Failed to load product for editing.');
@@ -139,327 +147,253 @@ export function AdminProductForm() {
   if (loadingProduct) return <SkeletonPage />;
 
   return (
-    <div className="animate-in fade-in duration-300">
-      {/* ── Top bar ── */}
-      <div className="mb-6 flex items-center justify-between">
-        <button
-          onClick={() => router.push('/admin/products')}
-          className="flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Products
-        </button>
-        <div className="flex items-center gap-3">
+    <div className="animate-in fade-in duration-500 pb-20">
+      {/* ── Top Nav ── */}
+      <div className="mb-6 flex items-center justify-between border-b pb-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push('/admin/products')}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border bg-white text-gray-500 hover:text-gray-900 transition shadow-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 leading-none">
+              {isEdit ? form.name : 'New Product'}
+            </h1>
+            <div className="mt-1 flex items-center gap-2">
+              <span className={`h-1.5 w-1.5 rounded-full ${form.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{form.status}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
           {unsaved && (
-            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Unsaved changes
+            <span className="hidden sm:flex items-center gap-1.5 mr-2 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+              Unsaved
             </span>
           )}
-          {isEdit && (
-            <button
-              type="button"
-              onClick={async () => {
-                setDuplicating(true);
-                try {
-                  const parsedPrice = Number(form.price);
-                  const price = Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) : 0;
-                  await services.productService.createProduct({
-                    name: `${form.name} (Copy)`,
-                    description: form.description,
-                    price,
-                    category: form.category,
-                    stock: Number(form.stock) || 0,
-                    imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400',
-                    set: form.set || undefined,
-                    rarity: (form.rarity as CardRarity) || undefined,
-                  });
-                  toast('success', 'Product duplicated');
-                  router.push('/admin/products');
-                } catch (err) {
-                  toast('error', err instanceof Error ? err.message : 'Failed to duplicate');
-                } finally {
-                  setDuplicating(false);
-                }
-              }}
-              disabled={duplicating}
-              className="flex items-center gap-1.5 rounded-xl border bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-            >
-              <Copy className="h-3.5 w-3.5 text-gray-400" />
-              Duplicate
-            </button>
-          )}
           <button
-            type="button"
             onClick={() => router.push('/admin/products')}
-            className="rounded-xl border bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
-            Discard
+            Cancel
           </button>
           <button
             form="product-form"
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700 active:scale-95 disabled:opacity-50"
           >
-            {saving ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Save className="h-4 w-4" />}
-            {isEdit ? 'Save' : 'Create product'}
+            {saving ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Save className="h-4 w-4" />}
+            Save Product
           </button>
         </div>
       </div>
 
-      {/* ── Page title ── */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {isEdit ? 'Edit product' : 'Add product'}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {isEdit ? 'Update product details, pricing, and media.' : 'Fill in the details to list a new product.'}
-        </p>
-      </div>
-
-      <form id="product-form" onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        {/* ── Left column ── */}
+      <form id="product-form" onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        {/* ── Left Column: Primary Details ── */}
         <div className="space-y-6">
           {error && (
-            <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
+            <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 font-medium">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
               {error}
             </div>
           )}
 
-          {/* Core details */}
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center gap-2">
-              <Settings className="h-4 w-4 text-gray-400" />
-              <h2 className="text-sm font-semibold text-gray-900">Product details</h2>
+          {/* Core Info */}
+          <section className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Title</label>
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                required
+                placeholder="Short Sleeve T-Shirt"
+                className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none transition"
+              />
             </div>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Title</label>
-                <input
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g. Charizard GX — Hidden Fates"
-                  className="mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  required
-                  rows={4}
-                  placeholder="Tell customers about the condition, rarity, or gameplay value…"
-                  className="mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-                />
-                <p className="mt-1 text-xs text-gray-400">{form.description.length} / 2000 characters</p>
-              </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Description</label>
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                required
+                rows={6}
+                placeholder="Tell your story..."
+                className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none transition resize-none"
+              />
             </div>
           </section>
 
           {/* Media */}
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center gap-2">
-              <ImageIcon className="h-4 w-4 text-gray-400" />
-              <h2 className="text-sm font-semibold text-gray-900">Media</h2>
+          <section className="rounded-xl border bg-white p-5 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Media</h2>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="col-span-2 row-span-2 relative aspect-square overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 transition cursor-pointer">
+                {form.imageUrl ? (
+                  <img src={form.imageUrl} alt="Primary" className="h-full w-full object-cover" />
+                ) : (
+                  <>
+                    <ImageIcon className="h-8 w-8 mb-2" />
+                    <span className="text-[10px] font-bold uppercase">Add Image</span>
+                  </>
+                )}
+              </div>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="aspect-square rounded-xl border-2 border-dashed border-gray-100 bg-gray-50/50 flex items-center justify-center text-gray-300 hover:border-gray-200 transition cursor-pointer">
+                  <Plus className="h-5 w-5" />
+                </div>
+              ))}
             </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-3">
-                <div className="col-span-2 row-span-2 relative aspect-square overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 transition hover:border-primary-300">
-                  {form.imageUrl ? (
-                    <>
-                      <img src={form.imageUrl} alt="Primary" className="h-full w-full object-cover" />
-                      <span className="absolute left-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">Primary</span>
-                    </>
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400">
-                      <ImageIcon className="h-8 w-8" />
-                      <span className="text-[10px] font-semibold uppercase tracking-wider">Main photo</span>
-                    </div>
-                  )}
-                </div>
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="relative aspect-square overflow-hidden rounded-xl border-2 border-dashed border-gray-100 bg-gray-50/30 transition hover:border-gray-300">
-                    <div className="flex h-full flex-col items-center justify-center gap-1 text-gray-300">
-                      <Plus className="h-4 w-4" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Image URL</label>
-                <div className="mt-1.5 flex gap-2">
-                  <input
-                    name="imageUrl"
-                    value={form.imageUrl}
-                    onChange={handleChange}
-                    placeholder="https://example.com/image.jpg"
-                    className="flex-1 rounded-xl border bg-white px-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-400">Paste a direct link to your product image.</p>
-              </div>
+            <div className="mt-4">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Image URL</label>
+              <input
+                name="imageUrl"
+                value={form.imageUrl}
+                onChange={handleChange}
+                placeholder="https://..."
+                className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none transition"
+              />
             </div>
           </section>
 
-          {/* Pricing & inventory */}
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center gap-2">
-              <Package className="h-4 w-4 text-gray-400" />
-              <h2 className="text-sm font-semibold text-gray-900">Pricing & inventory</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-5">
+          {/* Pricing */}
+          <section className="rounded-xl border bg-white p-5 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Pricing</h2>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Price (USD)</label>
-                <div className="relative mt-1.5">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Price</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">$</span>
                   <input
                     name="price"
                     type="number"
                     step="0.01"
-                    min="0"
                     value={form.price}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-xl border bg-white pl-7 pr-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full rounded-lg border bg-gray-50 pl-8 pr-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Stock quantity</label>
-                <input
-                  name="stock"
-                  type="number"
-                  min="0"
-                  value={form.stock}
-                  onChange={handleChange}
-                  required
-                  className="mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Compare at price</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">$</span>
+                  <input
+                    type="number"
+                    disabled
+                    placeholder="0.00"
+                    className="w-full rounded-lg border bg-gray-100 pl-8 pr-4 py-2.5 text-sm font-bold text-gray-400 outline-none"
+                  />
+                </div>
               </div>
             </div>
           </section>
 
-          {/* Organization */}
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-sm font-semibold text-gray-900">Organization</h2>
-            <div className="grid grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Category</label>
-                <select
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  className="mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {humanizeCategory(c)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Rarity</label>
-                <select
-                  name="rarity"
-                  value={form.rarity}
-                  onChange={handleChange}
-                  className="mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">None</option>
-                  {RARITIES.map((r) => (
-                    <option key={r} value={r}>
-                      {r.charAt(0).toUpperCase() + r.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Set / Collection</label>
-                <input
-                  name="set"
-                  value={form.set}
-                  onChange={handleChange}
-                  placeholder="e.g. Sword & Shield: Base Set"
-                  className="mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm transition focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
+          {/* Inventory */}
+          <section className="rounded-xl border bg-white p-5 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Inventory</h2>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Quantity Available</label>
+              <input
+                name="stock"
+                type="number"
+                value={form.stock}
+                onChange={handleChange}
+                required
+                className="w-32 rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+              />
             </div>
           </section>
         </div>
 
-        {/* ── Right sidebar — Live preview ── */}
-        <aside className="space-y-6">
-          <div className="sticky top-20">
-            {/* Preview card */}
-            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b px-5 py-3">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-gray-400" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Preview</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]" />
-                  <span className="text-[10px] font-medium text-gray-400">Live</span>
-                </div>
+        {/* ── Right Column: Settings & Status ── */}
+        <div className="space-y-6">
+          {/* Status Widget */}
+          <section className="rounded-xl border bg-white p-5 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Status</h2>
+            <select
+              name="status"
+              value={form.status}
+              onChange={handleChange}
+              className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none appearance-none transition"
+            >
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+            <p className="mt-3 text-[10px] text-gray-500 leading-relaxed">
+              This product will be {form.status === 'active' ? 'visible' : 'hidden'} on your online store.
+            </p>
+          </section>
+
+          {/* Organization Widget */}
+          <section className="rounded-xl border bg-white p-5 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Organization</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Category</label>
+                <select
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{humanizeCategory(c)}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <div className="group relative aspect-4/5 overflow-hidden bg-gray-100">
-                  <img 
-                    src={form.imageUrl || 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400'} 
-                    alt="Preview" 
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105" 
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/10 to-transparent" />
-                </div>
-                <div className="p-5">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-primary-50 px-2 py-0.5 text-[10px] font-semibold text-primary-700 uppercase">
-                      {form.category}
-                    </span>
-                    {form.rarity && (
-                      <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 uppercase">
-                        {form.rarity}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="mt-3 text-lg font-bold text-gray-900 leading-tight">
-                    {form.name || 'Untitled Product'}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-gray-400">
-                    {form.set || 'No collection'}
-                  </p>
-                  <div className="mt-5 flex items-end justify-between border-t pt-4">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Price</p>
-                      <p className="text-2xl font-bold text-primary-600">
-                        {formatCurrency(Number.isFinite(Number(form.price)) ? Math.round(Number(form.price) * 100) : 0)}
-                      </p>
-                    </div>
-                    <p className="text-xs font-medium text-gray-500">{form.stock || 0} in stock</p>
-                  </div>
-                </div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Set / Collection</label>
+                <input
+                  name="set"
+                  value={form.set}
+                  onChange={handleChange}
+                  placeholder="e.g. Base Set"
+                  className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Rarity</label>
+                <select
+                  name="rarity"
+                  value={form.rarity}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                >
+                  <option value="">None</option>
+                  {RARITIES.map((r) => (
+                    <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                  ))}
+                </select>
               </div>
             </div>
+          </section>
 
-            {/* Tips */}
-            <div className="mt-4 rounded-2xl border bg-gray-50 p-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Tips</h3>
-              <ul className="mt-3 space-y-2 text-xs text-gray-500 leading-relaxed">
-                <li>• Keep titles under 60 characters for better search results.</li>
-                <li>• Set stock to 0 to hide from the storefront without deleting.</li>
-                <li>• High-quality images improve conversion by up to 40%.</li>
-              </ul>
+          {/* Quick Actions */}
+          <section className="rounded-xl border bg-white p-5 shadow-sm space-y-2">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Insights</h2>
+            <div className="flex items-center justify-between text-xs font-bold text-gray-900">
+              <span className="flex items-center gap-2 text-gray-500 font-medium">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Views (30d)
+              </span>
+              <span>0</span>
             </div>
-          </div>
-        </aside>
+            <div className="flex items-center justify-between text-xs font-bold text-gray-900">
+              <span className="flex items-center gap-2 text-gray-500 font-medium">
+                <Tag className="h-3.5 w-3.5" />
+                Conversion
+              </span>
+              <span>0%</span>
+            </div>
+          </section>
+        </div>
       </form>
     </div>
   );

@@ -2,8 +2,8 @@
 
 /**
  * [LAYER: UI]
- * Admin shell layout — Shopify-style collapsible sidebar with mobile drawer,
- * ⌘K command palette, and notification badges.
+ * Admin shell layout — High-performance merchant console with grouped navigation,
+ * ⌘K command palette, and refined typography inspired by Stripe and Shopify.
  */
 import Link from 'next/link';
 import { useCallback, useEffect, useState, useRef, type ReactNode } from 'react';
@@ -22,11 +22,20 @@ import {
   Command,
   Bell,
   User,
+  ExternalLink,
+  ChevronDown,
+  HelpCircle,
+  Megaphone,
 } from 'lucide-react';
 import { AdminBreadcrumb, ToastProvider, ShortcutsHelp } from '../components/admin/AdminComponents';
 import { CommandPalette } from '../components/admin/CommandPalette';
 
 /* ── Nav Configuration ── */
+
+interface NavGroup {
+  title?: string;
+  items: NavItem[];
+}
 
 interface NavItem {
   href: string;
@@ -35,16 +44,27 @@ interface NavItem {
   badge?: 'orders';
 }
 
-const MAIN_NAV: NavItem[] = [
-  { href: '/admin',           label: 'Home',      icon: LayoutDashboard },
-  { href: '/admin/orders',    label: 'Orders',    icon: ClipboardList, badge: 'orders' },
-  { href: '/admin/products',  label: 'Products',  icon: Package },
-  { href: '/admin/inventory', label: 'Inventory', icon: Boxes },
-  { href: '/admin/customers', label: 'Customers', icon: User },
-];
-
-const FOOTER_NAV: NavItem[] = [
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    items: [
+      { href: '/admin', label: 'Home', icon: LayoutDashboard },
+    ]
+  },
+  {
+    title: 'Management',
+    items: [
+      { href: '/admin/orders',    label: 'Orders',    icon: ClipboardList, badge: 'orders' },
+      { href: '/admin/products',  label: 'Products',  icon: Package },
+      { href: '/admin/inventory', label: 'Inventory', icon: Boxes },
+      { href: '/admin/customers', label: 'Customers', icon: User },
+    ]
+  },
+  {
+    title: 'Marketing',
+    items: [
+      { href: '/admin/discounts', label: 'Discounts', icon: Megaphone },
+    ]
+  }
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
@@ -105,18 +125,17 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const toggleMobile = useCallback(() => setMobileOpen(prev => !prev), []);
+  const openSearch = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-gray-50">
-        {/* ── Top Bar ── */}
-        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-white/80 px-4 backdrop-blur-md lg:px-6">
+      <div className="min-h-screen bg-[#F6F6F7]">
+        {/* ── Top Bar (Mobile Only) ── */}
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-white/80 px-4 backdrop-blur-md lg:hidden">
           <div className="flex items-center gap-3">
-            {/* Mobile hamburger */}
             <button
               onClick={toggleMobile}
-              className="rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 lg:hidden"
-              aria-label="Toggle sidebar"
+              className="rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 lg:hidden"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -125,36 +144,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <AdminBreadcrumb />
           </div>
           <div className="flex items-center gap-2">
-            {/* ⌘K search trigger */}
-            <button
-              onClick={() => {
-                // Dispatch a synthetic Cmd+K to open the command palette
-                window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-              }}
-              className="hidden md:flex items-center gap-2.5 rounded-xl border bg-gray-50/80 px-3 py-1.5 text-sm text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-            >
-              <Search className="h-3.5 w-3.5" />
-              <span className="text-xs">Search…</span>
-              <kbd className="ml-3 flex items-center gap-0.5 rounded-md border bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-400 shadow-sm">
-                <Command className="h-2.5 w-2.5" />K
-              </kbd>
+            <button onClick={openSearch} className="p-2 text-gray-400">
+              <Search className="h-5 w-5" />
             </button>
-
-            {/* Notification bell (placeholder) */}
-            <button className="relative rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
-              <Bell className="h-4 w-4" />
-            </button>
-
-            {/* User avatar */}
-            <div className="hidden items-center gap-3 md:flex">
-              <div className="text-right">
-                <p className="text-xs font-semibold text-gray-900">Store Admin</p>
-                <p className="text-[10px] text-gray-500">PlayMoreTCG</p>
-              </div>
-              <div className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-primary-400 to-primary-600 shadow-sm">
-                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white">PM</div>
-              </div>
-            </div>
+            <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-[10px] font-bold text-white">PM</div>
           </div>
         </header>
         
@@ -162,7 +155,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           {/* ── Mobile Overlay ── */}
           {mobileOpen && (
             <div 
-              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm backdrop-enter lg:hidden" 
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden" 
               onClick={() => setMobileOpen(false)} 
             />
           )}
@@ -170,166 +163,181 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           {/* ── Sidebar ── */}
           <aside 
             className={`
-              fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-white
+              fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-[#EBEBED]
               transition-all duration-200 ease-in-out
-              lg:sticky lg:top-14 lg:z-auto lg:h-[calc(100vh-3.5rem)]
-              ${collapsed ? 'lg:w-[68px]' : 'lg:w-[240px]'}
+              lg:sticky lg:top-0 lg:h-screen
+              ${collapsed ? 'lg:w-[64px]' : 'lg:w-[240px]'}
               ${mobileOpen ? 'w-[280px] translate-x-0 shadow-2xl' : 'w-[280px] -translate-x-full lg:translate-x-0'}
             `}
           >
-            {/* Store header */}
-            <div className={`flex items-center border-b px-4 ${collapsed ? 'justify-center py-4' : 'justify-between py-3'}`}>
-              {!collapsed && (
-                <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 shadow-sm">
-                    <Store className="h-4 w-4 text-white" />
+            {/* Store Switcher / Header */}
+            <div className="p-3">
+              <div className={`flex items-center gap-3 rounded-lg p-2 transition hover:bg-gray-200 cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-black/5">
+                  <Store className="h-4 w-4 text-gray-600" />
+                </div>
+                {!collapsed && (
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900 leading-tight">PlayMoreTCG</p>
+                    <p className="text-[10px] text-gray-500 font-medium">Merchant Admin</p>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-gray-900">PlayMoreTCG</p>
-                    <p className="text-[10px] text-gray-400">Admin Panel</p>
-                  </div>
-                </Link>
-              )}
-              {collapsed && (
-                <Link href="/admin" className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 shadow-sm">
-                  <Store className="h-4 w-4 text-white" />
-                </Link>
-              )}
-              <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                <ChevronLeft className={`h-4 w-4 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`} />
-              </button>
-              {/* Mobile close */}
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="lg:hidden flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
+                )}
+                {!collapsed && <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
+              </div>
             </div>
 
-            {/* Main nav */}
-            <nav className="flex-1 overflow-y-auto styled-scrollbar px-3 py-4">
-              <div className="space-y-1">
-                {MAIN_NAV.map(({ href, label, icon: Icon, badge }) => {
-                  const active = isActive(href);
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      title={collapsed ? label : undefined}
-                      className={`
-                        group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150
-                        ${active 
-                          ? 'bg-primary-50 text-primary-700' 
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }
-                        ${collapsed ? 'justify-center px-0' : ''}
-                      `}
-                    >
-                      {/* Active indicator bar */}
-                      {active && !collapsed && (
-                        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary-600" />
-                      )}
-                      <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
-                      {!collapsed && <span>{label}</span>}
-                      {/* Notification dot for orders */}
-                      {badge === 'orders' && (
-                        <span className={`${collapsed ? 'absolute -right-0.5 -top-0.5' : 'ml-auto'} flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-[9px] font-bold text-white shadow-sm`}>
-                          •
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
+            {/* Main Navigation Scroll Area */}
+            <div className="flex-1 overflow-y-auto px-2 py-1 scrollbar-hide">
+              {/* Sidebar Search Button */}
+              <div className="mb-4 mt-1">
+                <button
+                  onClick={openSearch}
+                  className={`
+                    flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-gray-500 transition hover:bg-gray-200
+                    ${collapsed ? 'justify-center' : ''}
+                  `}
+                >
+                  <Search className="h-[18px] w-[18px]" />
+                  {!collapsed && <span className="flex-1 text-left">Search</span>}
+                  {!collapsed && (
+                    <kbd className="flex items-center gap-0.5 rounded border bg-white px-1 py-0.5 text-[9px] font-medium text-gray-400">
+                      <Command className="h-2 w-2" />K
+                    </kbd>
+                  )}
+                </button>
               </div>
 
-              {/* Quick action */}
-              {!collapsed && (
-                <div className="mt-6 px-1">
-                  <Link
-                    href="/admin/products/new"
-                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-500 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add product
-                  </Link>
-                </div>
-              )}
-              {collapsed && (
-                <div className="mt-6 flex justify-center">
-                  <Link
-                    href="/admin/products/new"
-                    title="Add product"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-600"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Link>
-                </div>
-              )}
-            </nav>
+              <div className="space-y-6">
+                {NAV_GROUPS.map((group, idx) => (
+                  <div key={idx}>
+                    {group.title && !collapsed && (
+                      <h4 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                        {group.title}
+                      </h4>
+                    )}
+                    <div className="space-y-0.5">
+                      {group.items.map(({ href, label, icon: Icon, badge }) => {
+                        const active = isActive(href);
+                        return (
+                          <Link
+                            key={href}
+                            href={href}
+                            className={`
+                              group flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150
+                              ${active 
+                                ? 'bg-white text-gray-900 shadow-sm ring-1 ring-black/5' 
+                                : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                              }
+                              ${collapsed ? 'justify-center px-0' : ''}
+                            `}
+                          >
+                            <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-primary-600' : 'text-gray-500 group-hover:text-gray-700'}`} />
+                            {!collapsed && <span>{label}</span>}
+                            {badge === 'orders' && !collapsed && (
+                              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-[10px] font-bold text-white">
+                                3
+                              </span>
+                            )}
+                            {badge === 'orders' && collapsed && (
+                              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary-500 ring-2 ring-[#EBEBED]" />
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-            {/* Footer nav */}
-            <div className="border-t px-3 py-3 space-y-1">
-              {FOOTER_NAV.map(({ href, label, icon: Icon }) => {
-                const active = isActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    title={collapsed ? label : undefined}
-                    className={`
-                      group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150
-                      ${active 
-                        ? 'bg-primary-50 text-primary-700' 
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }
-                      ${collapsed ? 'justify-center px-0' : ''}
-                    `}
-                  >
-                    <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
-                    {!collapsed && <span>{label}</span>}
-                  </Link>
-                );
-              })}
-
-              {/* Return to storefront */}
-              {!collapsed && (
+              {/* View Storefront Section */}
+              <div className="mt-8 border-t border-gray-300/50 pt-4 pb-2">
+                {!collapsed && (
+                  <h4 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                    Sales Channels
+                  </h4>
+                )}
                 <Link
                   href="/"
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+                  className={`
+                    group flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-200 hover:text-gray-900
+                    ${collapsed ? 'justify-center px-0' : ''}
+                  `}
                 >
-                  <ArrowLeft className="h-[18px] w-[18px]" />
-                  Back to store
+                  <ExternalLink className="h-[18px] w-[18px] text-gray-500" />
+                  {!collapsed && <span className="flex-1">Online Store</span>}
+                  {!collapsed && <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-40" />}
                 </Link>
-              )}
-              {collapsed && (
-                <Link
-                  href="/"
-                  title="Back to store"
-                  className="flex justify-center rounded-xl px-3 py-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
-                >
-                  <ArrowLeft className="h-[18px] w-[18px]" />
-                </Link>
-              )}
+              </div>
             </div>
+
+            {/* Sidebar Footer */}
+            <div className="border-t border-gray-300/50 p-2 space-y-0.5">
+              <Link
+                href="/admin/settings"
+                className={`
+                  flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-200
+                  ${isActive('/admin/settings') ? 'bg-white text-gray-900 shadow-sm' : ''}
+                  ${collapsed ? 'justify-center px-0' : ''}
+                `}
+              >
+                <Settings className="h-[18px] w-[18px]" />
+                {!collapsed && <span>Settings</span>}
+              </Link>
+
+              {/* Help & Support */}
+              <button
+                className={`
+                  flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-200
+                  ${collapsed ? 'justify-center px-0' : ''}
+                `}
+              >
+                <HelpCircle className="h-[18px] w-[18px]" />
+                {!collapsed && <span>Help</span>}
+              </button>
+
+              {/* User Profile */}
+              <div className={`mt-2 flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-gray-200 cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
+                <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-linear-to-br from-primary-400 to-primary-600 shadow-sm">
+                  <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white">PM</div>
+                </div>
+                {!collapsed && (
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-gray-900 leading-tight">Admin User</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Collapse Trigger */}
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="absolute -right-3 top-1/2 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border bg-white text-gray-400 shadow-sm transition hover:bg-gray-50 hover:text-gray-600 lg:flex"
+            >
+              <ChevronLeft className={`h-3 w-3 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`} />
+            </button>
           </aside>
           
-          {/* ── Main Content ── */}
-          <main className="flex-1 min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <div className="mx-auto max-w-[1200px]">
+          {/* ── Main Content Area ── */}
+          <div className="flex-1 flex flex-col min-h-screen min-w-0">
+            {/* Dynamic Breadcrumbs / Desktop Top Bar */}
+            <header className="hidden lg:flex h-12 shrink-0 items-center justify-between border-b bg-white/50 px-8 backdrop-blur-sm">
+              <AdminBreadcrumb />
+              <div className="flex items-center gap-4 text-xs font-medium text-gray-400">
+                <span className="flex items-center gap-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  Store is live
+                </span>
+              </div>
+            </header>
+
+            <main className="flex-1 px-4 py-8 sm:px-8 lg:px-12 max-w-6xl">
               {children}
-            </div>
-          </main>
+            </main>
+          </div>
         </div>
 
-        {/* ── Command Palette ── */}
+        {/* ── Overlays ── */}
         <CommandPalette />
-
-        {/* ── Shortcuts Help ── */}
         {showShortcuts && <ShortcutsHelp onClose={() => setShowShortcuts(false)} />}
       </div>
     </ToastProvider>

@@ -17,6 +17,13 @@ type RateLimitBucket = {
     resetAt: number;
 };
 
+class RateLimitError extends Error {
+    constructor(public readonly retryAfterSeconds: number) {
+        super('Too many requests. Please wait and try again.');
+        this.name = 'RateLimitError';
+    }
+}
+
 const rateLimitBuckets = new Map<string, RateLimitBucket>();
 
 export async function requireSessionUser(): Promise<User> {
@@ -117,7 +124,7 @@ export function assertRateLimit(request: Request, scope: string, maxAttempts: nu
 
     existing.count += 1;
     if (existing.count > maxAttempts) {
-        throw new UnauthorizedError('Too many requests. Please wait and try again.');
+        throw new RateLimitError(Math.max(1, Math.ceil((existing.resetAt - now) / 1000)));
     }
 }
 
@@ -236,6 +243,7 @@ export function jsonError(error: unknown, fallback = 'Request failed'): NextResp
         || error instanceof UnauthorizedError
         || error instanceof OrderNotFoundError
         || error instanceof ProductNotFoundError
+        || error instanceof RateLimitError
         || error instanceof DomainError;
     if (!isExpected) {
         logger.error(fallback, error);
@@ -245,12 +253,17 @@ export function jsonError(error: unknown, fallback = 'Request failed'): NextResp
         : fallback;
     const status = error instanceof AuthError
         ? 401
-        : error instanceof UnauthorizedError
+        : error instanceof RateLimitError
+            ? 429
+            : error instanceof UnauthorizedError
             ? 403
             : error instanceof ProductNotFoundError || error instanceof OrderNotFoundError
                 ? 404
                 : error instanceof DomainError
                     ? 400
                     : 500;
-    return NextResponse.json({ error: message }, { status });
+    const headers = error instanceof RateLimitError
+        ? { 'Retry-After': String(error.retryAfterSeconds) }
+        : undefined;
+    return NextResponse.json({ error: message }, { status, headers });
 }

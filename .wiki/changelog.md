@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-04-26 — Thirteenth deep audit pass: rate-limit HTTP semantics
+
+### Problem verified
+
+- The lightweight throttling added in `src/infrastructure/server/apiGuards.ts` stopped excessive mutation attempts, but exhausted buckets surfaced through `UnauthorizedError`, which mapped to HTTP 403 rather than HTTP 429.
+- Rate-limited clients did not receive a `Retry-After` hint, making production retry/backoff behavior less explicit.
+
+### Remediation performed
+
+- Added an Infrastructure-local `RateLimitError` in `src/infrastructure/server/apiGuards.ts` carrying `retryAfterSeconds`.
+- Updated `assertRateLimit()` to throw `RateLimitError` with the remaining fixed-window reset time when a bucket exceeds its allowed attempts.
+- Updated `jsonError()` so `RateLimitError` is treated as an expected error, maps to HTTP `429`, and includes a `Retry-After` response header.
+
+### Verification evidence
+
+- `npm run lint && npm run build` completed successfully after this pass.
+- The successful build completed Next.js production compilation, TypeScript validation, page-data collection, static generation for 22 app routes, and retained dynamic auth/checkout API routes.
+
+### Files intentionally changed in this pass
+
+- `src/infrastructure/server/apiGuards.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- HTTP status and retry headers remain Infrastructure response-mapping concerns.
+- Domain, Core, and UI were unchanged in this pass.
+
 ## 2026-04-26 — Twelfth deep audit pass: lightweight mutation abuse throttling
 
 ### Problem verified

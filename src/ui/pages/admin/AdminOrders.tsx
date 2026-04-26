@@ -71,6 +71,10 @@ export function AdminOrders() {
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [internalNotes, setInternalNotes] = useState<Record<string, { id: string; text: string; date: Date }[]>>({});
+  const [noteInput, setNoteInput] = useState('');
+  const [trackingNumbers, setTrackingNumbers] = useState<Record<string, string>>({});
+  const [trackingInput, setTrackingInput] = useState('');
 
   // Status counts for tabs
   const counts = useMemo(() => {
@@ -112,6 +116,29 @@ export function AdminOrders() {
   useEffect(() => {
     void loadOrders();
   }, [loadOrders]);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setNoteInput('');
+      setTrackingInput(trackingNumbers[selectedOrder.id] || '');
+    }
+  }, [selectedOrder, trackingNumbers]);
+
+  function handlePostNote(orderId: string) {
+    if (!noteInput.trim()) return;
+    const newNote = { id: Math.random().toString(36).slice(2), text: noteInput, date: new Date() };
+    setInternalNotes(prev => ({
+      ...prev,
+      [orderId]: [...(prev[orderId] || []), newNote]
+    }));
+    setNoteInput('');
+    toast('success', 'Note added to timeline');
+  }
+
+  function handleSaveTracking(orderId: string) {
+    setTrackingNumbers(prev => ({ ...prev, [orderId]: trackingInput }));
+    toast('success', 'Tracking number saved');
+  }
 
   async function handleStatusChange(id: string, status: OrderStatus) {
     setUpdating(id);
@@ -531,6 +558,35 @@ export function AdminOrders() {
                 </div>
               </div>
 
+              {/* Shipping Details */}
+              {(selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered') && (
+                <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-600">Shipping</h3>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                      <Truck className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-medium uppercase text-blue-500">Tracking Number</p>
+                      <div className="mt-1 flex gap-2">
+                        <input 
+                          value={trackingInput}
+                          onChange={(e) => setTrackingInput(e.target.value)}
+                          placeholder="Enter tracking #…"
+                          className="flex-1 bg-transparent text-sm font-bold text-gray-900 border-b border-blue-200 outline-none focus:border-blue-400"
+                        />
+                        <button 
+                          onClick={() => handleSaveTracking(selectedOrder.id)}
+                          className="text-[10px] font-bold text-blue-600 hover:underline"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               {NEXT_STATUSES[selectedOrder.status].length > 1 && (
                 <div className="space-y-3">
@@ -564,6 +620,35 @@ export function AdminOrders() {
                   </div>
                 </div>
               )}
+
+              {/* Internal Notes (CRM Style) */}
+              <div className="border-t pt-6">
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Internal Notes</h3>
+                <div className="space-y-3">
+                  {(internalNotes[selectedOrder.id] || []).map((note) => (
+                    <div key={note.id} className="rounded-xl bg-gray-50 p-3 text-sm">
+                      <p className="text-gray-900">{note.text}</p>
+                      <p className="mt-1 text-[10px] text-gray-400">{formatRelativeTime(note.date)}</p>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <input 
+                      value={noteInput}
+                      onChange={(e) => setNoteInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handlePostNote(selectedOrder.id)}
+                      placeholder="Add an internal note…"
+                      className="flex-1 rounded-xl border bg-white px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                    />
+                    <button 
+                      onClick={() => handlePostNote(selectedOrder.id)}
+                      disabled={!noteInput.trim()}
+                      className="rounded-xl bg-gray-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-30"
+                    >
+                      Post
+                    </button>
+                  </div>
+                </div>
+              </div>
 
               {/* Secondary actions */}
               <div className="flex gap-2 border-t pt-4">

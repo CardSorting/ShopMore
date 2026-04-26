@@ -20,7 +20,9 @@ import {
   Upload,
   LayoutGrid,
   List,
-  ArrowUpDown
+  ArrowUpDown,
+  Save,
+  X
 } from 'lucide-react';
 import { formatCurrency, humanizeCategory, normalizeSearch } from '@utils/formatters';
 import { 
@@ -58,6 +60,9 @@ export function AdminProducts() {
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkEditing, setIsBulkEditing] = useState(false);
+  const [bulkChanges, setBulkChanges] = useState<Record<string, { price: number; stock: number }>>({});
+  const [savingBulk, setSavingBulk] = useState(false);
 
   async function handleExport() {
     toast('info', 'Generating catalog export...');
@@ -124,6 +129,32 @@ export function AdminProducts() {
     }
   }
 
+  async function handleBulkSave() {
+    setSavingBulk(true);
+    try {
+      const entries = Object.entries(bulkChanges);
+      if (entries.length === 0) {
+        setIsBulkEditing(false);
+        return;
+      }
+      
+      await Promise.all(
+        entries.map(([id, changes]) => 
+          services.productService.updateProduct(id, changes)
+        )
+      );
+      
+      toast('success', `Updated ${entries.length} products`);
+      setIsBulkEditing(false);
+      setBulkChanges({});
+      await loadProducts();
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Bulk update failed');
+    } finally {
+      setSavingBulk(false);
+    }
+  }
+
   const filteredProducts = useMemo(() => {
     const needle = normalizeSearch(query);
     let result = products.filter((product) => {
@@ -183,6 +214,32 @@ export function AdminProducts() {
         subtitle="Manage your catalog, pricing, and availability."
         actions={
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                if (isBulkEditing) {
+                  setBulkChanges({});
+                  setIsBulkEditing(false);
+                } else {
+                  setIsBulkEditing(true);
+                }
+              }}
+              className={`hidden sm:flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-sm transition ${
+                isBulkEditing ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {isBulkEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4 text-gray-400" />}
+              {isBulkEditing ? 'Cancel' : 'Bulk Edit'}
+            </button>
+            {isBulkEditing && (
+              <button 
+                onClick={handleBulkSave}
+                disabled={savingBulk || Object.keys(bulkChanges).length === 0}
+                className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50"
+              >
+                {savingBulk ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Save className="h-4 w-4" />}
+                Save Changes
+              </button>
+            )}
             <button 
               onClick={() => toast('info', 'Import CSV coming soon')}
               className="hidden sm:flex items-center gap-2 rounded-xl border bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
@@ -347,13 +404,42 @@ export function AdminProducts() {
                         <AdminStatusBadge status={p.category} type="category" />
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm font-semibold text-gray-900">{formatCurrency(p.price)}</p>
+                        {isBulkEditing ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-400">$</span>
+                            <input 
+                              type="number"
+                              value={(bulkChanges[p.id]?.price ?? p.price) / 100}
+                              onChange={(e) => {
+                                const val = Math.round(parseFloat(e.target.value) * 100);
+                                if (isNaN(val)) return;
+                                setBulkChanges(prev => ({ ...prev, [p.id]: { ...prev[p.id], price: val, stock: bulkChanges[p.id]?.stock ?? p.stock } }));
+                              }}
+                              className="w-24 rounded-lg border bg-white px-2 py-1 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-sm font-semibold text-gray-900">{formatCurrency(p.price)}</p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <AdminStatusBadge status={classifyInventoryHealth(p.stock)} type="inventory" />
-                          <span className="text-xs text-gray-500">{p.stock}</span>
-                        </div>
+                        {isBulkEditing ? (
+                          <input 
+                            type="number"
+                            value={bulkChanges[p.id]?.stock ?? p.stock}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value);
+                              if (isNaN(val)) return;
+                              setBulkChanges(prev => ({ ...prev, [p.id]: { ...prev[p.id], stock: val, price: bulkChanges[p.id]?.price ?? p.price } }));
+                            }}
+                            className="w-20 rounded-lg border bg-white px-2 py-1 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <AdminStatusBadge status={classifyInventoryHealth(p.stock)} type="inventory" />
+                            <span className="text-xs text-gray-500">{p.stock}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 transition group-hover:opacity-100">

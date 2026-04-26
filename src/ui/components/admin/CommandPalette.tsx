@@ -18,8 +18,12 @@ import {
   ExternalLink,
   ArrowRight,
   Command,
+  User,
   type LucideIcon,
 } from 'lucide-react';
+import { useServices } from '../../hooks/useServices';
+import { formatCurrency } from '@utils/formatters';
+import type { Product, Order } from '@domain/models';
 
 interface PaletteItem {
   id: string;
@@ -48,8 +52,11 @@ export function CommandPalette() {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [dynamicResults, setDynamicResults] = useState<PaletteItem[]>([]);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const services = useServices();
 
   // ⌘K / Ctrl+K to toggle
   useEffect(() => {
@@ -83,6 +90,61 @@ export function CommandPalette() {
     .map(id => STATIC_ITEMS.find(item => item.id === id))
     .filter((item): item is PaletteItem => !!item);
 
+  // Handle dynamic search
+  useEffect(() => {
+    if (!needle || needle.length < 2) {
+      setDynamicResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const [prodRes, orderRes] = await Promise.all([
+          services.productService.getProducts({ limit: 10 }),
+          services.orderService.getAllOrders({ limit: 20 })
+        ]);
+
+        const products = prodRes.products.filter(p => 
+          p.name.toLowerCase().includes(needle) || 
+          p.category.toLowerCase().includes(needle)
+        );
+
+        const orders = orderRes.orders.filter(o => 
+          o.id.toLowerCase().includes(needle) || 
+          o.userId.toLowerCase().includes(needle)
+        );
+
+        const results: PaletteItem[] = [
+          ...products.map(p => ({
+            id: `prod-${p.id}`,
+            label: p.name,
+            description: `${p.category} · ${formatCurrency(p.price)}`,
+            icon: Package,
+            href: `/admin/products/${p.id}/edit`,
+            group: 'Products'
+          })),
+          ...orders.map(o => ({
+            id: `order-${o.id}`,
+            label: `Order #${o.id.slice(0, 8).toUpperCase()}`,
+            description: `${o.status} · ${formatCurrency(o.total)}`,
+            icon: ClipboardList,
+            href: `/admin/orders`, // In real app, would deep link to order
+            group: 'Orders'
+          }))
+        ];
+
+        setDynamicResults(results);
+      } catch (err) {
+        console.error('Search failed', err);
+      } finally {
+        setSearching(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [needle, services]);
+
   const filtered = STATIC_ITEMS.filter(
     (item) =>
       !needle ||
@@ -99,6 +161,12 @@ export function CommandPalette() {
   filtered.forEach(item => {
     (grouped[item.group] ??= []).push(item);
   });
+
+  if (dynamicResults.length > 0) {
+    dynamicResults.forEach(item => {
+      (grouped[item.group] ??= []).push(item);
+    });
+  }
 
   const flatList = Object.values(grouped).flat();
 
@@ -149,9 +217,12 @@ export function CommandPalette() {
               value={query}
               onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
               onKeyDown={handleKeyDown}
-              placeholder="Search or jump to…"
+              placeholder="Search products, orders, or jump to…"
               className="flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
             />
+            {searching && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            )}
             <kbd className="hidden sm:flex items-center gap-0.5 rounded-md border bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
               ESC
             </kbd>

@@ -21,6 +21,7 @@ import {
   Search,
   Command,
   Bell,
+  User,
 } from 'lucide-react';
 import { AdminBreadcrumb, ToastProvider, ShortcutsHelp } from '../components/admin/AdminComponents';
 import { CommandPalette } from '../components/admin/CommandPalette';
@@ -39,6 +40,7 @@ const MAIN_NAV: NavItem[] = [
   { href: '/admin/orders',    label: 'Orders',    icon: ClipboardList, badge: 'orders' },
   { href: '/admin/products',  label: 'Products',  icon: Package },
   { href: '/admin/inventory', label: 'Inventory', icon: Boxes },
+  { href: '/admin/customers', label: 'Customers', icon: User },
 ];
 
 const FOOTER_NAV: NavItem[] = [

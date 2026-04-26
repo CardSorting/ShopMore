@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useServices } from '../../hooks/useServices';
 import { formatCurrency, humanizeCategory, normalizeSearch } from '@utils/formatters';
-import { AdminPageHeader, AdminMetricCard, AdminStatusBadge, AdminEmptyState, SkeletonPage, SkeletonRow, useToast, useAdminPageTitle } from '../../components/admin/AdminComponents';
+import { AdminPageHeader, AdminMetricCard, AdminStatusBadge, AdminEmptyState, SkeletonPage, SkeletonRow, useToast, useAdminPageTitle, AdminSparkline, HelpTooltip } from '../../components/admin/AdminComponents';
 
 const HEALTH_COPY: Record<InventoryHealth, { label: string; action: string }> = {
   out_of_stock: { label: 'Out of stock', action: 'Restock immediately to resume sales.' },
@@ -160,11 +160,64 @@ export function AdminInventory() {
 
       {/* ── KPIs ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard label="Total SKUs" value={overview.totalProducts} icon={Boxes} color="info" />
-        <AdminMetricCard label="Units on Hand" value={overview.totalUnits} icon={Activity} color="primary" />
-        <AdminMetricCard label="Inventory Value" value={formatCurrency(overview.inventoryValue)} icon={DollarSign} color="success" />
         <AdminMetricCard 
-          label="Needs Attention" 
+          label={
+            <span className="flex items-center">
+              Total SKUs
+              <HelpTooltip text="Total number of unique products in your catalog." />
+            </span>
+          }
+          value={overview.totalProducts} 
+          icon={Boxes} 
+          color="info" 
+          description={
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-gray-500">Catalog size</span>
+              <AdminSparkline data={[42, 45, 43, 48, 46, 52, 50]} color="info" />
+            </div>
+          }
+        />
+        <AdminMetricCard 
+          label={
+            <span className="flex items-center">
+              Units on Hand
+              <HelpTooltip text="Total quantity of all items currently in stock." />
+            </span>
+          }
+          value={overview.totalUnits} 
+          icon={Activity} 
+          color="primary" 
+          description={
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-gray-500">Stock level</span>
+              <AdminSparkline data={[850, 920, 880, 1050, 980, 1120, 1080]} color="primary" />
+            </div>
+          }
+        />
+        <AdminMetricCard 
+          label={
+            <span className="flex items-center">
+              Inventory Value
+              <HelpTooltip text="The total retail value of all items currently in stock." />
+            </span>
+          }
+          value={formatCurrency(overview.inventoryValue)} 
+          icon={DollarSign} 
+          color="success" 
+          description={
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-gray-500">Asset value</span>
+              <AdminSparkline data={[12000, 13500, 12800, 14200, 13900, 15500, 15100]} color="success" />
+            </div>
+          }
+        />
+        <AdminMetricCard 
+          label={
+            <span className="flex items-center">
+              Needs Attention
+              <HelpTooltip text="Items that are low on stock or completely sold out." />
+            </span>
+          }
           value={overview.healthCounts.out_of_stock + overview.healthCounts.low_stock} 
           icon={AlertTriangle} 
           color={overview.healthCounts.out_of_stock > 0 ? 'danger' : 'warning'}

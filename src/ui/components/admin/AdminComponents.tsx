@@ -113,9 +113,9 @@ export function useAdminPageTitle(title: string) {
    ═══════════════════════════════════════════════════════ */
 
 interface AdminMetricCardProps {
-  label: string;
+  label: ReactNode;
   value: string | number;
-  description?: string;
+  description?: ReactNode;
   icon: LucideIcon;
   trend?: {
     value: string;
@@ -592,4 +592,65 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+
+export function HelpTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative inline-block ml-1">
+      <button 
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow(!show)}
+        className="text-gray-300 transition hover:text-gray-500 outline-none"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      {show && (
+        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-48 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-[10px] leading-relaxed text-white shadow-xl animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+          {text}
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AdminSparkline({ data, color = 'primary' }: { data: number[], color?: 'primary' | 'success' | 'danger' | 'info' }) {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min;
+  const height = 32;
+  const width = 100;
+  
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / (range || 1)) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const colors = {
+    primary: 'stroke-primary-500 fill-primary-500',
+    success: 'stroke-green-500 fill-green-500',
+    danger: 'stroke-red-500 fill-red-500',
+    info: 'stroke-blue-500 fill-blue-500',
+  };
+
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <path 
+        d={`M 0,${height} L ${points} L ${width},${height} Z`} 
+        className={`${colors[color]} fill-opacity-5`} 
+      />
+      <polyline 
+        fill="none" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        points={points} 
+        className={colors[color]} 
+      />
+    </svg>
+  );
+}
+
 

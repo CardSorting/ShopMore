@@ -10,13 +10,20 @@ import type {
   ICheckoutGateway,
 } from '@domain/repositories';
 import type { Order, OrderStatus, Address } from '@domain/models';
-import { assertValidOrderItems, assertValidShippingAddress, calculateCartTotal, canPlaceOrder } from '@domain/rules';
+import {
+  assertValidOrderItems,
+  assertValidOrderStatusTransition,
+  assertValidShippingAddress,
+  calculateCartTotal,
+  canPlaceOrder,
+} from '@domain/rules';
 import { coalesceCartStockDeductions } from '@domain/rules';
 import {
   CartEmptyError,
   CheckoutReconciliationError,
   CheckoutInProgressError,
   InsufficientStockError,
+  OrderNotFoundError,
   PaymentFailedError,
   ProductNotFoundError,
 } from '@domain/errors';
@@ -200,6 +207,9 @@ export class OrderService {
   }
 
   async updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
+    const order = await this.orderRepo.getById(id);
+    if (!order) throw new OrderNotFoundError(id);
+    assertValidOrderStatusTransition(order.status, status);
     return this.orderRepo.updateStatus(id, status);
   }
 }

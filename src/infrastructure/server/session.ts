@@ -6,6 +6,8 @@ import type { User } from '@domain/models';
 const COOKIE_NAME = 'pm_tcg_session';
 const SESSION_VERSION = 1;
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
+const MAX_SESSION_COOKIE_BYTES = 4096;
+const MAX_SESSION_CLOCK_SKEW_MS = 60 * 1000;
 
 type SessionPayload = {
     version: typeof SESSION_VERSION;
@@ -50,6 +52,7 @@ function isValidSessionPayload(value: unknown): value is SessionPayload {
         && Number.isFinite(candidate.expiresAt)
         && candidate.issuedAt > 0
         && candidate.expiresAt > candidate.issuedAt
+        && candidate.issuedAt <= Date.now() + MAX_SESSION_CLOCK_SKEW_MS
         && Date.now() < candidate.expiresAt
         && !!user
         && typeof user.id === 'string'
@@ -67,7 +70,11 @@ function encodeSession(user: User): string {
         expiresAt: issuedAt + SESSION_TTL_SECONDS * 1000,
         user: { ...user, createdAt: user.createdAt.toISOString() },
     } satisfies SessionPayload)).toString('base64url');
-    return `${payload}.${signPayload(payload)}`;
+    const encoded = `${payload}.${signPayload(payload)}`;
+    if (Buffer.byteLength(encoded, 'utf8') > MAX_SESSION_COOKIE_BYTES) {
+        throw new Error('Encoded session cookie exceeds safe browser limits.');
+    }
+    return encoded;
 }
 
 function decodeSession(value: string): User | null {

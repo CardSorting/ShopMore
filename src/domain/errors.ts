@@ -15,6 +15,13 @@ export class ProductNotFoundError extends DomainError {
   }
 }
 
+export class OrderNotFoundError extends DomainError {
+  constructor(orderId: string) {
+    super(`Order not found: ${orderId}`);
+    this.name = 'OrderNotFoundError';
+  }
+}
+
 export class InvalidProductError extends DomainError {
   constructor(message: string = 'Product data is incomplete or invalid') {
     super(message);

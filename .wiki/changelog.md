@@ -1,5 +1,59 @@
 # Changelog
 
+## 2026-04-26 — Tenth deep audit pass: order status state machine, stricter mutation origin checks, and session payload bounds
+
+### Problem verified
+
+- `src/core/OrderService.ts::updateOrderStatus()` forwarded admin status changes directly to the repository without loading the existing order or enforcing a Domain state transition rule, allowing invalid lifecycle jumps such as `delivered -> pending` or `cancelled -> shipped` if the repository accepted the update.
+- `src/domain/rules.ts` did not expose a pure order-status transition guard for Core/admin orchestration to reuse.
+- `src/domain/errors.ts` had product-not-found specificity but no order-specific not-found error for admin order mutation paths.
+- `src/infrastructure/server/apiGuards.ts::assertTrustedMutationOrigin()` checked `Origin` when present but did not inspect `Sec-Fetch-Site`, did not reject malformed Origin values, and allowed production mutation requests with no Origin header.
+- `src/infrastructure/server/session.ts` validated signed session expiry but did not bound future `issuedAt` clock skew and did not reject oversized encoded session cookies before setting them.
+
+### Remediation performed
+
+- Added a pure Domain order-status state machine in `src/domain/rules.ts`:
+  - `pending -> confirmed | cancelled`
+  - `confirmed -> shipped | cancelled`
+  - `shipped -> delivered`
+  - terminal `delivered` and `cancelled` states
+  - same-status updates remain idempotent.
+- Added `canTransitionOrderStatus()` and `assertValidOrderStatusTransition()` to Domain rules; invalid transitions throw `InvalidOrderError`.
+- Added `OrderNotFoundError` in `src/domain/errors.ts` for order-specific 404 semantics.
+- Updated `src/core/OrderService.ts::updateOrderStatus()` to load the current order, throw `OrderNotFoundError` when absent, and enforce `assertValidOrderStatusTransition()` before writing the new status.
+- Updated `src/infrastructure/server/apiGuards.ts` so mutation origin checks now:
+  - apply only to `POST`, `PUT`, `PATCH`, and `DELETE` methods.
+  - reject cross-site `Sec-Fetch-Site` values before body parsing.
+  - reject missing `Origin` headers in production mutation requests.
+  - reject malformed Origin headers with `UnauthorizedError`.
+  - map `OrderNotFoundError` to HTTP 404 via `jsonError()`.
+- Updated `src/infrastructure/server/session.ts` with:
+  - `MAX_SESSION_CLOCK_SKEW_MS = 60 * 1000`, rejecting signed session payloads issued too far in the future.
+  - `MAX_SESSION_COOKIE_BYTES = 4096`, rejecting encoded session cookies that exceed safe browser cookie size limits.
+
+### Verification evidence
+
+- `npm run lint && npm run build` completed successfully after this pass.
+- The successful build completed Next.js production compilation, TypeScript validation, page-data collection, static generation for 22 app routes, and retained dynamic admin/API routes including `/api/admin/orders/[id]`, `/api/orders`, and auth/cart/product routes.
+- `git --no-pager diff -- src/domain/errors.ts src/domain/rules.ts src/core/OrderService.ts src/infrastructure/server/apiGuards.ts src/infrastructure/server/session.ts` verified the exact modified source files for this pass.
+
+### Files intentionally changed in this pass
+
+- `src/domain/errors.ts`
+- `src/domain/rules.ts`
+- `src/core/OrderService.ts`
+- `src/infrastructure/server/apiGuards.ts`
+- `src/infrastructure/server/session.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Domain owns the order lifecycle rule as pure, testable business logic with no I/O or framework dependencies.
+- Core orchestrates the admin status mutation by loading current state and applying the Domain state machine before delegating persistence.
+- Infrastructure owns HTTP mutation-origin policy, error-to-response mapping, and signed cookie payload bounds.
+- UI was unchanged in this pass.
+
 ## 2026-04-26 — Ninth deep audit pass: product enum hydration and composite cursor pagination
 
 ### Problem verified

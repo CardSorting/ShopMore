@@ -1,7 +1,7 @@
 /**
  * [LAYER: DOMAIN]
  */
-import type { Address, CardRarity, CartItem, Product, ProductCategory, ProductDraft, ProductUpdate } from './models';
+import type { Address, CardRarity, CartItem, OrderStatus, Product, ProductCategory, ProductDraft, ProductUpdate } from './models';
 import { InsufficientStockError, InvalidAddressError, InvalidOrderError, InvalidProductError } from './errors';
 
 export const MAX_CART_QUANTITY = 99;
@@ -16,6 +16,13 @@ export const MAX_ADDRESS_FIELD_LENGTH = 120;
 
 const PRODUCT_CATEGORIES: ProductCategory[] = ['booster', 'single', 'deck', 'accessory', 'box'];
 const CARD_RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
+const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['shipped', 'cancelled'],
+  shipped: ['delivered'],
+  delivered: [],
+  cancelled: [],
+};
 
 function assertNonEmptyString(value: string | undefined, field: string, maxLength: number): void {
   if (!value || value.trim().length === 0) {
@@ -165,6 +172,17 @@ export function assertValidOrderItems(items: CartItem[]): void {
     if (!Number.isInteger(item.quantity) || item.quantity <= 0 || item.quantity > MAX_CART_QUANTITY) {
       throw new InvalidOrderError('Order item quantity is invalid');
     }
+  }
+}
+
+export function canTransitionOrderStatus(current: OrderStatus, next: OrderStatus): boolean {
+  if (current === next) return true;
+  return ORDER_STATUS_TRANSITIONS[current].includes(next);
+}
+
+export function assertValidOrderStatusTransition(current: OrderStatus, next: OrderStatus): void {
+  if (!canTransitionOrderStatus(current, next)) {
+    throw new InvalidOrderError(`Order status cannot transition from ${current} to ${next}`);
   }
 }
 

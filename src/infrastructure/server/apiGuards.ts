@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { Address, CardRarity, OrderStatus, ProductCategory, ProductDraft, ProductUpdate, User } from '@domain/models';
-import { AuthError, DomainError, ProductNotFoundError, UnauthorizedError } from '@domain/errors';
+import { AuthError, DomainError, OrderNotFoundError, ProductNotFoundError, UnauthorizedError } from '@domain/errors';
 import { getSessionUser } from './session';
 import { logger } from '@utils/logger';
 
@@ -9,6 +9,7 @@ const PRODUCT_CATEGORIES = new Set<ProductCategory>(['booster', 'single', 'deck'
 const CARD_RARITIES = new Set<CardRarity>(['common', 'uncommon', 'rare', 'holo', 'secret']);
 const MAX_JSON_BODY_BYTES = 32 * 1024;
 const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9:_-]{16,160}$/;
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export async function requireSessionUser(): Promise<User> {
     const user = await getSessionUser();
@@ -53,12 +54,27 @@ export async function readJsonObject(request: Request): Promise<Record<string, u
 }
 
 export function assertTrustedMutationOrigin(request: Request): void {
-    if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'OPTIONS') return;
+    if (!MUTATION_METHODS.has(request.method)) return;
+    const secFetchSite = request.headers.get('sec-fetch-site');
+    if (secFetchSite && !['same-origin', 'same-site', 'none'].includes(secFetchSite)) {
+        throw new UnauthorizedError('Cross-site request source is not allowed.');
+    }
+
     const origin = request.headers.get('origin');
-    if (!origin) return;
+    if (!origin) {
+        if (process.env.NODE_ENV === 'production') {
+            throw new UnauthorizedError('Mutation requests must include an Origin header.');
+        }
+        return;
+    }
 
     const requestUrl = new URL(request.url);
-    const originUrl = new URL(origin);
+    let originUrl: URL;
+    try {
+        originUrl = new URL(origin);
+    } catch {
+        throw new UnauthorizedError('Request origin is invalid.');
+    }
     if (originUrl.protocol !== requestUrl.protocol || originUrl.host !== requestUrl.host) {
         throw new UnauthorizedError('Cross-site request origin is not allowed.');
     }
@@ -177,6 +193,7 @@ export function parseCheckoutRequest(body: Record<string, unknown>): { shippingA
 export function jsonError(error: unknown, fallback = 'Request failed'): NextResponse {
     const isExpected = error instanceof AuthError
         || error instanceof UnauthorizedError
+        || error instanceof OrderNotFoundError
         || error instanceof ProductNotFoundError
         || error instanceof DomainError;
     if (!isExpected) {
@@ -189,7 +206,7 @@ export function jsonError(error: unknown, fallback = 'Request failed'): NextResp
         ? 401
         : error instanceof UnauthorizedError
             ? 403
-            : error instanceof ProductNotFoundError
+            : error instanceof ProductNotFoundError || error instanceof OrderNotFoundError
                 ? 404
                 : error instanceof DomainError
                     ? 400

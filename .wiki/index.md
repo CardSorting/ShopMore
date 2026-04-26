@@ -54,6 +54,20 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 - Trusted checkout integration additionally rejects invalid endpoint URLs, unsupported protocols, embedded endpoint credentials, non-JSON responses, timeout failures, and generic network reachability failures with controlled `PaymentFailedError` messages.
 - Cart item mutation parsing in `src/app/api/cart/items/route.ts` is centralized through `parseCartItemMutation()` / `parseProductIdMutation()` rather than route-local string/number coercion.
 - Admin/product mutation authorization is session-owned in `src/app/api/admin/orders/route.ts`, `src/app/api/admin/orders/[id]/route.ts`, `src/app/api/products/route.ts`, and `src/app/api/products/[id]/route.ts`; privileged paths require `requireAdminSession()`.
+- Admin dashboard summary is now a first-class backend capability: `src/domain/models.ts` defines `AdminDashboardSummary`, `src/core/OrderService.ts::getAdminDashboardSummary()` orchestrates product/order repository data, `src/app/api/admin/dashboard/route.ts` exposes a protected `GET /api/admin/dashboard`, and `src/ui/apiClientServices.ts` provides `orderService.getAdminDashboardSummary()`.
+- Admin operating vocabulary now includes pure Domain `InventoryHealth`, `FulfillmentBucket`, `AdminActionItem`, and `InventoryOverview` types in `src/domain/models.ts`, with pure classifiers in `src/domain/rules.ts` for inventory health, fulfillment buckets, and next order action labels.
+- Inventory overview orchestration verified in `src/core/ProductService.ts::getInventoryOverview()`; it returns stock health counts, total units, inventory value, and products enriched with inventory health.
+- Admin dashboard summary orchestration in `src/core/OrderService.ts::getAdminDashboardSummary()` now includes fulfillment pipeline counts, out-of-stock count, low/out-of-stock watchlist logic, and priority attention items for staff.
+- Protected inventory backend route verified at `src/app/api/admin/inventory/route.ts`; `GET /api/admin/inventory` requires `requireAdminSession()` and returns the Core inventory overview through `jsonError()` handling.
+- Admin inventory UI verified at `src/ui/pages/admin/AdminInventory.tsx` and `src/app/admin/inventory/page.tsx`; `/admin/inventory` provides stock health filtering, search, plain-language restock action labels, inventory KPI cards, and edit-product links.
+- Admin shell navigation in `src/ui/layouts/AdminLayout.tsx` now presents a store-manager workflow: Home, Orders, Inventory, Products, plus disabled/coming-soon Insights and Help guidance for non-technical operators.
+- Admin dashboard UI verified in `src/ui/pages/admin/AdminDashboard.tsx`; it renders KPI cards for product count, revenue, pending orders, and average order value from the protected summary endpoint, plus recent order activity and a low-stock watchlist with explicit loading/error states.
+- Admin dashboard UI in `src/ui/pages/admin/AdminDashboard.tsx` now frames the page as “Today’s work,” adds priority attention cards, fulfillment pipeline cards, and merchant-friendly quick links.
+- Admin order processing UI verified in `src/ui/pages/admin/AdminOrders.tsx`; it includes status filtering, operator search, cursor next-page controls, expanded fulfillment/shipping/payment detail rows, error handling, and next-status options constrained to the current Domain lifecycle transitions.
+- Admin order processing now labels the status workflow as “Next action” and uses Domain-derived plain-language action labels from `nextOrderActionLabel()`.
+- Admin product management UI verified in `src/ui/pages/admin/AdminProducts.tsx`; it includes catalog search, category filtering, stock-health filtering, product/low-stock/filtered KPI cards, formatted prices/categories, empty-state messaging, and load/delete error banners.
+- Admin product form UI in `src/ui/pages/admin/AdminProductForm.tsx` now uses guided merchant copy, a sectioned layout, a customer preview card, and a staff tip panel.
+- Formatting/search plumbing verified in `src/utils/formatters.ts`; stateless helpers format USD cents, short dates, status/category labels, and normalized search strings without importing app-specific layers.
 - Admin order status validation in `src/app/api/admin/orders/[id]/route.ts` maps missing status to `DomainError` rather than an unexpected raw `Error`.
 - Admin order status mutation in `src/core/OrderService.ts` now loads the current order before updating status, returns `OrderNotFoundError` when the target order is absent, and enforces the Domain order status state machine from `src/domain/rules.ts`.
 - Domain order lifecycle rules in `src/domain/rules.ts` now define allowed status transitions: `pending -> confirmed | cancelled`, `confirmed -> shipped | cancelled`, `shipped -> delivered`, and terminal `delivered` / `cancelled`; same-status writes are idempotent.
@@ -80,6 +94,8 @@ npm run build
 git --no-pager diff --stat
 git status --short
 ```
+
+Latest verification for the admin merchant-operations upgrade: `npm run lint && npm run build` completed successfully, and the production build listed `/admin/inventory` plus `/api/admin/inventory` among 25 generated app routes.
 
 ## Mermaid: architectural bridge
 

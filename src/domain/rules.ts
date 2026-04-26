@@ -1,7 +1,7 @@
 /**
  * [LAYER: DOMAIN]
  */
-import type { Address, CardRarity, CartItem, OrderStatus, Product, ProductCategory, ProductDraft, ProductUpdate } from './models';
+import type { Address, CardRarity, CartItem, FulfillmentBucket, InventoryHealth, OrderStatus, Product, ProductCategory, ProductDraft, ProductUpdate } from './models';
 import { InsufficientStockError, InvalidAddressError, InvalidOrderError, InvalidProductError } from './errors';
 
 export const MAX_CART_QUANTITY = 99;
@@ -184,6 +184,28 @@ export function assertValidOrderStatusTransition(current: OrderStatus, next: Ord
   if (!canTransitionOrderStatus(current, next)) {
     throw new InvalidOrderError(`Order status cannot transition from ${current} to ${next}`);
   }
+}
+
+export function classifyInventoryHealth(stock: number): InventoryHealth {
+  if (stock <= 0) return 'out_of_stock';
+  if (stock < 5) return 'low_stock';
+  return 'healthy';
+}
+
+export function classifyFulfillmentBucket(status: OrderStatus): FulfillmentBucket {
+  if (status === 'pending') return 'to_review';
+  if (status === 'confirmed') return 'ready_to_ship';
+  if (status === 'shipped') return 'in_transit';
+  if (status === 'delivered') return 'completed';
+  return 'cancelled';
+}
+
+export function nextOrderActionLabel(status: OrderStatus): string {
+  if (status === 'pending') return 'Confirm order';
+  if (status === 'confirmed') return 'Mark as shipped';
+  if (status === 'shipped') return 'Mark as delivered';
+  if (status === 'delivered') return 'Completed';
+  return 'Cancelled';
 }
 
 export function addCartItem(

@@ -3,25 +3,42 @@
 /**
  * [LAYER: UI]
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useServices } from '../../hooks/useServices';
-import type { Product } from '@domain/models';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import type { Product, ProductCategory } from '@domain/models';
+import { Plus, Pencil, Search, Trash2 } from 'lucide-react';
+import { formatCurrency, humanizeCategory, normalizeSearch } from '@utils/formatters';
+
+const CATEGORIES: Array<ProductCategory | 'all'> = ['all', 'booster', 'single', 'deck', 'accessory', 'box'];
+type StockFilter = 'all' | 'low' | 'healthy';
 
 export function AdminProducts() {
   const services = useServices();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<ProductCategory | 'all'>('all');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
-    const result = await services.productService.getProducts({ limit: 100 });
-    setProducts(result.products);
-    setLoading(false);
-  }, [services.productService]);
+    setError(null);
+    try {
+      const result = await services.productService.getProducts({
+        limit: 100,
+        category: category === 'all' ? undefined : category,
+      });
+      setProducts(result.products);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, [category, services.productService]);
 
   useEffect(() => {
     void loadProducts();
@@ -34,17 +51,35 @@ export function AdminProducts() {
       await services.productService.deleteProduct(deleteCandidate.id);
       setDeleteCandidate(null);
       await loadProducts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete product');
     } finally {
       setDeleting(false);
     }
   }
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  const filteredProducts = useMemo(() => {
+    const needle = normalizeSearch(query);
+    return products.filter((product) => {
+      const matchesSearch = !needle || [product.name, product.description, product.set ?? '', product.rarity ?? '']
+        .some((value) => normalizeSearch(value).includes(needle));
+      const matchesStock = stockFilter === 'all'
+        || (stockFilter === 'low' && product.stock < 5)
+        || (stockFilter === 'healthy' && product.stock >= 5);
+      return matchesSearch && matchesStock;
+    });
+  }, [products, query, stockFilter]);
+
+  const lowStockCount = products.filter((product) => product.stock < 5).length;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-wide text-primary-600">Catalog operations</p>
+          <h1 className="text-3xl font-bold text-gray-900">Product Management</h1>
+          <p className="mt-1 text-sm text-gray-500">Maintain sellable inventory, pricing, and merchandising data.</p>
+        </div>
         <Link
           href="/admin/products/new"
           className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm flex items-center gap-2 hover:bg-primary-700"
@@ -53,6 +88,33 @@ export function AdminProducts() {
           Add Product
         </Link>
       </div>
+
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-lg border bg-white p-4 shadow-sm"><p className="text-sm text-gray-500">Loaded products</p><p className="text-2xl font-bold">{products.length}</p></div>
+        <div className="rounded-lg border bg-white p-4 shadow-sm"><p className="text-sm text-gray-500">Low stock</p><p className="text-2xl font-bold text-amber-700">{lowStockCount}</p></div>
+        <div className="rounded-lg border bg-white p-4 shadow-sm"><p className="text-sm text-gray-500">Filtered view</p><p className="text-2xl font-bold">{filteredProducts.length}</p></div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, set, rarity, or description" className="w-full rounded-md border py-2 pl-9 pr-3 text-sm" />
+          </div>
+          <select value={category} onChange={(event) => setCategory(event.target.value as ProductCategory | 'all')} className="rounded-md border px-3 py-2 text-sm">
+            {CATEGORIES.map((value) => <option key={value} value={value}>{value === 'all' ? 'All categories' : humanizeCategory(value)}</option>)}
+          </select>
+          <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value as StockFilter)} className="rounded-md border px-3 py-2 text-sm">
+            <option value="all">All stock</option>
+            <option value="low">Low stock</option>
+            <option value="healthy">Healthy stock</option>
+          </select>
+        </div>
+      </div>
+
+      {loading && <div className="p-4">Loading...</div>}
 
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <table className="w-full text-sm">
@@ -66,7 +128,7 @@ export function AdminProducts() {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -77,8 +139,8 @@ export function AdminProducts() {
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 capitalize">{p.category}</td>
-                <td className="px-4 py-3">${(p.price / 100).toFixed(2)}</td>
+                <td className="px-4 py-3">{humanizeCategory(p.category)}</td>
+                <td className="px-4 py-3">{formatCurrency(p.price)}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-block px-2 py-0.5 rounded-full text-xs ${
@@ -113,6 +175,9 @@ export function AdminProducts() {
             ))}
           </tbody>
         </table>
+        {filteredProducts.length === 0 && !loading && (
+          <div className="p-8 text-center text-gray-400 text-sm">No products match the current filters</div>
+        )}
       </div>
 
       {deleteCandidate && (

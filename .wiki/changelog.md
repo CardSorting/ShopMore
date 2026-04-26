@@ -1,5 +1,109 @@
 # Changelog
 
+## 2026-04-26 — Admin panel merchant-operations UX upgrade
+
+### Problem verified
+
+- The admin navigation in `src/ui/layouts/AdminLayout.tsx` exposed only basic Dashboard / Products / Orders links and did not guide non-technical staff through common ecommerce operating workflows.
+- Product and inventory work shared the same product table, making daily restock decisions less direct than popular ecommerce admin strategies that separate catalog setup from stock-room operations.
+- `src/domain/models.ts` and `src/domain/rules.ts` lacked pure operating vocabulary for inventory health, fulfillment buckets, and staff action items.
+- `src/core/ProductService.ts` did not expose an inventory overview read model for stock health counts, inventory value, and restock-priority rows.
+- `src/core/OrderService.ts::getAdminDashboardSummary()` did not yet include fulfillment pipeline counts, out-of-stock counts, or explicit action items for staff.
+- No protected `/api/admin/inventory` backend endpoint or `/admin/inventory` admin page existed.
+- `src/ui/pages/admin/AdminProductForm.tsx` was a single technical form rather than a guided merchant setup experience with preview/help copy.
+
+### Remediation performed
+
+- Extended `src/domain/models.ts` with pure admin operations types: `InventoryHealth`, `FulfillmentBucket`, `AdminActionItem`, expanded `AdminDashboardSummary`, and `InventoryOverview`.
+- Extended `src/domain/rules.ts` with pure classification helpers: `classifyInventoryHealth()`, `classifyFulfillmentBucket()`, and `nextOrderActionLabel()`.
+- Added `ProductService.getInventoryOverview()` in `src/core/ProductService.ts`; Core now derives inventory health counts, total units, inventory value, and sorted restock-priority products from the product repository.
+- Expanded `OrderService.getAdminDashboardSummary()` in `src/core/OrderService.ts` with fulfillment counts, out-of-stock count, low/out-of-stock watchlist logic, and priority action items linking staff to order or inventory workflows.
+- Added protected Infrastructure endpoint `src/app/api/admin/inventory/route.ts`; `GET` requires `requireAdminSession()` and returns the Core inventory overview via shared `jsonError()` handling.
+- Added `productService.getInventoryOverview()` to `src/ui/apiClientServices.ts` and routed it to `/api/admin/inventory`.
+- Added `/admin/inventory` through `src/app/admin/inventory/page.tsx` and `src/ui/pages/admin/AdminInventory.tsx`, with stock health filtering, search, plain-language restock actions, inventory KPI cards, and edit-product links.
+- Reworked `src/ui/layouts/AdminLayout.tsx` into a more approachable store-manager shell with Home, Orders, Inventory, Products, plus disabled/coming-soon Insights and Help cards.
+- Upgraded `src/ui/pages/admin/AdminDashboard.tsx` into a “Today’s work” command center with action cards, fulfillment pipeline, out-of-stock KPI, ready-to-ship KPI, and clearer staff guidance.
+- Updated `src/ui/pages/admin/AdminOrders.tsx` to label the status column as a next-action workflow and use Domain-derived plain-language order action labels.
+- Upgraded `src/ui/pages/admin/AdminProductForm.tsx` with merchant guidance copy, sectioned layout, customer preview card, and staff tip copy.
+
+### Verification evidence
+
+- `npm run lint` completed successfully after the merchant-operations upgrade.
+- `npm run build` completed successfully after the merchant-operations upgrade.
+- The successful production build generated 25 app routes and listed new routes `/admin/inventory` and `/api/admin/inventory` alongside existing admin routes.
+
+### Files intentionally changed in this pass
+
+- `src/domain/models.ts`
+- `src/domain/rules.ts`
+- `src/core/ProductService.ts`
+- `src/core/OrderService.ts`
+- `src/app/api/admin/inventory/route.ts`
+- `src/app/admin/inventory/page.tsx`
+- `src/ui/apiClientServices.ts`
+- `src/ui/layouts/AdminLayout.tsx`
+- `src/ui/pages/admin/AdminInventory.tsx`
+- `src/ui/pages/admin/AdminDashboard.tsx`
+- `src/ui/pages/admin/AdminOrders.tsx`
+- `src/ui/pages/admin/AdminProductForm.tsx`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Domain additions are pure classifications/read-model shapes with no I/O, framework, database, or UI imports.
+- Core owns orchestration and aggregation for dashboard/inventory read models.
+- Infrastructure owns admin HTTP/session protection for `/api/admin/inventory` only.
+- UI owns merchant-friendly navigation, staff copy, filtering, preview rendering, and workflow presentation.
+
+## 2026-04-26 — Admin backend operations upgrade
+
+### Problem verified
+
+- The admin dashboard in `src/ui/pages/admin/AdminDashboard.tsx` loaded generic product and order lists client-side and computed only basic product/revenue/pending-order values in the UI.
+- `src/core/OrderService.ts` did not expose a dedicated admin dashboard summary orchestration method for operational KPIs, recent orders, or low-stock inventory.
+- There was no dedicated protected dashboard endpoint under `src/app/api/admin` for a backend-admin summary payload.
+- `src/ui/pages/admin/AdminOrders.tsx` provided a simple order table/status dropdown but lacked status filtering, operator search, expanded fulfillment/shipping/payment detail inspection, error banners, and pagination controls.
+- `src/ui/pages/admin/AdminProducts.tsx` provided CRUD table basics but lacked catalog search, category filtering, stock-health filtering, KPI cards, and load/delete error reporting.
+
+### Remediation performed
+
+- Added `AdminDashboardSummary` to `src/domain/models.ts` as a pure Domain shape for admin dashboard data: product count, low-stock count, total revenue, average order value, order counts by status, recent orders, and low-stock products.
+- Added `OrderService.getAdminDashboardSummary()` in `src/core/OrderService.ts`; Core now orchestrates order/product repository reads, computes non-cancelled revenue, average order value, status counts, recent orders, and a low-stock product watchlist.
+- Added protected Infrastructure route `src/app/api/admin/dashboard/route.ts`; `GET` requires `requireAdminSession()` and returns the Core dashboard summary through `jsonError()` handling.
+- Extended `src/ui/apiClientServices.ts` with `orderService.getAdminDashboardSummary()` targeting `/api/admin/dashboard`.
+- Added `src/utils/formatters.ts` with stateless formatting/search helpers: currency, short date, order status/category humanization, and search normalization.
+- Rebuilt `src/ui/pages/admin/AdminDashboard.tsx` into an admin command center using the dedicated summary endpoint, KPI cards, recent order activity, low-stock watchlist, and controlled loading/error states.
+- Upgraded `src/ui/pages/admin/AdminOrders.tsx` with status filtering, client search across order/customer/transaction/item values, cursor-based next-page controls, safe next-status dropdown options aligned with the Domain state machine, expanded order detail rows, and status-mutation error handling.
+- Upgraded `src/ui/pages/admin/AdminProducts.tsx` with catalog search, category filtering, low/healthy stock filtering, product/low-stock/filtered KPI cards, formatted prices/categories, empty-state messaging, and delete/load error banners.
+
+### Verification evidence
+
+- `npm run lint` completed successfully after the admin backend upgrade.
+- `npm run build` completed successfully after the admin backend upgrade.
+- The successful production build listed the new dynamic route `/api/admin/dashboard` alongside existing admin order/product routes.
+
+### Files intentionally changed in this pass
+
+- `src/domain/models.ts`
+- `src/core/OrderService.ts`
+- `src/app/api/admin/dashboard/route.ts`
+- `src/ui/apiClientServices.ts`
+- `src/ui/pages/admin/AdminDashboard.tsx`
+- `src/ui/pages/admin/AdminOrders.tsx`
+- `src/ui/pages/admin/AdminProducts.tsx`
+- `src/utils/formatters.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Domain remains pure; it received only a serializable admin summary type.
+- Core owns dashboard summary orchestration and aggregate KPI calculation over repository data.
+- Infrastructure owns the protected admin HTTP endpoint and session/admin enforcement.
+- UI renders admin state and dispatches service intentions through the existing API client facade.
+- Plumbing helpers remain stateless and layer-agnostic; `src/utils/formatters.ts` intentionally avoids imports from Domain/Core/Infrastructure/UI.
+
 ## 2026-04-26 — Thirteenth deep audit pass: rate-limit HTTP semantics
 
 ### Problem verified

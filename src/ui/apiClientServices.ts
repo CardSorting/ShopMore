@@ -1,6 +1,6 @@
 'use client';
 
-import type { Address, Cart, Order, OrderStatus, Product, ProductDraft, ProductUpdate, User } from '@domain/models';
+import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductUpdate, User } from '@domain/models';
 
 const sessionScoped = (userId: string) => void userId;
 
@@ -52,6 +52,7 @@ export function createApiClientServices() {
                 return request<{ products: Product[]; nextCursor?: string }>(`/api/products?${qs}`);
             },
             getProduct: (id: string) => request<Product>(`/api/products/${id}`),
+            getInventoryOverview: () => request<InventoryOverview>('/api/admin/inventory'),
             createProduct: (data: ProductDraft) => request<Product>('/api/products', { method: 'POST', body: JSON.stringify(data) }),
             updateProduct: (id: string, data: ProductUpdate) => request<Product>(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
             deleteProduct: (id: string) => request<void>(`/api/products/${id}`, { method: 'DELETE' }),
@@ -65,6 +66,7 @@ export function createApiClientServices() {
             getCartTotal: (items: { priceSnapshot: number; quantity: number }[]) => items.reduce((sum, item) => sum + item.priceSnapshot * item.quantity, 0),
         },
         orderService: {
+            getAdminDashboardSummary: () => request<AdminDashboardSummary>('/api/admin/dashboard'),
             finalizeTrustedCheckout: (userId: string, shippingAddress: Address, paymentMethodId: string, idempotencyKey?: string) => (sessionScoped(userId), request<Order>('/api/orders', { method: 'POST', body: JSON.stringify({ shippingAddress, paymentMethodId, idempotencyKey }) })),
             placeOrder: (userId: string, shippingAddress: Address, paymentMethodId?: string, idempotencyKey?: string) => (sessionScoped(userId), request<Order>('/api/orders', { method: 'POST', body: JSON.stringify({ shippingAddress, paymentMethodId, idempotencyKey }) })),
             getOrders: (userId: string) => (sessionScoped(userId), request<Order[]>('/api/orders')),

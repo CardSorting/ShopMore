@@ -91,3 +91,36 @@ export interface Address {
   zip: string;
   country: string;
 }
+
+export interface AdminDashboardSummary {
+  productCount: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  totalRevenue: number;
+  averageOrderValue: number;
+  orderCountsByStatus: Record<OrderStatus, number>;
+  fulfillmentCounts: Record<FulfillmentBucket, number>;
+  attentionItems: AdminActionItem[];
+  recentOrders: Order[];
+  lowStockProducts: Product[];
+}
+
+export type InventoryHealth = 'out_of_stock' | 'low_stock' | 'healthy';
+
+export type FulfillmentBucket = 'to_review' | 'ready_to_ship' | 'in_transit' | 'completed' | 'cancelled';
+
+export interface AdminActionItem {
+  id: string;
+  label: string;
+  description: string;
+  href: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface InventoryOverview {
+  totalProducts: number;
+  totalUnits: number;
+  inventoryValue: number;
+  healthCounts: Record<InventoryHealth, number>;
+  products: Array<Product & { inventoryHealth: InventoryHealth }>;
+}

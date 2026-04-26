@@ -9,12 +9,14 @@ import type {
   ILockProvider,
   ICheckoutGateway,
 } from '@domain/repositories';
-import type { Order, OrderStatus, Address } from '@domain/models';
+import type { AdminDashboardSummary, Order, OrderStatus, Address } from '@domain/models';
 import {
   assertValidOrderItems,
   assertValidOrderStatusTransition,
   assertValidShippingAddress,
   calculateCartTotal,
+  classifyFulfillmentBucket,
+  classifyInventoryHealth,
   canPlaceOrder,
 } from '@domain/rules';
 import { coalesceCartStockDeductions } from '@domain/rules';
@@ -204,6 +206,77 @@ export class OrderService {
     cursor?: string;
   }): Promise<{ orders: Order[]; nextCursor?: string }> {
     return this.orderRepo.getAll(options);
+  }
+
+  async getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
+    const [{ orders }, { products }] = await Promise.all([
+      this.orderRepo.getAll({ limit: 100 }),
+      this.productRepo.getAll({ limit: 100 }),
+    ]);
+
+    const orderCountsByStatus: AdminDashboardSummary['orderCountsByStatus'] = {
+      pending: 0,
+      confirmed: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+    const fulfillmentCounts: AdminDashboardSummary['fulfillmentCounts'] = {
+      to_review: 0,
+      ready_to_ship: 0,
+      in_transit: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+
+    for (const order of orders) {
+      orderCountsByStatus[order.status] += 1;
+      fulfillmentCounts[classifyFulfillmentBucket(order.status)] += 1;
+    }
+
+    const revenueOrders = orders.filter((order) => order.status !== 'cancelled');
+    const totalRevenue = revenueOrders.reduce((sum, order) => sum + order.total, 0);
+    const lowStockProducts = products
+      .filter((product) => classifyInventoryHealth(product.stock) !== 'healthy')
+      .sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name))
+      .slice(0, 8);
+    const outOfStockCount = products.filter((product) => classifyInventoryHealth(product.stock) === 'out_of_stock').length;
+    const attentionItems: AdminDashboardSummary['attentionItems'] = [
+      ...(fulfillmentCounts.to_review > 0 ? [{
+        id: 'orders-to-review',
+        label: `${fulfillmentCounts.to_review} orders need review`,
+        description: 'Confirm paid orders so staff know what to prepare next.',
+        href: '/admin/orders',
+        priority: 'high' as const,
+      }] : []),
+      ...(fulfillmentCounts.ready_to_ship > 0 ? [{
+        id: 'orders-ready-to-ship',
+        label: `${fulfillmentCounts.ready_to_ship} orders ready to ship`,
+        description: 'Pack these orders and advance them to shipped.',
+        href: '/admin/orders',
+        priority: 'high' as const,
+      }] : []),
+      ...(lowStockProducts.length > 0 ? [{
+        id: 'inventory-low-stock',
+        label: `${lowStockProducts.length} products need stock attention`,
+        description: 'Review products that are unavailable or close to selling out.',
+        href: '/admin/inventory',
+        priority: outOfStockCount > 0 ? 'high' as const : 'medium' as const,
+      }] : []),
+    ];
+
+    return {
+      productCount: products.length,
+      lowStockCount: products.filter((product) => classifyInventoryHealth(product.stock) === 'low_stock').length,
+      outOfStockCount,
+      totalRevenue,
+      averageOrderValue: revenueOrders.length > 0 ? Math.round(totalRevenue / revenueOrders.length) : 0,
+      orderCountsByStatus,
+      fulfillmentCounts,
+      attentionItems,
+      recentOrders: orders.slice(0, 8),
+      lowStockProducts,
+    };
   }
 
   async updateOrderStatus(id: string, status: OrderStatus): Promise<void> {

@@ -2,9 +2,9 @@
  * [LAYER: CORE]
  */
 import type { IProductRepository } from '@domain/repositories';
-import type { Product, ProductDraft, ProductUpdate } from '@domain/models';
+import type { InventoryOverview, Product, ProductDraft, ProductUpdate } from '@domain/models';
 import { ProductNotFoundError } from '@domain/errors';
-import { assertValidProductDraft, assertValidProductUpdate } from '@domain/rules';
+import { assertValidProductDraft, assertValidProductUpdate, classifyInventoryHealth } from '@domain/rules';
 
 export class ProductService {
   constructor(private repo: IProductRepository) {}
@@ -15,6 +15,31 @@ export class ProductService {
     cursor?: string;
   }): Promise<{ products: Product[]; nextCursor?: string }> {
     return this.repo.getAll(options);
+  }
+
+  async getInventoryOverview(): Promise<InventoryOverview> {
+    const { products } = await this.repo.getAll({ limit: 100 });
+    const healthCounts: InventoryOverview['healthCounts'] = {
+      out_of_stock: 0,
+      low_stock: 0,
+      healthy: 0,
+    };
+    const enrichedProducts = products.map((product) => {
+      const inventoryHealth = classifyInventoryHealth(product.stock);
+      healthCounts[inventoryHealth] += 1;
+      return { ...product, inventoryHealth };
+    });
+
+    return {
+      totalProducts: products.length,
+      totalUnits: products.reduce((sum, product) => sum + product.stock, 0),
+      inventoryValue: products.reduce((sum, product) => sum + product.stock * product.price, 0),
+      healthCounts,
+      products: enrichedProducts.sort((a, b) => {
+        const rank = { out_of_stock: 0, low_stock: 1, healthy: 2 } as const;
+        return rank[a.inventoryHealth] - rank[b.inventoryHealth] || a.stock - b.stock || a.name.localeCompare(b.name);
+      }),
+    };
   }
 
   async getProduct(id: string): Promise<Product> {

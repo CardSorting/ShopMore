@@ -50,6 +50,8 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 - Admin/product mutation authorization is session-owned in `src/app/api/admin/orders/route.ts`, `src/app/api/admin/orders/[id]/route.ts`, `src/app/api/products/route.ts`, and `src/app/api/products/[id]/route.ts`; privileged paths require `requireAdminSession()`.
 - Admin order status validation in `src/app/api/admin/orders/[id]/route.ts` maps missing status to `DomainError` rather than an unexpected raw `Error`.
 - Product create/update transport parsing in `src/app/api/products/route.ts` and `src/app/api/products/[id]/route.ts` uses `parseProductDraft()` / `parseProductUpdate()` before Core product service calls.
+- SQLite product hydration in `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts` validates stored category and rarity strings before returning Domain `Product` models.
+- SQLite product and admin order pagination now use composite cursor predicates matching `createdAt desc, id asc` order rather than filtering only by `id > cursor`.
 - SQLite product stock mutations in `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts` now use a stock-value compare-and-swap predicate and verify one row updated, reducing lost-update risk during concurrent stock writers.
 - SQLite authentication in `src/infrastructure/services/SQLiteAuthAdapter.ts` no longer reads or writes browser `localStorage`; server session state is owned by signed HTTP-only cookies and UI state remains outside this Infrastructure adapter.
 - UI API client verified in `src/ui/apiClientServices.ts`; existing cart/order service signatures still accept `userId`, but `sessionScoped(userId)` discards it and requests no longer transmit it for session-owned endpoints.

@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-04-26 — Ninth deep audit pass: product enum hydration and composite cursor pagination
+
+### Problem verified
+
+- `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts` hydrated persisted product `category` and `rarity` values with direct TypeScript casts, allowing invalid stored enum strings to become Domain `Product` values.
+- SQLite product pagination in `SQLiteProductRepository.ts` ordered by `createdAt desc, id asc` but applied cursor filtering as `id > cursor`, which is not equivalent to the composite sort order and can skip or duplicate rows when IDs do not correlate with creation timestamps.
+- SQLite admin order pagination in `SQLiteOrderRepository.ts` had the same composite-order mismatch: `createdAt desc, id asc` ordering with `id > cursor` filtering.
+
+### Remediation performed
+
+- Added stored product enum validation in `SQLiteProductRepository.ts` with `parseProductCategory()` and `parseCardRarity()`; invalid stored category/rarity values now raise controlled `DomainError` messages instead of silently hydrating invalid Domain models.
+- Updated the SQL fallback product pagination path to resolve the cursor row's `createdAt`/`id` and apply a composite cursor predicate matching the sort order: rows with older `createdAt`, or same `createdAt` and greater `id`.
+- Updated admin order pagination in `SQLiteOrderRepository.ts` to resolve the cursor order's `createdAt`/`id` and apply the same composite cursor predicate matching `createdAt desc, id asc`.
+
+### Verification evidence
+
+- `npm run lint && npm run build` completed successfully after this pass.
+- The successful build completed Next.js production compilation, TypeScript validation, page-data collection, static generation for 22 app routes, and retained dynamic API routes for `/api/products`, `/api/products/[id]`, and `/api/admin/orders`.
+
+### Files intentionally changed in this pass
+
+- `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts`
+- `src/infrastructure/repositories/sqlite/SQLiteOrderRepository.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Domain remained unchanged; Infrastructure validates persisted adapter data before returning Domain models.
+- Pagination correctness remains a repository concern and now aligns filtering with the actual persisted sort order.
+
 ## 2026-04-26 — Eighth deep audit pass: strict session cookies and additional browser isolation headers
 
 ### Problem verified

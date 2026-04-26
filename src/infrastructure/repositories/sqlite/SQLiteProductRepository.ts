@@ -7,9 +7,24 @@ import { getSQLiteDB } from '../../sqlite/database';
 import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
 import type { Product, ProductCategory, CardRarity, ProductDraft, ProductUpdate } from '@domain/models';
-import { InsufficientStockError, ProductNotFoundError } from '@domain/errors';
+import { DomainError, InsufficientStockError, ProductNotFoundError } from '@domain/errors';
 import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
+
+function parseProductCategory(value: string): ProductCategory {
+  if (value === 'booster' || value === 'single' || value === 'deck' || value === 'accessory' || value === 'box') {
+    return value;
+  }
+  throw new DomainError('Stored product category is invalid.');
+}
+
+function parseCardRarity(value: string | null): CardRarity | undefined {
+  if (value === null || value === '') return undefined;
+  if (value === 'common' || value === 'uncommon' || value === 'rare' || value === 'holo' || value === 'secret') {
+    return value;
+  }
+  throw new DomainError('Stored product rarity is invalid.');
+}
 
 export class SQLiteProductRepository implements IProductRepository {
   private db: Kysely<Database>;
@@ -31,11 +46,11 @@ export class SQLiteProductRepository implements IProductRepository {
       name: row.name,
       description: row.description,
       price: row.price,
-      category: row.category as ProductCategory,
+      category: parseProductCategory(row.category),
       stock: row.stock,
       imageUrl: row.imageUrl,
       set: row.set || undefined,
-      rarity: (row.rarity as CardRarity) || undefined,
+      rarity: parseCardRarity(row.rarity),
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt),
     };
@@ -94,7 +109,21 @@ export class SQLiteProductRepository implements IProductRepository {
       }
 
       if (options?.cursor) {
-        query = query.where('id', '>', options.cursor);
+        const cursorProduct = await this.db
+          .selectFrom('products')
+          .select(['id', 'createdAt'])
+          .where('id', '=', options.cursor)
+          .executeTakeFirst();
+
+        if (cursorProduct) {
+          query = query.where((eb) => eb.or([
+            eb('createdAt', '<', cursorProduct.createdAt),
+            eb.and([
+              eb('createdAt', '=', cursorProduct.createdAt),
+              eb('id', '>', cursorProduct.id),
+            ]),
+          ]));
+        }
       }
 
       const limitCount = options?.limit ?? 20;

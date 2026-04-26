@@ -140,7 +140,21 @@ export class SQLiteOrderRepository implements IOrderRepository {
     }
 
     if (options?.cursor) {
-      query = query.where('id', '>', options.cursor);
+      const cursorOrder = await this.db
+        .selectFrom('orders')
+        .select(['id', 'createdAt'])
+        .where('id', '=', options.cursor)
+        .executeTakeFirst();
+
+      if (cursorOrder) {
+        query = query.where((eb) => eb.or([
+          eb('createdAt', '<', cursorOrder.createdAt),
+          eb.and([
+            eb('createdAt', '=', cursorOrder.createdAt),
+            eb('id', '>', cursorOrder.id),
+          ]),
+        ]));
+      }
     }
 
     const limitCount = options?.limit ?? 20;

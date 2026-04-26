@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 import type { User } from '@domain/models';
 
 const COOKIE_NAME = 'pm_tcg_session';
@@ -12,6 +13,16 @@ type SessionPayload = {
     expiresAt: number;
     user: Omit<User, 'createdAt'> & { createdAt: string };
 };
+
+function sessionCookieOptions(maxAge: number): Partial<ResponseCookie> {
+    return {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge,
+    };
+}
 
 function getSessionSecret(): string {
     const secret = process.env.SESSION_SECRET;
@@ -71,6 +82,7 @@ function decodeSession(value: string): User | null {
 
     const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as unknown;
     if (!isValidSessionPayload(parsed)) return null;
+    if (Date.now() - parsed.issuedAt > SESSION_TTL_SECONDS * 1000) return null;
     return { ...parsed.user, createdAt: new Date(parsed.user.createdAt) };
 }
 
@@ -86,21 +98,9 @@ export async function getSessionUser(): Promise<User | null> {
 
 export async function setSessionUser(user: User) {
     const value = encodeSession(user);
-    (await cookies()).set(COOKIE_NAME, value, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: SESSION_TTL_SECONDS,
-    });
+    (await cookies()).set(COOKIE_NAME, value, sessionCookieOptions(SESSION_TTL_SECONDS));
 }
 
 export async function clearSessionUser() {
-    (await cookies()).set(COOKIE_NAME, '', {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 0,
-    });
+    (await cookies()).set(COOKIE_NAME, '', sessionCookieOptions(0));
 }

@@ -7,6 +7,8 @@ const sessionScoped = (userId: string) => void userId;
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(path, {
         ...init,
+        cache: 'no-store',
+        credentials: 'same-origin',
         headers: {
             'Content-Type': 'application/json',
             ...(init?.headers ?? {}),

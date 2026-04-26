@@ -1,5 +1,68 @@
 # Changelog
 
+## 2026-04-26 — Eighth deep audit pass: strict session cookies and additional browser isolation headers
+
+### Problem verified
+
+- `src/infrastructure/server/session.ts` duplicated session cookie option objects and used `sameSite: 'lax'`, leaving a broader cross-site cookie send surface than necessary for the same-origin API model.
+- `src/infrastructure/server/session.ts::decodeSession()` relied on signed `expiresAt` validation but did not independently cap session age from `issuedAt` against the configured TTL.
+- `next.config.ts` lacked several browser isolation / transport hardening headers: HSTS for production, COOP, CORP, and DNS prefetch control.
+
+### Remediation performed
+
+- Added `sessionCookieOptions()` in `src/infrastructure/server/session.ts` to centralize cookie options for session set/clear paths.
+- Changed session cookies to `sameSite: 'strict'` while preserving `httpOnly`, production-only `secure`, root path, and max-age behavior.
+- Added an independent issued-at age cap in `decodeSession()` so signed sessions are rejected if `Date.now() - issuedAt` exceeds `SESSION_TTL_SECONDS` even if a malformed payload attempted an inconsistent expiry.
+- Added `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Resource-Policy: same-origin`, and `X-DNS-Prefetch-Control: off` to global headers in `next.config.ts`.
+- Added production-only `Strict-Transport-Security: max-age=31536000; includeSubDomains` to global headers in `next.config.ts`.
+
+### Verification evidence
+
+- `npm run lint && npm run build` completed successfully after this pass.
+- The successful build completed Next.js production compilation, TypeScript validation, page-data collection, static generation for 22 app routes, and retained auth/session API routes.
+
+### Files intentionally changed in this pass
+
+- `src/infrastructure/server/session.ts`
+- `next.config.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Session cookie and browser header policy remain Infrastructure concerns.
+- Domain and Core were unchanged in this pass.
+
+## 2026-04-26 — Seventh deep audit pass: API expected-error mapping and client fetch cache/credential policy
+
+### Problem verified
+
+- `src/app/api/admin/orders/[id]/route.ts` used raw `Error('status is required.')` for a client validation failure, causing `jsonError()` to classify the missing-status condition as unexpected rather than an expected Domain-level bad request.
+- `src/ui/apiClientServices.ts` used `fetch()` without an explicit cache policy or credentials policy, leaving request behavior implicit for session-cookie-backed ecommerce API calls.
+
+### Remediation performed
+
+- Updated `src/app/api/admin/orders/[id]/route.ts` to throw `DomainError('status is required.')` for missing admin order status, preserving expected error classification and HTTP mapping through `jsonError()`.
+- Updated `src/ui/apiClientServices.ts::request()` to set `cache: 'no-store'` so customer/admin API reads and mutations do not use stale browser/runtime cache data.
+- Updated `src/ui/apiClientServices.ts::request()` to set `credentials: 'same-origin'` explicitly for the signed HTTP-only session cookie model.
+
+### Verification evidence
+
+- `npm run lint && npm run build` completed successfully after this pass.
+- The successful build completed Next.js production compilation, TypeScript validation, page-data collection, static generation for 22 app routes, and retained dynamic API routes for admin orders and customer session/cart/order flows.
+
+### Files intentionally changed in this pass
+
+- `src/app/api/admin/orders/[id]/route.ts`
+- `src/ui/apiClientServices.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Domain error typing is reused at the Infrastructure HTTP boundary for expected transport validation failures.
+- UI remains a client API facade; it does not compute business outcomes, but now makes session and cache behavior explicit for transport calls.
+
 ## 2026-04-26 — Sixth deep audit pass: cart flush wait semantics, persisted JSON parse containment, and stock compare-and-swap
 
 ### Problem verified

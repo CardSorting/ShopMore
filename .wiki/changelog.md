@@ -1,5 +1,79 @@
 # Changelog
 
+## 2026-04-26 — Twelfth deep audit pass: lightweight mutation abuse throttling
+
+### Problem verified
+
+- Authentication mutation routes were protected by validation and origin checks but had no application-level throttling to slow repeated credential or registration attempts.
+- Checkout placement was protected by session ownership, idempotency, and locking, but had no request-rate guard before invoking session/cart/payment orchestration.
+- `src/infrastructure/server/apiGuards.ts` did not provide a shared rate-limit primitive for high-risk HTTP mutation routes.
+
+### Remediation performed
+
+- Added an Infrastructure-local in-memory fixed-window throttle in `src/infrastructure/server/apiGuards.ts`:
+  - `assertRateLimit(request, scope, maxAttempts, windowMs)`.
+  - Client fingerprinting based on first `x-forwarded-for` value, `x-real-ip`, and a bounded `user-agent` segment.
+  - Bucket pruning once bucket count reaches `10_000` to reduce unbounded memory growth risk.
+  - Controlled `UnauthorizedError('Too many requests. Please wait and try again.')` on limit exhaustion.
+- Applied `assertRateLimit(request, 'auth:sign-in', 10, 60_000)` to `src/app/api/auth/sign-in/route.ts` before JSON parsing and authentication provider calls.
+- Applied `assertRateLimit(request, 'auth:sign-up', 5, 60_000)` to `src/app/api/auth/sign-up/route.ts` before JSON parsing and account creation.
+- Applied `assertRateLimit(request, 'checkout:place-order', 12, 60_000)` to `src/app/api/orders/route.ts` before session/cart/checkout orchestration.
+
+### Verification evidence
+
+- `npm run lint && npm run build` completed successfully after this pass.
+- The successful build completed Next.js production compilation, TypeScript validation, page-data collection, static generation for 22 app routes, and retained dynamic routes for `/api/auth/sign-in`, `/api/auth/sign-up`, and `/api/orders`.
+
+### Files intentionally changed in this pass
+
+- `src/infrastructure/server/apiGuards.ts`
+- `src/app/api/auth/sign-in/route.ts`
+- `src/app/api/auth/sign-up/route.ts`
+- `src/app/api/orders/route.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Rate limiting is an Infrastructure HTTP-boundary concern; no Domain or Core changes were introduced.
+- This is a lightweight per-process throttle, not a distributed production rate limiter. Multi-instance deployments should still place a shared edge/API-gateway limiter in front of these routes.
+
+## 2026-04-26 — Eleventh deep audit pass: no-body mutation CSRF/origin coverage
+
+### Problem verified
+
+- `src/infrastructure/server/apiGuards.ts::assertTrustedMutationOrigin()` was hardened for mutation requests, but routes that did not parse a JSON body could bypass it because they never called `readJsonObject()`.
+- `src/app/api/auth/sign-out/route.ts::POST()` cleared the signed session cookie without receiving a `Request`, so origin/fetch-site policy could not be applied to sign-out attempts.
+- `src/app/api/cart/route.ts::DELETE()` cleared the current user's cart without applying the shared mutation-origin guard because it has no JSON request body.
+- `src/app/api/products/[id]/route.ts::DELETE()` deleted admin products without applying the shared mutation-origin guard because it has no JSON request body.
+
+### Remediation performed
+
+- Updated `src/app/api/auth/sign-out/route.ts` so `POST(request: Request)` calls `assertTrustedMutationOrigin(request)` before clearing the session and wraps failures through `jsonError()`.
+- Updated `src/app/api/cart/route.ts` so `DELETE(request: Request)` calls `assertTrustedMutationOrigin(request)` before resolving the session user and clearing the cart.
+- Updated `src/app/api/products/[id]/route.ts` so `DELETE(request: Request)` calls `assertTrustedMutationOrigin(request)` before admin authorization and product deletion.
+- Audited route handlers with `grep` for no-argument mutation handlers and `_request` mutation handlers; no remaining matches were found under `src/app/api`.
+
+### Verification evidence
+
+- `grep -R "export async function \\(POST\\|PUT\\|PATCH\\|DELETE\\)()\\|export async function \\(POST\\|PUT\\|PATCH\\|DELETE\\)(_request" -n src/app/api --include='route.ts' || true` returned no route-handler matches.
+- `npm run lint && npm run build` completed successfully after this pass.
+- The successful build completed Next.js production compilation, TypeScript validation, page-data collection, static generation for 22 app routes, and retained dynamic API routes including `/api/auth/sign-out`, `/api/cart`, and `/api/products/[id]`.
+
+### Files intentionally changed in this pass
+
+- `src/app/api/auth/sign-out/route.ts`
+- `src/app/api/cart/route.ts`
+- `src/app/api/products/[id]/route.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- The new checks remain at the Infrastructure HTTP boundary.
+- Domain, Core, and UI were unchanged in this pass.
+- Shared origin/fetch-site policy now covers both JSON-body mutation routes and no-body mutation routes.
+
 ## 2026-04-26 — Tenth deep audit pass: order status state machine, stricter mutation origin checks, and session payload bounds
 
 ### Problem verified

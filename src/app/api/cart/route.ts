@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@infrastructure/server/services';
-import { jsonError, requireSessionUser } from '@infrastructure/server/apiGuards';
+import { assertTrustedMutationOrigin, jsonError, requireSessionUser } from '@infrastructure/server/apiGuards';
 
 export async function GET() {
     try {
@@ -12,8 +12,9 @@ export async function GET() {
     }
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
     try {
+        assertTrustedMutationOrigin(request);
         const user = await requireSessionUser();
         const services = await getServerServices();
         await services.cartService.clearCart(user.id);

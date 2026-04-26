@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@infrastructure/server/services';
 import { setSessionUser } from '@infrastructure/server/session';
-import { jsonError, readJsonObject, requireString } from '@infrastructure/server/apiGuards';
+import { assertRateLimit, jsonError, readJsonObject, requireString } from '@infrastructure/server/apiGuards';
 
 export async function POST(request: Request) {
     try {
+        assertRateLimit(request, 'auth:sign-up', 5, 60_000);
         const body = await readJsonObject(request);
         const email = requireString(body.email, 'email');
         const password = requireString(body.password, 'password');

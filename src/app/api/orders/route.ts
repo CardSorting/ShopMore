@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@infrastructure/server/services';
-import { jsonError, parseCheckoutRequest, readJsonObject, requireSessionUser } from '@infrastructure/server/apiGuards';
+import { assertRateLimit, jsonError, parseCheckoutRequest, readJsonObject, requireSessionUser } from '@infrastructure/server/apiGuards';
 
 export async function GET() {
     try {
@@ -14,6 +14,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
+        assertRateLimit(request, 'checkout:place-order', 12, 60_000);
         const user = await requireSessionUser();
         const { shippingAddress, paymentMethodId, idempotencyKey } = parseCheckoutRequest(await readJsonObject(request));
         const services = await getServerServices();

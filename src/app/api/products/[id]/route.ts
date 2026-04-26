@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@infrastructure/server/services';
-import { jsonError, parseProductUpdate, readJsonObject, requireAdminSession } from '@infrastructure/server/apiGuards';
+import { assertTrustedMutationOrigin, jsonError, parseProductUpdate, readJsonObject, requireAdminSession } from '@infrastructure/server/apiGuards';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -23,8 +23,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        assertTrustedMutationOrigin(request);
         await requireAdminSession();
         const { id } = await params;
         const services = await getServerServices();

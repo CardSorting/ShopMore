@@ -10,6 +10,14 @@ const CARD_RARITIES = new Set<CardRarity>(['common', 'uncommon', 'rare', 'holo',
 const MAX_JSON_BODY_BYTES = 32 * 1024;
 const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9:_-]{16,160}$/;
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const RATE_LIMIT_MAX_BUCKETS = 10_000;
+
+type RateLimitBucket = {
+    count: number;
+    resetAt: number;
+};
+
+const rateLimitBuckets = new Map<string, RateLimitBucket>();
 
 export async function requireSessionUser(): Promise<User> {
     const user = await getSessionUser();
@@ -77,6 +85,39 @@ export function assertTrustedMutationOrigin(request: Request): void {
     }
     if (originUrl.protocol !== requestUrl.protocol || originUrl.host !== requestUrl.host) {
         throw new UnauthorizedError('Cross-site request origin is not allowed.');
+    }
+}
+
+function clientFingerprint(request: Request): string {
+    const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const realIp = request.headers.get('x-real-ip')?.trim();
+    const ip = forwardedFor || realIp || 'unknown-ip';
+    const userAgent = request.headers.get('user-agent')?.slice(0, 120) || 'unknown-agent';
+    return `${ip}:${userAgent}`;
+}
+
+function pruneRateLimitBuckets(now: number): void {
+    if (rateLimitBuckets.size < RATE_LIMIT_MAX_BUCKETS) return;
+    for (const [key, bucket] of rateLimitBuckets) {
+        if (bucket.resetAt <= now) rateLimitBuckets.delete(key);
+        if (rateLimitBuckets.size < RATE_LIMIT_MAX_BUCKETS) return;
+    }
+}
+
+export function assertRateLimit(request: Request, scope: string, maxAttempts: number, windowMs: number): void {
+    const now = Date.now();
+    pruneRateLimitBuckets(now);
+
+    const key = `${scope}:${clientFingerprint(request)}`;
+    const existing = rateLimitBuckets.get(key);
+    if (!existing || existing.resetAt <= now) {
+        rateLimitBuckets.set(key, { count: 1, resetAt: now + windowMs });
+        return;
+    }
+
+    existing.count += 1;
+    if (existing.count > maxAttempts) {
+        throw new UnauthorizedError('Too many requests. Please wait and try again.');
     }
 }
 

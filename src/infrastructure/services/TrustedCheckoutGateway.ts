@@ -46,6 +46,7 @@ function parseTrustedOrder(value: unknown): Order {
     || !isOrderStatus(candidate.status)
     || !isAddress(candidate.shippingAddress)
     || !(typeof candidate.paymentTransactionId === 'string' || candidate.paymentTransactionId === null)
+    || typeof candidate.riskScore !== 'number'
     || typeof candidate.createdAt !== 'string'
     || typeof candidate.updatedAt !== 'string') {
     throw new PaymentFailedError('Trusted checkout returned an invalid order response.');
@@ -56,6 +57,7 @@ function parseTrustedOrder(value: unknown): Order {
   const orderStatus = candidate.status as OrderStatus;
   const shippingAddress = candidate.shippingAddress as Address;
   const paymentTransactionId = candidate.paymentTransactionId as string | null;
+  const riskScore = candidate.riskScore as number;
   const createdAt = candidate.createdAt as string;
   const updatedAt = candidate.updatedAt as string;
 
@@ -67,6 +69,7 @@ function parseTrustedOrder(value: unknown): Order {
     status: orderStatus,
     shippingAddress,
     paymentTransactionId,
+    riskScore,
     createdAt: new Date(createdAt),
     updatedAt: new Date(updatedAt),
   };

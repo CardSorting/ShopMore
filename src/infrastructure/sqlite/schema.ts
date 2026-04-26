@@ -43,6 +43,7 @@ export interface OrderTable {
   status: string;
   shippingAddress: string; // JSON string
   paymentTransactionId: string | null;
+  riskScore: number;
   createdAt: string;
   updatedAt: string;
 }

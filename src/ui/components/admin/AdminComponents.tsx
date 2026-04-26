@@ -180,7 +180,7 @@ export function AdminMetricCard({ label, value, description, icon: Icon, trend, 
 
 interface AdminStatusBadgeProps {
   status: string;
-  type: 'order' | 'inventory' | 'category' | 'generic';
+  type: 'order' | 'inventory' | 'category' | 'generic' | 'transfer';
 }
 
 export function AdminStatusBadge({ status, type }: AdminStatusBadgeProps) {
@@ -225,12 +225,31 @@ export function AdminStatusBadge({ status, type }: AdminStatusBadgeProps) {
         Icon = XCircle;
         break;
     }
+  } else if (type === 'transfer') {
+    switch (status) {
+      case 'pending':
+        colorClass = 'bg-gray-100 text-gray-700 ring-1 ring-gray-200';
+        Icon = Clock;
+        break;
+      case 'in_transit':
+        colorClass = 'bg-blue-100 text-blue-800 ring-1 ring-blue-200';
+        Icon = Truck;
+        break;
+      case 'received':
+        colorClass = 'bg-green-100 text-green-800 ring-1 ring-green-200';
+        Icon = CheckCircle2;
+        break;
+      case 'cancelled':
+        colorClass = 'bg-red-100 text-red-800 ring-1 ring-red-200';
+        Icon = XCircle;
+        break;
+    }
   }
 
   const displayText = status.replace(/_/g, ' ');
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${colorClass}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${colorClass}`}>
       <Icon className="h-3 w-3" />
       {displayText}
     </span>
@@ -843,6 +862,117 @@ export function AdminAreaChart({ data, height = 200, color = 'primary' }: { data
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * PRODUCTION UTILITY: Export data to CSV
+ * Generates and triggers a browser download for a CSV file.
+ */
+export function exportToCSV(filename: string, data: any[]) {
+  if (data.length === 0) return;
+  
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(fieldName => {
+        const value = row[fieldName];
+        // Handle strings with commas by wrapping in quotes
+        if (typeof value === 'string' && value.includes(',')) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        // Handle dates
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value;
+      }).join(',')
+    )
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * PRODUCTION COMPONENT: Packing Slip (Print Ready)
+ */
+export function AdminPackingSlip({ order }: { order: Order }) {
+  return (
+    <div className="bg-white p-12 text-gray-900 font-sans max-w-[800px] mx-auto print:p-0 print:m-0 print:max-w-none">
+      <div className="flex justify-between items-start border-b-2 border-gray-900 pb-8 mb-8">
+        <div>
+          <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Packing Slip</h1>
+          <p className="text-sm font-bold text-gray-500">Order #{order.id.slice(0, 8).toUpperCase()}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xl font-black uppercase">PlayMore TCG</p>
+          <p className="text-xs font-medium text-gray-500">123 Pallet Town Road, Kanto</p>
+          <p className="text-xs font-medium text-gray-500">support@playmoretcg.com</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-12 mb-12">
+        <div>
+          <h2 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Ship To</h2>
+          <p className="text-sm font-bold">{order.customerName}</p>
+          <p className="text-sm font-medium text-gray-600">{order.shippingAddress.street}</p>
+          <p className="text-sm font-medium text-gray-600">{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}</p>
+          <p className="text-sm font-medium text-gray-600 uppercase">{order.shippingAddress.country}</p>
+        </div>
+        <div>
+          <h2 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Order Info</h2>
+          <div className="space-y-1">
+             <div className="flex justify-between text-sm">
+               <span className="text-gray-500 font-medium">Date:</span>
+               <span className="font-bold">{order.createdAt.toLocaleDateString()}</span>
+             </div>
+             <div className="flex justify-between text-sm">
+               <span className="text-gray-500 font-medium">Payment:</span>
+               <span className="font-bold uppercase">{order.paymentTransactionId ? 'Paid' : 'Pending'}</span>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <table className="w-full mb-12">
+        <thead>
+          <tr className="border-b border-gray-200">
+            <th className="py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Description</th>
+            <th className="py-3 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Qty</th>
+            <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">SKU</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {order.items.map((item, i) => (
+            <tr key={i}>
+              <td className="py-4">
+                <p className="text-sm font-bold">{item.name}</p>
+              </td>
+              <td className="py-4 text-center">
+                <p className="text-sm font-bold">{item.quantity}</p>
+              </td>
+              <td className="py-4 text-right">
+                <p className="text-[10px] font-mono text-gray-400">PM-{item.productId.slice(0, 4).toUpperCase()}</p>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="border-t pt-8 text-center">
+        <p className="text-xs font-bold text-gray-400 italic">Thank you for shopping with PlayMore TCG!</p>
       </div>
     </div>
   );

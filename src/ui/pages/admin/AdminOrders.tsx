@@ -33,7 +33,8 @@ import {
   ChevronRight,
   Filter,
   Check,
-  ShoppingBag
+  ShoppingBag,
+  AlertTriangle
 } from 'lucide-react';
 import { formatCurrency, formatShortDate, humanizeOrderStatus, normalizeSearch, formatRelativeTime } from '@utils/formatters';
 import { nextOrderActionLabel } from '@domain/rules';
@@ -45,7 +46,8 @@ import {
   SkeletonRow,
   useToast,
   useAdminPageTitle,
-  AdminTab
+  AdminTab,
+  exportToCSV
 } from '../../components/admin/AdminComponents';
 
 const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
@@ -150,6 +152,23 @@ export function AdminOrders() {
     toast('success', 'Tracking number saved');
   }
 
+  function handleExport() {
+    if (orders.length === 0) {
+      toast('info', 'No orders to export');
+      return;
+    }
+    const exportData = orders.map(o => ({
+      ID: o.id,
+      Customer: o.customerName,
+      Email: o.customerEmail,
+      Total: (o.total / 100).toFixed(2),
+      Status: o.status,
+      Date: o.createdAt.toISOString()
+    }));
+    exportToCSV('orders_export', exportData);
+    toast('success', `Exported ${orders.length} orders to CSV`);
+  }
+
   async function handleStatusChange(id: string, status: OrderStatus) {
     setUpdating(id);
     setError(null);
@@ -227,12 +246,12 @@ export function AdminOrders() {
         title="Orders"
         subtitle="Manage fulfillment and customer communications"
         actions={
-          <button
-            onClick={() => toast('info', 'Exporting orders...')}
-            className="flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
+          <button 
+            onClick={handleExport}
+            className="flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
           >
-            <Download className="h-3.5 w-3.5 text-gray-400" />
-            Export CSV
+            <Download className="h-4 w-4" />
+            Export
           </button>
         }
       />
@@ -423,8 +442,13 @@ export function AdminOrders() {
                     <Shield className="h-4 w-4 text-primary-500" />
                     <h3 className="text-xs font-bold uppercase tracking-widest text-gray-900">Fraud Analysis</h3>
                   </div>
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 className="h-3 w-3" /> Normal Risk
+                  <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    selectedOrder.riskScore > 60 ? 'bg-red-50 text-red-600' : 
+                    selectedOrder.riskScore > 30 ? 'bg-amber-50 text-amber-600' : 
+                    'bg-green-50 text-green-600'
+                  }`}>
+                    {selectedOrder.riskScore > 60 ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                    {selectedOrder.riskScore > 60 ? 'High Risk' : selectedOrder.riskScore > 30 ? 'Elevated Risk' : 'Normal Risk'}
                   </span>
                 </div>
                 <div className="space-y-3">
@@ -446,6 +470,80 @@ export function AdminOrders() {
                      Stripe Radar analyzed this payment and found no indicators of fraud.
                    </p>
                 </div>
+              </div>
+
+              {/* Packing Slip Action */}
+              <div className="rounded-xl border border-primary-100 bg-primary-50/30 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-primary-900">Logistics</h3>
+                  <Printer className="h-4 w-4 text-primary-600" />
+                </div>
+                <button 
+                  onClick={() => {
+                    const printWindow = window.open('', '_blank');
+                    if (printWindow) {
+                      printWindow.document.write(`
+                        <html>
+                          <head>
+                            <title>Packing Slip - ${selectedOrder.id}</title>
+                            <script src="https://cdn.tailwindcss.com"></script>
+                          </head>
+                          <body class="bg-white">
+                            <div class="p-12 max-w-[800px] mx-auto">
+                              <div class="flex justify-between items-start border-b-2 border-gray-900 pb-8 mb-8">
+                                <div>
+                                  <h1 class="text-4xl font-black uppercase tracking-tighter mb-2">Packing Slip</h1>
+                                  <p class="text-sm font-bold text-gray-500">Order #${selectedOrder.id.slice(0, 8).toUpperCase()}</p>
+                                </div>
+                                <div class="text-right">
+                                  <p class="text-xl font-black uppercase">PlayMore TCG</p>
+                                  <p class="text-xs font-medium text-gray-500">123 Pallet Town Road, Kanto</p>
+                                  <p class="text-xs font-medium text-gray-500">support@playmoretcg.com</p>
+                                </div>
+                              </div>
+                              <div class="grid grid-cols-2 gap-12 mb-12">
+                                <div>
+                                  <h2 class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Ship To</h2>
+                                  <p class="text-sm font-bold">${selectedOrder.customerName}</p>
+                                  <p class="text-sm font-medium text-gray-600">${selectedOrder.shippingAddress.street}</p>
+                                  <p class="text-sm font-medium text-gray-600">${selectedOrder.shippingAddress.city}, ${selectedOrder.shippingAddress.state} ${selectedOrder.shippingAddress.zip}</p>
+                                </div>
+                                <div class="text-right">
+                                  <h2 class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Order Info</h2>
+                                  <p class="text-sm font-bold">${selectedOrder.createdAt.toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                              <table class="w-full mb-12">
+                                <thead class="border-b border-gray-200">
+                                  <tr>
+                                    <th class="py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Description</th>
+                                    <th class="py-3 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Qty</th>
+                                  </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                  ${selectedOrder.items.map(item => `
+                                    <tr>
+                                      <td class="py-4 text-sm font-bold">${item.name}</td>
+                                      <td class="py-4 text-center text-sm font-bold">${item.quantity}</td>
+                                    </tr>
+                                  `).join('')}
+                                </tbody>
+                              </table>
+                              <div class="border-t pt-8 text-center">
+                                <p class="text-xs font-bold text-gray-400 italic">Thank you for shopping with PlayMore TCG!</p>
+                              </div>
+                            </div>
+                            <script>window.print();</script>
+                          </body>
+                        </html>
+                      `);
+                      printWindow.document.close();
+                    }
+                  }}
+                  className="w-full rounded-lg bg-white border border-primary-200 px-4 py-2.5 text-xs font-bold text-primary-700 shadow-sm transition hover:bg-primary-50"
+                >
+                  Print Packing Slip
+                </button>
               </div>
 
               {/* Items Card */}

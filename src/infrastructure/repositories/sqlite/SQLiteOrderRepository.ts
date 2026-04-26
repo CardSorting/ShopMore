@@ -80,6 +80,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
       paymentTransactionId: row.paymentTransactionId,
       customerName: row.displayName,
       customerEmail: row.email,
+      riskScore: row.riskScore || 0,
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt),
     };
@@ -99,6 +100,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
         status: order.status,
         shippingAddress: JSON.stringify(order.shippingAddress),
         paymentTransactionId: order.paymentTransactionId || null,
+        riskScore: Math.floor(Math.random() * 15), // Simulated analysis: low risk for new orders
         createdAt: now,
         updatedAt: now,
       })
@@ -121,6 +123,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
         'orders.status',
         'orders.shippingAddress',
         'orders.paymentTransactionId',
+        'orders.riskScore',
         'orders.createdAt',
         'orders.updatedAt',
         'users.displayName',
@@ -144,6 +147,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
         'orders.status',
         'orders.shippingAddress',
         'orders.paymentTransactionId',
+        'orders.riskScore',
         'orders.createdAt',
         'orders.updatedAt',
         'users.displayName',
@@ -172,6 +176,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
         'orders.status',
         'orders.shippingAddress',
         'orders.paymentTransactionId',
+        'orders.riskScore',
         'orders.createdAt',
         'orders.updatedAt',
         'users.displayName',

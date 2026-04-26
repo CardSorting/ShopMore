@@ -71,6 +71,7 @@ export interface Order {
   paymentTransactionId: string | null;
   customerName?: string;
   customerEmail?: string;
+  riskScore: number; // 0-100
   createdAt: Date;
   updatedAt: Date;
 }

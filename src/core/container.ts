@@ -69,6 +69,7 @@ import { OrderService } from './OrderService';
 import { AuthService } from './AuthService';
 import { DiscountService } from './DiscountService';
 import { SettingsService } from './SettingsService';
+import { TransferService } from './TransferService';
 import type {
   IProductRepository,
   ICartRepository,
@@ -94,6 +95,7 @@ let paymentProcessorInstance: IPaymentProcessor | null = null;
 let lockProviderInstance: ILockProvider | null = null;
 let checkoutGatewayInstance: ICheckoutGateway | null = null;
 let settingsRepoInstance: ISettingsRepository | null = null;
+let transferServiceInstance: TransferService | null = null;
 
 function createCheckoutGateway(): ICheckoutGateway | undefined {
   return process.env.CHECKOUT_ENDPOINT ? new TrustedCheckoutGateway() : undefined;
@@ -140,6 +142,7 @@ export function getServiceContainer() {
     ),
     discountService: new DiscountService(new SQLiteDiscountRepository()),
     settingsService: new SettingsService(new SQLiteSettingsRepository(), productRepo, new SQLiteDiscountRepository()),
+    transferService: new TransferService(),
   };
 }
 
@@ -197,5 +200,9 @@ export function getInitialServices() {
     ),
     discountService: new DiscountService(discountRepoInstance!),
     settingsService: new SettingsService(settingsRepoInstance!, productRepoInstance!, discountRepoInstance!),
+    transferService: (function() {
+      if (!transferServiceInstance) transferServiceInstance = new TransferService();
+      return transferServiceInstance;
+    })(),
   };
 }

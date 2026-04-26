@@ -30,7 +30,7 @@ import {
   useAdminPageTitle, 
   AdminTab 
 } from '../../components/admin/AdminComponents';
-import type { InventoryOverview, InventoryHealth } from '@domain/models';
+import type { InventoryOverview, InventoryHealth, Transfer } from '@domain/models';
 
 type HealthFilter = InventoryHealth | 'all';
 
@@ -49,11 +49,18 @@ export function AdminInventory() {
   const [bulkChanges, setBulkChanges] = useState<Record<string, number>>({});
   const [savingBulk, setSavingBulk] = useState(false);
 
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+
   const loadInventory = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setOverview(await services.productService.getInventoryOverview());
+      const [inv, trans] = await Promise.all([
+        services.productService.getInventoryOverview(),
+        services.transferService.getAllTransfers()
+      ]);
+      setOverview(inv);
+      setTransfers(trans);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load inventory');
     } finally {
@@ -314,39 +321,68 @@ export function AdminInventory() {
         </>
       ) : (
         /* ── Transfers View ── */
-        <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-50 text-primary-600 mb-4">
-             <Truck className="h-8 w-8" />
-          </div>
-          <h3 className="text-lg font-bold text-gray-900">Incoming Stock</h3>
-          <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
-            You have **1 transfer** arriving soon from "Kanto Distribution". 
-            Track and receive incoming inventory here.
-          </p>
-          <div className="mt-8 overflow-hidden rounded-xl border max-w-2xl mx-auto text-left">
-             <div className="flex items-center justify-between border-b bg-gray-50 px-6 py-4">
-               <div>
-                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transfer #TR-8042</p>
-                 <p className="text-sm font-bold text-gray-900">Kanto Distribution</p>
-               </div>
-               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 uppercase">In Transit</span>
-             </div>
-             <div className="p-6 flex items-center justify-between">
-                <div className="flex gap-4">
-                   <div className="text-center">
-                     <p className="text-xl font-bold text-gray-900">120</p>
-                     <p className="text-[10px] font-bold text-gray-400 uppercase">Ordered</p>
-                   </div>
-                   <div className="text-center">
-                     <p className="text-xl font-bold text-gray-400">0</p>
-                     <p className="text-[10px] font-bold text-gray-400 uppercase">Received</p>
-                   </div>
+        <div className="space-y-6">
+          {transfers.length === 0 ? (
+             <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-50 text-primary-600 mb-4">
+                  <Truck className="h-8 w-8" />
                 </div>
-                <button className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-gray-800 transition">
-                  Receive Items
-                </button>
+                <h3 className="text-lg font-bold text-gray-900">No Incoming Stock</h3>
+                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+                  When you create a transfer from a supplier, it will appear here for tracking and receiving.
+                </p>
              </div>
-          </div>
+          ) : (
+            <div className="grid gap-6">
+              {transfers.map(transfer => (
+                <div key={transfer.id} className="rounded-xl border bg-white overflow-hidden shadow-sm">
+                  <div className="flex items-center justify-between border-b bg-gray-50 px-6 py-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transfer #{transfer.id}</p>
+                      <p className="text-sm font-bold text-gray-900">{transfer.source}</p>
+                    </div>
+                    <AdminStatusBadge status={transfer.status} type="transfer" />
+                  </div>
+                  <div className="p-6 flex items-center justify-between">
+                     <div className="flex gap-8">
+                        <div>
+                          <p className="text-xl font-bold text-gray-900">{transfer.itemsCount}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Ordered</p>
+                        </div>
+                        <div>
+                          <p className={`text-xl font-bold ${transfer.receivedCount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                            {transfer.receivedCount}
+                          </p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Received</p>
+                        </div>
+                        <div>
+                          <p className="text-xl font-bold text-gray-900">
+                            {transfer.expectedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Expected</p>
+                        </div>
+                     </div>
+                     {transfer.status !== 'received' && (
+                       <button 
+                         onClick={async () => {
+                           try {
+                             await services.transferService.receiveTransfer(transfer.id);
+                             toast('success', 'Transfer received successfully');
+                             await loadInventory();
+                           } catch (err) {
+                             toast('error', 'Failed to receive transfer');
+                           }
+                         }}
+                         className="rounded-lg bg-gray-900 px-6 py-2 text-xs font-bold text-white shadow-sm hover:bg-gray-800 transition"
+                       >
+                         Receive Items
+                       </button>
+                     )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

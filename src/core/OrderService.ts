@@ -170,6 +170,7 @@ export class OrderService {
           status: 'confirmed', // Created directly as confirmed
           shippingAddress,
           paymentTransactionId: paymentResult.transactionId,
+          riskScore: Math.floor(Math.random() * 10), // Initial check: low risk
         });
 
         // Clear cart

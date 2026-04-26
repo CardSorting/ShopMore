@@ -89,9 +89,17 @@ export async function initDatabase() {
     .addColumn('status', 'text', (col) => col.notNull())
     .addColumn('shippingAddress', 'text', (col) => col.notNull())
     .addColumn('paymentTransactionId', 'text')
+    .addColumn('riskScore', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
+
+  // Migration for riskScore if it doesn't exist
+  try {
+    await db.schema.alterTable('orders').addColumn('riskScore', 'integer', (col) => col.notNull().defaultTo(0)).execute();
+  } catch (err) {
+    // Ignore error if column already exists
+  }
 
   // BroccoliQ Level 5: Sovereign Locking Table
   await db.schema

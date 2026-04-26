@@ -93,5 +93,9 @@ export function createApiClientServices() {
             getSettings: () => request<Record<string, any>>('/api/admin/settings'),
             updateSetting: (key: string, value: any) => request<void>('/api/admin/settings', { method: 'POST', body: JSON.stringify({ key, value }) }),
         },
+        transferService: {
+            getAllTransfers: () => request<import('@domain/models').Transfer[]>('/api/admin/inventory/transfers'),
+            receiveTransfer: (id: string) => request<void>('/api/admin/inventory/transfers', { method: 'POST', body: JSON.stringify({ id, action: 'receive' }) }),
+        },
     };
 }

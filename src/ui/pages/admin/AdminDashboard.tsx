@@ -5,10 +5,11 @@
  * Admin dashboard — High-performance overview page.
  * Optimized for merchant velocity and clarity.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
 import type { AdminDashboardSummary } from '@domain/models';
+import type { SetupGuideProgress } from './AdminSettings';
 import Link from 'next/link';
 import { 
   ShoppingBag, 
@@ -49,32 +50,35 @@ export function AdminDashboard() {
   const services = useServices();
   const router = useRouter();
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [setupProgress, setSetupProgress] = useState<SetupGuideProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [customerCount, setCustomerCount] = useState(0);
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [dashSummary, users] = await Promise.all([
+      const [dashSummary, users, progress] = await Promise.all([
         services.orderService.getAdminDashboardSummary(),
-        services.authService.getAllUsers()
+        services.authService.getAllUsers(),
+        services.settingsService.getSetupProgress()
       ]);
       setSummary(dashSummary);
       setCustomerCount(users.length);
+      setSetupProgress(progress);
       setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
-  }
+  }, [services]);
 
   useEffect(() => {
     void loadDashboard();
-  }, [services]);
+  }, [loadDashboard]);
 
   if (loading) return <SkeletonPage />;
   if (error) return (
@@ -178,37 +182,55 @@ export function AdminDashboard() {
       <div className="grid gap-8 lg:grid-cols-12">
         {/* ── Left Column: Operations ── */}
         <div className="lg:col-span-8 space-y-8">
-          {/* Setup Guide / Growth Guide (Shopify Style) */}
           <section className="rounded-xl border border-primary-100 bg-linear-to-br from-white to-primary-50/30 p-6 shadow-sm">
              <div className="flex items-start justify-between">
                <div className="space-y-1">
                  <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Next steps for PlayMoreTCG</h2>
                  <p className="text-xs text-gray-500 font-medium">Complete these tasks to optimize your store for the upcoming set release.</p>
                </div>
-               <span className="text-[10px] font-bold text-primary-600 bg-primary-100 px-2 py-0.5 rounded-full">2/4 COMPLETED</span>
+               <span className="text-[10px] font-bold text-primary-600 bg-primary-100 px-2 py-0.5 rounded-full">
+                 {setupProgress?.completedCount}/{setupProgress?.totalCount} COMPLETED
+               </span>
              </div>
              
              <div className="mt-6 grid gap-3">
-                <div className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-black/5 transition hover:shadow-md cursor-pointer group">
-                   <div className="h-6 w-6 shrink-0 rounded-full border-2 border-primary-500 flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-primary-500" />
-                   </div>
-                   <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-900">Set up automatic discounts</p>
-                      <p className="text-xs text-gray-500">Boost sales by offering automated 'Buy X Get Y' deals.</p>
-                   </div>
-                   <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-1" />
-                </div>
+                {!setupProgress?.hasProducts && (
+                  <Link href="/admin/products/new" className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-black/5 transition hover:shadow-md cursor-pointer group">
+                     <div className="h-6 w-6 shrink-0 rounded-full border-2 border-primary-500 flex items-center justify-center">
+                        <div className="h-2 w-2 rounded-full bg-primary-500" />
+                     </div>
+                     <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-900">Add your first product</p>
+                        <p className="text-xs text-gray-500">Get your inventory online to start taking orders.</p>
+                     </div>
+                     <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                )}
 
-                <div className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-black/5 transition hover:shadow-md cursor-pointer group opacity-60">
-                   <div className="h-6 w-6 shrink-0 rounded-full bg-green-500 flex items-center justify-center">
-                      <CheckCircle2 className="h-4 w-4 text-white" />
+                {!setupProgress?.hasPaymentConfigured && (
+                  <Link href="/admin/settings" className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-black/5 transition hover:shadow-md cursor-pointer group">
+                     <div className="h-6 w-6 shrink-0 rounded-full border-2 border-primary-500 flex items-center justify-center">
+                        <div className="h-2 w-2 rounded-full bg-primary-500" />
+                     </div>
+                     <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-900">Connect a payment provider</p>
+                        <p className="text-xs text-gray-500">Enable credit card payments via Stripe or PayPal.</p>
+                     </div>
+                     <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                )}
+
+                {setupProgress?.hasProducts && setupProgress?.hasPaymentConfigured && (
+                   <div className="flex items-center gap-4 rounded-lg bg-green-50/50 p-4 shadow-xs ring-1 ring-green-600/10 transition">
+                      <div className="h-6 w-6 shrink-0 rounded-full bg-green-500 flex items-center justify-center">
+                         <CheckCircle2 className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1">
+                         <p className="text-sm font-bold text-gray-900">Basic setup complete!</p>
+                         <p className="text-xs text-gray-500">Your store is ready to accept its first order.</p>
+                      </div>
                    </div>
-                   <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-900 line-through">Configure store branding</p>
-                      <p className="text-xs text-gray-500">Upload your logo and set your primary brand colors.</p>
-                   </div>
-                </div>
+                )}
              </div>
           </section>
 

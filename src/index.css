@@ -79,3 +79,30 @@ body {
   0% { opacity: 0; }
   100% { opacity: 1; }
 }
+
+/* Consistent focus ring */
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+}
+
+/* Checkbox accent */
+input[type="checkbox"] {
+  accent-color: var(--color-primary-600);
+  cursor: pointer;
+}
+
+/* Number input — hide spinners for inline stock editing */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Selection highlight */
+::selection {
+  background: var(--color-primary-200);
+  color: var(--color-primary-900);
+}

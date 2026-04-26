@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
 import type { Product, ProductCategory, CardRarity } from '@domain/models';
-import { Save, ArrowLeft, Eye, Package, Settings, Image as ImageIcon, AlertTriangle, Plus } from 'lucide-react';
+import { Save, ArrowLeft, Eye, Package, Settings, Image as ImageIcon, AlertTriangle, Plus, Copy } from 'lucide-react';
 import { validatePriceCents, validateStock } from '@utils/validators';
 import { formatCurrency, humanizeCategory } from '@utils/formatters';
 import { SkeletonPage, useToast } from '../../components/admin/AdminComponents';
@@ -37,6 +37,25 @@ export function AdminProductForm() {
   const [loadingProduct, setLoadingProduct] = useState(!!id);
   const [error, setError] = useState<string | null>(null);
   const [unsaved, setUnsaved] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
+  // Browser-level unsaved changes guard
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (unsaved) { e.preventDefault(); }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [unsaved]);
+
+  // Dynamic page title
+  useEffect(() => {
+    const title = isEdit 
+      ? `${form.name || 'Edit product'} · PlayMoreTCG Admin`
+      : 'Add product · PlayMoreTCG Admin';
+    document.title = title;
+    return () => { document.title = 'PlayMoreTCG'; };
+  }, [isEdit, form.name]);
 
   const loadProduct = useCallback(async () => {
     if (!id) return;
@@ -132,7 +151,43 @@ export function AdminProductForm() {
         </button>
         <div className="flex items-center gap-3">
           {unsaved && (
-            <span className="text-xs font-medium text-amber-600">Unsaved changes</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Unsaved changes
+            </span>
+          )}
+          {isEdit && (
+            <button
+              type="button"
+              onClick={async () => {
+                setDuplicating(true);
+                try {
+                  const parsedPrice = Number(form.price);
+                  const price = Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) : 0;
+                  await services.productService.createProduct({
+                    name: `${form.name} (Copy)`,
+                    description: form.description,
+                    price,
+                    category: form.category,
+                    stock: Number(form.stock) || 0,
+                    imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400',
+                    set: form.set || undefined,
+                    rarity: (form.rarity as CardRarity) || undefined,
+                  });
+                  toast('success', 'Product duplicated');
+                  router.push('/admin/products');
+                } catch (err) {
+                  toast('error', err instanceof Error ? err.message : 'Failed to duplicate');
+                } finally {
+                  setDuplicating(false);
+                }
+              }}
+              disabled={duplicating}
+              className="flex items-center gap-1.5 rounded-xl border bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Copy className="h-3.5 w-3.5 text-gray-400" />
+              Duplicate
+            </button>
           )}
           <button
             type="button"

@@ -5,6 +5,7 @@
  * Admin dashboard — Shopify Home-inspired overview page.
  */
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
 import type { AdminDashboardSummary } from '@domain/models';
 import Link from 'next/link';
@@ -22,7 +23,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { formatCurrency, formatShortDate } from '@utils/formatters';
-import { AdminPageHeader, AdminMetricCard, AdminActionPanel, AdminStatusBadge, SkeletonPage } from '../../components/admin/AdminComponents';
+import { AdminPageHeader, AdminMetricCard, AdminActionPanel, AdminStatusBadge, SkeletonPage, useAdminPageTitle } from '../../components/admin/AdminComponents';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -32,7 +33,9 @@ function getGreeting(): string {
 }
 
 export function AdminDashboard() {
+  useAdminPageTitle('Home');
   const services = useServices();
+  const router = useRouter();
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,8 +117,7 @@ export function AdminDashboard() {
           value={formatCurrency(summary.totalRevenue)} 
           icon={DollarSign} 
           color="success"
-          trend={{ value: '+12%', positive: true }}
-          description="Lifetime gross sales"
+          description={`From ${summary.recentOrders.length > 0 ? summary.recentOrders.length + '+ orders' : 'all orders'}`}
         />
         <AdminMetricCard 
           label="Pending Orders" 
@@ -123,7 +125,7 @@ export function AdminDashboard() {
           icon={ShoppingBag} 
           color="primary"
           description="Awaiting action"
-          onClick={() => { window.location.href = '/admin/orders'; }}
+          onClick={() => router.push('/admin/orders')}
         />
         <AdminMetricCard 
           label="Out of Stock" 
@@ -131,7 +133,7 @@ export function AdminDashboard() {
           icon={Boxes} 
           color={summary.outOfStockCount > 0 ? 'danger' : 'success'}
           description={summary.outOfStockCount > 0 ? 'Restock needed' : 'All stocked'}
-          onClick={() => { window.location.href = '/admin/inventory'; }}
+          onClick={() => router.push('/admin/inventory')}
         />
         <AdminMetricCard 
           label="Avg. Order Value" 

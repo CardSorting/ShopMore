@@ -2,9 +2,10 @@
 
 /**
  * [LAYER: UI]
- * Admin inventory — Stock management with health indicators.
+ * Admin inventory — Stock management with health indicators, visual distribution
+ * bar, and inline stock editing.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { InventoryHealth, InventoryOverview } from '@domain/models';
 import { 
@@ -16,11 +17,15 @@ import {
   Activity,
   ArrowRight,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Minus,
+  Plus,
+  Check,
+  X
 } from 'lucide-react';
 import { useServices } from '../../hooks/useServices';
 import { formatCurrency, humanizeCategory, normalizeSearch } from '@utils/formatters';
-import { AdminPageHeader, AdminMetricCard, AdminStatusBadge, AdminEmptyState, SkeletonPage, SkeletonRow } from '../../components/admin/AdminComponents';
+import { AdminPageHeader, AdminMetricCard, AdminStatusBadge, AdminEmptyState, SkeletonPage, SkeletonRow, useToast, useAdminPageTitle } from '../../components/admin/AdminComponents';
 
 const HEALTH_COPY: Record<InventoryHealth, { label: string; action: string }> = {
   out_of_stock: { label: 'Out of stock', action: 'Restock immediately to resume sales.' },
@@ -31,25 +36,50 @@ const HEALTH_COPY: Record<InventoryHealth, { label: string; action: string }> = 
 type HealthFilter = InventoryHealth | 'all';
 
 export function AdminInventory() {
+  useAdminPageTitle('Inventory');
   const services = useServices();
+  const { toast } = useToast();
   const [overview, setOverview] = useState<InventoryOverview | null>(null);
   const [query, setQuery] = useState('');
   const [health, setHealth] = useState<HealthFilter>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [savingStock, setSavingStock] = useState(false);
+
+  const loadInventory = useCallback(async () => {
+    try {
+      setOverview(await services.productService.getInventoryOverview());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  }, [services]);
 
   useEffect(() => {
-    async function load() {
-      try {
-        setOverview(await services.productService.getInventoryOverview());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load inventory');
-      } finally {
-        setLoading(false);
-      }
+    void loadInventory();
+  }, [loadInventory]);
+
+  async function saveStockEdit(productId: string) {
+    const newStock = parseInt(editValue, 10);
+    if (isNaN(newStock) || newStock < 0) {
+      toast('error', 'Stock must be a non-negative number');
+      return;
     }
-    void load();
-  }, [services]);
+    setSavingStock(true);
+    try {
+      await services.productService.updateProduct(productId, { stock: newStock });
+      toast('success', 'Stock updated');
+      setEditingId(null);
+      await loadInventory();
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to update stock');
+    } finally {
+      setSavingStock(false);
+    }
+  }
 
   const products = useMemo(() => {
     const needle = normalizeSearch(query);
@@ -79,6 +109,11 @@ export function AdminInventory() {
     { value: 'healthy', label: 'In stock', count: overview.healthCounts.healthy, icon: CheckCircle2 },
   ];
 
+  const totalProducts = overview.totalProducts || 1;
+  const healthyPct = Math.round((overview.healthCounts.healthy / totalProducts) * 100);
+  const lowPct = Math.round((overview.healthCounts.low_stock / totalProducts) * 100);
+  const oosPct = 100 - healthyPct - lowPct;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <AdminPageHeader 
@@ -98,6 +133,27 @@ export function AdminInventory() {
           color={overview.healthCounts.out_of_stock > 0 ? 'danger' : 'warning'}
           description={overview.healthCounts.out_of_stock > 0 ? `${overview.healthCounts.out_of_stock} out of stock` : 'Low stock items'}
         />
+      </div>
+
+      {/* ── Health Distribution Bar ── */}
+      <div className="rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">Stock Health Distribution</h3>
+          <div className="flex items-center gap-4 text-[10px]">
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-green-500" />Healthy ({overview.healthCounts.healthy})</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />Low ({overview.healthCounts.low_stock})</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-500" />Out ({overview.healthCounts.out_of_stock})</span>
+          </div>
+        </div>
+        <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
+          {healthyPct > 0 && <div className="bg-green-500 transition-all duration-500" style={{ width: `${healthyPct}%` }} />}
+          {lowPct > 0 && <div className="bg-amber-500 transition-all duration-500" style={{ width: `${lowPct}%` }} />}
+          {oosPct > 0 && <div className="bg-red-500 transition-all duration-500" style={{ width: `${oosPct}%` }} />}
+        </div>
+        <div className="mt-2 flex justify-between text-[10px] text-gray-400">
+          <span>{healthyPct}% healthy</span>
+          <span>{lowPct + oosPct}% needs attention</span>
+        </div>
       </div>
 
       {/* ── Filters ── */}
@@ -164,8 +220,58 @@ export function AdminInventory() {
                     <AdminStatusBadge status={product.inventoryHealth} type="inventory" />
                   </td>
                   <td className="px-4 py-3.5">
-                    <p className="text-sm font-semibold text-gray-900">{product.stock}</p>
-                    <p className="text-[10px] text-gray-400">units</p>
+                    {editingId === product.id ? (
+                      /* ── Inline stock editor ── */
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setEditValue(String(Math.max(0, parseInt(editValue) - 1)))}
+                          className="rounded-md border p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveStockEdit(product.id);
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          className="w-16 rounded-lg border bg-white px-2 py-1 text-center text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => setEditValue(String(parseInt(editValue) + 1))}
+                          className="rounded-md border p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => saveStockEdit(product.id)}
+                          disabled={savingStock}
+                          className="rounded-md bg-green-50 p-1 text-green-600 transition hover:bg-green-100 disabled:opacity-50"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="rounded-md bg-gray-50 p-1 text-gray-400 transition hover:bg-gray-100"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      /* ── Stock display (click to edit) ── */
+                      <button
+                        onClick={() => { setEditingId(product.id); setEditValue(String(product.stock)); }}
+                        className="group/stock flex items-center gap-1 rounded-lg px-2 py-1 text-left transition hover:bg-gray-100"
+                        title="Click to adjust stock"
+                      >
+                        <span className="text-sm font-semibold text-gray-900">{product.stock}</span>
+                        <span className="text-[10px] text-gray-400">units</span>
+                        <span className="ml-1 text-[10px] text-primary-500 opacity-0 transition group-hover/stock:opacity-100">edit</span>
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3.5">
                     <p className="text-xs text-gray-500">{HEALTH_COPY[product.inventoryHealth].action}</p>

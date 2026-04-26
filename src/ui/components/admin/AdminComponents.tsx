@@ -98,6 +98,17 @@ export function AdminBreadcrumb() {
 }
 
 /* ═══════════════════════════════════════════════════════
+   PAGE TITLE — Dynamic document.title for admin pages
+   ═══════════════════════════════════════════════════════ */
+
+export function useAdminPageTitle(title: string) {
+  useEffect(() => {
+    document.title = `${title} · PlayMoreTCG Admin`;
+    return () => { document.title = 'PlayMoreTCG'; };
+  }, [title]);
+}
+
+/* ═══════════════════════════════════════════════════════
    METRIC CARD — KPI display with optional trend
    ═══════════════════════════════════════════════════════ */
 

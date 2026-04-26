@@ -4,21 +4,20 @@
  * [LAYER: UI]
  * Admin order management — Shopify fulfillment-style with slide-over detail.
  */
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServices } from '../../hooks/useServices';
 import type { Order, OrderStatus } from '@domain/models';
 import { 
   ChevronDown, 
   PackageCheck, 
   Search, 
-  ChevronRight, 
   Clock, 
   CheckCircle2, 
   Truck, 
   PackageSearch,
-  Printer,
   FileText,
-  MoreHorizontal,
+  Printer,
+  RotateCcw,
   X,
   MapPin,
   CreditCard
@@ -31,7 +30,8 @@ import {
   AdminEmptyState,
   BulkActionBar,
   SkeletonRow,
-  useToast
+  useToast,
+  useAdminPageTitle
 } from '../../components/admin/AdminComponents';
 
 const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
@@ -51,6 +51,7 @@ const FULFILLMENT_TABS = [
 ];
 
 export function AdminOrders() {
+  useAdminPageTitle('Orders');
   const services = useServices();
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -64,6 +65,15 @@ export function AdminOrders() {
   const [batchUpdating, setBatchUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Close slide-over on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && selectedOrder) setSelectedOrder(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedOrder]);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -94,11 +104,11 @@ export function AdminOrders() {
     try {
       await services.orderService.updateOrderStatus(id, status);
       toast('success', `Order updated to ${humanizeOrderStatus(status)}`);
-      await loadOrders();
-      // Update selected order if detail panel is open
+      // Immediately update slide-over panel for instant feedback
       if (selectedOrder?.id === id) {
         setSelectedOrder(prev => prev ? { ...prev, status } : null);
       }
+      await loadOrders();
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to update order status');
     } finally {
@@ -467,6 +477,26 @@ export function AdminOrders() {
                   </div>
                 </div>
               )}
+
+              {/* Secondary actions */}
+              <div className="flex gap-2 border-t pt-4">
+                <button
+                  onClick={() => toast('info', 'Packing slip sent to printer')}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+                >
+                  <Printer className="h-4 w-4 text-gray-400" />
+                  Print packing slip
+                </button>
+                {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'pending' && (
+                  <button
+                    onClick={() => toast('info', 'Refund flow coming soon')}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-50"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Refund
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </>

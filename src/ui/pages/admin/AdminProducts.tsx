@@ -16,7 +16,6 @@ import {
   Package, 
   AlertTriangle, 
   Boxes,
-  MoreHorizontal,
   Download,
   Upload,
   LayoutGrid,
@@ -33,7 +32,8 @@ import {
   AdminConfirmDialog,
   SkeletonRow,
   SkeletonCard,
-  useToast
+  useToast,
+  useAdminPageTitle
 } from '../../components/admin/AdminComponents';
 import { classifyInventoryHealth } from '@domain/rules';
 
@@ -43,6 +43,7 @@ type SortKey = 'name' | 'price' | 'stock' | 'date';
 type ViewMode = 'list' | 'grid';
 
 export function AdminProducts() {
+  useAdminPageTitle('Products');
   const services = useServices();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);

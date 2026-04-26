@@ -9,6 +9,7 @@ export interface Product {
   category: ProductCategory;
   stock: number;
   imageUrl: string;
+  status: ProductStatus;
   set?: string;
   rarity?: CardRarity;
   createdAt: Date;
@@ -25,6 +26,8 @@ export type ProductCategory =
   | 'deck'
   | 'accessory'
   | 'box';
+
+export type ProductStatus = 'active' | 'draft' | 'archived';
 
 export type CardRarity =
   | 'common'
@@ -66,6 +69,8 @@ export interface Order {
   status: OrderStatus;
   shippingAddress: Address;
   paymentTransactionId: string | null;
+  customerName?: string;
+  customerEmail?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +108,17 @@ export interface AdminDashboardSummary {
   attentionItems: AdminActionItem[];
   recentOrders: Order[];
   lowStockProducts: Product[];
+  dailyRevenue: number[]; // Last 7 days
+}
+
+export interface Transfer {
+  id: string;
+  source: string;
+  status: 'pending' | 'in_transit' | 'received' | 'cancelled';
+  itemsCount: number;
+  receivedCount: number;
+  expectedAt: Date;
+  createdAt: Date;
 }
 
 export type InventoryHealth = 'out_of_stock' | 'low_stock' | 'healthy';

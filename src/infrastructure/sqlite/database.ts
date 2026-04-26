@@ -47,9 +47,17 @@ export async function initDatabase() {
     .addColumn('imageUrl', 'text', (col) => col.notNull())
     .addColumn('set', 'text')
     .addColumn('rarity', 'text')
+    .addColumn('status', 'text', (col) => col.notNull().defaultTo('active'))
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
+
+  // Migration for existing tables: add 'status' if missing
+  try {
+    await db.schema.alterTable('products').addColumn('status', 'text', (col) => col.notNull().defaultTo('active')).execute();
+  } catch {
+    // Column likely already exists
+  }
 
   await db.schema
     .createTable('users')
@@ -116,6 +124,26 @@ export async function initDatabase() {
     .addColumn('startsAt', 'text', (col) => col.notNull())
     .addColumn('endsAt', 'text')
     .addColumn('usageCount', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('settings')
+    .ifNotExists()
+    .addColumn('key', 'text', (col) => col.primaryKey())
+    .addColumn('value', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('transfers')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('source', 'text', (col) => col.notNull())
+    .addColumn('status', 'text', (col) => col.notNull())
+    .addColumn('itemsCount', 'integer', (col) => col.notNull())
+    .addColumn('receivedCount', 'integer', (col) => col.notNull())
+    .addColumn('expectedAt', 'text', (col) => col.notNull())
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .execute();
 }

@@ -9,7 +9,9 @@ import React, { createContext, ReactNode, useCallback, useContext, useEffect, us
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
-import { formatCurrency } from '../../../utils/formatters';
+import { useServices } from '../../hooks/useServices';
+import { formatCurrency, formatShortDate } from '../../../utils/formatters';
+import type { AdminDashboardSummary, Order, Product } from '@domain/models';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -702,13 +704,38 @@ export function AdminSparkline({ data, color = 'primary' }: { data: number[], co
 
 export function AdminNotificationBell() {
   const [open, setOpen] = useState(false);
+  const services = useServices();
+  const [notifications, setNotifications] = useState<any[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const notifications = [
-    { id: '1', title: 'New order #1042', time: '2 mins ago', icon: ShoppingBag, color: 'text-primary-600 bg-primary-50' },
-    { id: '2', title: 'Product "Base Set Booster" is out of stock', time: '1 hour ago', icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
-    { id: '3', title: 'Payout of $1,240.00 processed', time: '3 hours ago', icon: DollarSign, color: 'text-green-600 bg-green-50' },
-  ];
+  async function loadNotifications() {
+    try {
+      const summary: AdminDashboardSummary = await services.orderService.getAdminDashboardSummary();
+      const items = [
+        ...summary.lowStockProducts.map((p: Product) => ({
+          id: `stock-${p.id}`,
+          title: `Low stock: ${p.name}`,
+          time: 'Now',
+          icon: AlertTriangle,
+          color: 'text-amber-600 bg-amber-50'
+        })),
+        ...summary.recentOrders.slice(0, 5).map((o: Order) => ({
+          id: `order-${o.id}`,
+          title: `New order #${o.id.slice(0, 8).toUpperCase()}`,
+          time: formatShortDate(o.createdAt),
+          icon: ShoppingBag,
+          color: 'text-primary-600 bg-primary-50'
+        }))
+      ];
+      setNotifications(items);
+    } catch {
+      // Fail silently for notifications
+    }
+  }
+
+  useEffect(() => {
+    void loadNotifications();
+  }, [services]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

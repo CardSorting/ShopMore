@@ -332,7 +332,7 @@ export function AdminOrders() {
                       <p className="text-xs font-medium text-gray-600">{formatShortDate(o.createdAt)}</p>
                     </td>
                     <td className="px-4 py-3.5">
-                      <p className="text-xs font-bold text-gray-900 truncate">Customer #{o.userId.slice(0, 8)}</p>
+                      <p className="text-xs font-bold text-gray-900 truncate">{o.customerName || `User #${o.userId.slice(0, 8)}`}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <AdminStatusBadge status={o.status} type="order" />
@@ -481,12 +481,12 @@ export function AdminOrders() {
                 <div className="rounded-xl border bg-white p-5 shadow-sm">
                   <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-gray-400">Customer</h3>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-600 font-bold text-xs">
-                      PM
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-600 font-bold text-xs uppercase">
+                      {(selectedOrder.customerName || 'U').split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">Admin User</p>
-                      <Link href="/admin/customers" className="text-[10px] font-bold text-primary-600 hover:underline">View Profile</Link>
+                      <p className="text-sm font-bold text-gray-900 truncate">{selectedOrder.customerName || 'Anonymous User'}</p>
+                      <p className="text-[10px] font-medium text-gray-500 truncate">{selectedOrder.customerEmail}</p>
                     </div>
                   </div>
                 </div>

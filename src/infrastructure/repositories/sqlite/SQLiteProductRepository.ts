@@ -6,7 +6,7 @@ import { Kysely } from 'kysely';
 import { getSQLiteDB } from '../../sqlite/database';
 import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
-import type { Product, ProductCategory, CardRarity, ProductDraft, ProductUpdate } from '@domain/models';
+import type { Product, ProductCategory, ProductStatus, CardRarity, ProductDraft, ProductUpdate } from '@domain/models';
 import { DomainError, InsufficientStockError, ProductNotFoundError } from '@domain/errors';
 import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
@@ -26,6 +26,13 @@ function parseCardRarity(value: string | null): CardRarity | undefined {
   throw new DomainError('Stored product rarity is invalid.');
 }
 
+function parseProductStatus(value: string | null): ProductStatus {
+  if (value === 'active' || value === 'draft' || value === 'archived') {
+    return value;
+  }
+  return 'active'; // Default for safety
+}
+
 export class SQLiteProductRepository implements IProductRepository {
   private db: Kysely<Database>;
   
@@ -40,7 +47,7 @@ export class SQLiteProductRepository implements IProductRepository {
     this.db = getSQLiteDB();
   }
 
-  private mapTableToProduct(row: ProductTable): Product {
+  private mapTableToProduct(row: any): Product {
     return {
       id: row.id,
       name: row.name,
@@ -49,6 +56,7 @@ export class SQLiteProductRepository implements IProductRepository {
       category: parseProductCategory(row.category),
       stock: row.stock,
       imageUrl: row.imageUrl,
+      status: parseProductStatus(row.status),
       set: row.set || undefined,
       rarity: parseCardRarity(row.rarity),
       createdAt: new Date(row.createdAt),
@@ -196,6 +204,7 @@ export class SQLiteProductRepository implements IProductRepository {
         category: product.category,
         stock: product.stock,
         imageUrl: product.imageUrl,
+        status: product.status || 'active',
         set: product.set || null,
         rarity: product.rarity || null,
         createdAt: now,
@@ -215,7 +224,7 @@ export class SQLiteProductRepository implements IProductRepository {
     
     // Whitelist updates to prevent SQL injection or accidental schema corruption
     const validFields: (keyof ProductUpdate)[] = [
-      'name', 'description', 'price', 'category', 'stock', 'imageUrl', 'set', 'rarity'
+      'name', 'description', 'price', 'category', 'stock', 'imageUrl', 'set', 'rarity', 'status'
     ];
 
     const finalUpdates: Partial<ProductTable> = { updatedAt: now };

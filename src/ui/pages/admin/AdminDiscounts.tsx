@@ -5,7 +5,8 @@
  * Admin discounts — Marketing and promotion management.
  * Patterns modeled after Shopify Discounts.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useServices } from '../../hooks/useServices';
 import { 
   Tag, 
   Plus, 
@@ -44,47 +45,36 @@ interface Discount {
   endDate?: Date;
 }
 
-const MOCK_DISCOUNTS: Discount[] = [
-  { 
-    id: '1', 
-    title: 'WELCOME10', 
-    type: 'code', 
-    value: '10% off', 
-    usageCount: 142, 
-    status: 'active', 
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) 
-  },
-  { 
-    id: '2', 
-    title: 'Summer Sale', 
-    type: 'automatic', 
-    value: '$5.00 off orders over $50', 
-    usageCount: 89, 
-    status: 'active', 
-    startDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
-  },
-  { 
-    id: '3', 
-    title: 'BFSALE', 
-    type: 'code', 
-    value: '20% off', 
-    usageCount: 512, 
-    status: 'expired', 
-    startDate: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000),
-    endDate: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000)
-  },
-];
 
 export function AdminDiscounts() {
   useAdminPageTitle('Discounts');
+  const services = useServices();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('all');
   const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [discounts, setDiscounts] = useState<any[]>([]);
 
-  const filtered = MOCK_DISCOUNTS.filter(d => {
+  async function loadDiscounts() {
+    setLoading(true);
+    try {
+      const data = await services.discountService.getAllDiscounts();
+      setDiscounts(data);
+    } catch (err) {
+      toast('error', 'Failed to load discounts');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadDiscounts();
+  }, [services]);
+
+  const filtered = discounts.filter(d => {
     if (activeTab !== 'all' && d.status !== activeTab) return false;
-    if (query && !d.title.toLowerCase().includes(query.toLowerCase())) return false;
+    const title = d.title || d.code || '';
+    if (query && !title.toLowerCase().includes(query.toLowerCase())) return false;
     return true;
   });
 
@@ -108,21 +98,21 @@ export function AdminDiscounts() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <AdminMetricCard 
           label="Total Discounted Value" 
-          value={formatCurrency(1245000)} // $12,450.00
+          value={formatCurrency(0)} // Requires order-discount join
           icon={Tag} 
           color="success" 
           description="Total revenue reduced by discounts"
         />
         <AdminMetricCard 
           label="Conversion with Discounts" 
-          value="4.2%" 
+          value="0%" 
           icon={Zap} 
           color="primary" 
           description="Orders using a promotion"
         />
         <AdminMetricCard 
           label="Active Promotions" 
-          value={MOCK_DISCOUNTS.filter(d => d.status === 'active').length} 
+          value={discounts.filter(d => d.status === 'active').length} 
           icon={CheckCircle2} 
           color="info" 
           description="Live automatic and code-based offers"
@@ -132,10 +122,10 @@ export function AdminDiscounts() {
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
         {/* ── Tabs ── */}
         <div className="flex items-center border-b px-2 overflow-x-auto scrollbar-hide">
-          <AdminTab label="All" active={activeTab === 'all'} onClick={() => setActiveTab('all')} count={MOCK_DISCOUNTS.length} />
-          <AdminTab label="Active" active={activeTab === 'active'} onClick={() => setActiveTab('active')} count={MOCK_DISCOUNTS.filter(d => d.status === 'active').length} />
-          <AdminTab label="Scheduled" active={activeTab === 'scheduled'} onClick={() => setActiveTab('scheduled')} count={0} />
-          <AdminTab label="Expired" active={activeTab === 'expired'} onClick={() => setActiveTab('expired')} count={MOCK_DISCOUNTS.filter(d => d.status === 'expired').length} />
+          <AdminTab label="All" active={activeTab === 'all'} onClick={() => setActiveTab('all')} count={discounts.length} />
+          <AdminTab label="Active" active={activeTab === 'active'} onClick={() => setActiveTab('active')} count={discounts.filter(d => d.status === 'active').length} />
+          <AdminTab label="Scheduled" active={activeTab === 'scheduled'} onClick={() => setActiveTab('scheduled')} count={discounts.filter(d => d.status === 'scheduled').length} />
+          <AdminTab label="Expired" active={activeTab === 'expired'} onClick={() => setActiveTab('expired')} count={discounts.filter(d => d.status === 'expired').length} />
         </div>
 
         {/* ── Search ── */}
@@ -168,8 +158,8 @@ export function AdminDiscounts() {
               {filtered.map((d) => (
                 <tr key={d.id} className="group transition hover:bg-gray-50 cursor-pointer">
                   <td className="px-4 py-3.5">
-                    <p className="font-bold text-gray-900 tracking-tight">{d.title}</p>
-                    <p className="text-[10px] text-gray-500 font-medium">Started {formatShortDate(d.startDate)}</p>
+                    <p className="font-bold text-gray-900 tracking-tight">{d.title || d.code}</p>
+                    <p className="text-[10px] text-gray-500 font-medium">Started {formatShortDate(d.startsAt)}</p>
                   </td>
                   <td className="px-4 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${

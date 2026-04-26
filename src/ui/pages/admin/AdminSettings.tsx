@@ -5,7 +5,8 @@
  * Admin settings — Store configuration and setup checklist.
  * Patterns modeled after Stripe and Shopify Settings.
  */
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useServices } from '../../hooks/useServices';
 import { 
   Store, 
   CreditCard, 
@@ -35,6 +36,17 @@ import {
   useAdminPageTitle,
   AdminTab 
 } from '../../components/admin/AdminComponents';
+import type { User } from '@domain/models';
+
+export interface SetupGuideProgress {
+  hasProducts: boolean;
+  hasStoreName: boolean;
+  hasPaymentConfigured: boolean;
+  hasShippingRates: boolean;
+  hasCustomDomain: boolean;
+  completedCount: number;
+  totalCount: number;
+}
 
 interface SettingsSection {
   id: string;
@@ -63,9 +75,65 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
 
 export function AdminSettings() {
   useAdminPageTitle('Settings');
+  const services = useServices();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('all');
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [progress, setProgress] = useState<SetupGuideProgress | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [settings, setSettings] = useState<Record<string, any>>({});
+  const [users, setUsers] = useState<User[]>([]);
+
+  const loadProgress = useCallback(async () => {
+    try {
+      const data = await services.settingsService.getSetupProgress();
+      setProgress(data);
+    } catch (err) {
+      console.error('Failed to load setup progress', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [services.settingsService]);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const [data, staff] = await Promise.all([
+        services.settingsService.getSettings(),
+        services.authService.getAllUsers()
+      ]);
+      setSettings(data);
+      setUsers(staff);
+    } catch (err) {
+      console.error('Failed to load settings', err);
+    }
+  }, [services]);
+
+  useEffect(() => {
+    void loadProgress();
+    void loadSettings();
+  }, [loadProgress, loadSettings]);
+
+  const saveSetting = async (key: string, value: any) => {
+    try {
+      await services.settingsService.updateSetting(key, value);
+      setSettings(prev => ({ ...prev, [key]: value }));
+      toast('success', 'Setting updated');
+      void loadProgress(); // Update setup guide
+    } catch (err) {
+      toast('error', 'Failed to save setting');
+    }
+  };
+
+  const tasks = progress ? [
+    { label: 'Add your first product', completed: progress.hasProducts },
+    { label: 'Configure store name', completed: progress.hasStoreName },
+    { label: 'Connect a payment provider', completed: progress.hasPaymentConfigured },
+    { label: 'Set up shipping rates', completed: progress.hasShippingRates },
+    { label: 'Choose a custom domain', completed: progress.hasCustomDomain },
+  ] : [];
+
+  const completionPercentage = progress ? Math.round((progress.completedCount / progress.totalCount) * 100) : 0;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
@@ -88,21 +156,20 @@ export function AdminSettings() {
             <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Setup Guide</h2>
             <p className="mt-1 text-xs text-gray-500 font-medium">Complete these steps to launch your store successfully.</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs font-bold text-primary-600 uppercase">2 of 5 completed</p>
-            <div className="mt-1.5 h-1.5 w-32 rounded-full bg-primary-100 overflow-hidden">
-              <div className="h-full bg-primary-600 transition-all duration-1000" style={{ width: '40%' }} />
+          {!loading && progress && (
+            <div className="text-right">
+              <p className="text-xs font-bold text-primary-600 uppercase">{progress.completedCount} of {progress.totalCount} completed</p>
+              <div className="mt-1.5 h-1.5 w-32 rounded-full bg-primary-100 overflow-hidden">
+                <div className="h-full bg-primary-600 transition-all duration-1000" style={{ width: `${completionPercentage}%` }} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { label: 'Add your first product', completed: true },
-            { label: 'Configure store name', completed: true },
-            { label: 'Connect a payment provider', completed: false },
-            { label: 'Set up shipping rates', completed: false },
-            { label: 'Choose a custom domain', completed: false },
-          ].map((task, i) => (
+          {loading && [1, 2, 3].map(i => (
+             <div key={i} className="h-10 rounded-lg bg-gray-100 animate-pulse" />
+          ))}
+          {!loading && tasks.map((task, i) => (
             <div key={i} className="flex items-center gap-3 rounded-lg border bg-white p-3 transition hover:shadow-sm">
               {task.completed ? (
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -237,70 +304,159 @@ export function AdminSettings() {
             </div>
 
             <div className="p-8 space-y-10">
-               {activeSection === 'payments' ? (
-                 <>
-                   <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Active Providers</h3>
-                         <span className="flex items-center gap-2 text-[10px] font-bold text-green-600 uppercase">
-                           <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                           Live Mode
-                         </span>
+               {activeSection === 'general' ? (
+                  <div className="space-y-8">
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Store Identity</h3>
+                      <div className="grid gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-700">Store Name</label>
+                          <input 
+                            type="text" 
+                            defaultValue={settings.store_name || 'PlayMore TCG'} 
+                            onChange={(e) => setSettings(prev => ({ ...prev, store_name: e.target.value }))}
+                            className="w-full rounded-lg border bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                            placeholder="e.g. PlayMore TCG"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-700">Merchant Name</label>
+                          <input 
+                            type="text" 
+                            defaultValue={settings.merchant_name || 'PlayMore Retail Group'} 
+                            onChange={(e) => setSettings(prev => ({ ...prev, merchant_name: e.target.value }))}
+                            className="w-full rounded-lg border bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                            placeholder="Legal business name"
+                          />
+                        </div>
                       </div>
-                      <div className="rounded-xl border bg-gray-50/50 p-6 flex items-center justify-between">
-                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-lg bg-[#635BFF] flex items-center justify-center text-white font-bold">Stripe</div>
-                            <div>
-                               <p className="text-sm font-bold text-gray-900">Stripe Payments</p>
-                               <p className="text-xs text-gray-500 font-medium">Accept credit cards, Apple Pay, and Google Pay.</p>
-                            </div>
-                         </div>
-                         <button className="text-[10px] font-bold text-primary-600 uppercase hover:underline">Manage</button>
-                      </div>
-                   </div>
-
-                   <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Payment Capture</h3>
-                      <div className="space-y-3">
-                         <label className="flex items-start gap-4 cursor-pointer">
-                            <input type="radio" name="capture" defaultChecked className="mt-1 h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500" />
-                            <div>
-                               <p className="text-sm font-bold text-gray-900">Automatically capture payment for orders</p>
-                               <p className="text-xs text-gray-500 font-medium">Capture funds immediately when an order is placed.</p>
-                            </div>
-                         </label>
-                         <label className="flex items-start gap-4 cursor-pointer">
-                            <input type="radio" name="capture" className="mt-1 h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500" />
-                            <div>
-                               <p className="text-sm font-bold text-gray-900">Manually capture payment for orders</p>
-                               <p className="text-xs text-gray-500 font-medium">Authorizes funds and allows manual capture within 7 days.</p>
-                            </div>
-                         </label>
-                      </div>
-                   </div>
-
-                   <div className="rounded-xl bg-amber-50 border border-amber-100 p-4">
-                      <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                         <strong>Pro Tip:</strong> Manually capturing payments can reduce chargeback risk for high-ticket items, but adds friction to your fulfillment workflow.
-                      </p>
-                   </div>
-                 </>
-               ) : (
-                 <div className="text-center py-20">
-                    <div className="mx-auto h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 mb-4">
-                       <Settings className="h-8 w-8" />
                     </div>
-                    <p className="text-sm font-bold text-gray-900 italic">This section is currently under development.</p>
-                    <p className="text-xs text-gray-500 mt-1">Check back soon for advanced configuration options.</p>
-                 </div>
-               )}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Store Contact</h3>
+                      <div className="grid gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-700">Support Email</label>
+                          <input 
+                            type="email" 
+                            defaultValue={settings.support_email || 'support@playmoretcg.com'} 
+                            onChange={(e) => setSettings(prev => ({ ...prev, support_email: e.target.value }))}
+                            className="w-full rounded-lg border bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : activeSection === 'staff' ? (
+                  <div className="space-y-8">
+                    <div className="flex items-center justify-between">
+                       <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Manage Staff</h3>
+                       <button className="rounded-lg bg-gray-900 px-3 py-1.5 text-[10px] font-bold text-white shadow-sm hover:bg-gray-800 transition">
+                         Invite Member
+                       </button>
+                    </div>
+                    <div className="divide-y rounded-xl border bg-white overflow-hidden shadow-sm">
+                      {users.map(user => (
+                        <div key={user.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-50 text-xs font-bold text-primary-600">
+                              {user.displayName?.slice(0, 2).toUpperCase() || '??'}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">{user.displayName}</p>
+                              <p className="text-[10px] font-medium text-gray-500">{user.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${user.role === 'admin' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
+                              {user.role}
+                            </span>
+                            <button className="text-gray-400 hover:text-gray-600">
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : activeSection === 'payments' ? (
+                  <>
+                    <div className="space-y-4">
+                       <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Active Providers</h3>
+                          <span className="flex items-center gap-2 text-[10px] font-bold text-green-600 uppercase">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                            Live Mode
+                          </span>
+                       </div>
+                       <div className="rounded-xl border bg-gray-50/50 p-6 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                             <div className="h-12 w-12 rounded-lg bg-[#635BFF] flex items-center justify-center text-white font-bold">Stripe</div>
+                             <div>
+                                <p className="text-sm font-bold text-gray-900">Stripe Payments {settings.payment_configured && <CheckCircle2 className="inline h-3 w-3 text-green-500 ml-1" />}</p>
+                                <p className="text-xs text-gray-500 font-medium">Accept credit cards, Apple Pay, and Google Pay.</p>
+                             </div>
+                          </div>
+                          <button 
+                            onClick={() => saveSetting('payment_configured', !settings.payment_configured)}
+                            className="text-[10px] font-bold text-primary-600 uppercase hover:underline"
+                          >
+                            {settings.payment_configured ? 'Disconnect' : 'Connect'}
+                          </button>
+                       </div>
+                    </div>
+
+                    <div className="space-y-4">
+                       <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Payment Capture</h3>
+                       <div className="space-y-3">
+                          <label className="flex items-start gap-4 cursor-pointer">
+                             <input type="radio" name="capture" defaultChecked className="mt-1 h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500" />
+                             <div>
+                                <p className="text-sm font-bold text-gray-900">Automatically capture payment for orders</p>
+                                <p className="text-xs text-gray-500 font-medium">Capture funds immediately when an order is placed.</p>
+                             </div>
+                          </label>
+                          <label className="flex items-start gap-4 cursor-pointer">
+                             <input type="radio" name="capture" className="mt-1 h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500" />
+                             <div>
+                                <p className="text-sm font-bold text-gray-900">Manually capture payment for orders</p>
+                                <p className="text-xs text-gray-500 font-medium">Authorizes funds and allows manual capture within 7 days.</p>
+                             </div>
+                          </label>
+                       </div>
+                    </div>
+
+                    <div className="rounded-xl bg-amber-50 border border-amber-100 p-4">
+                       <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                          <strong>Pro Tip:</strong> Manually capturing payments can reduce chargeback risk for high-ticket items, but adds friction to your fulfillment workflow.
+                       </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-20">
+                     <div className="mx-auto h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 mb-4">
+                        <Settings className="h-8 w-8" />
+                     </div>
+                     <p className="text-sm font-bold text-gray-900 italic">This section is currently under development.</p>
+                     <p className="text-xs text-gray-500 mt-1">Check back soon for advanced configuration options.</p>
+                  </div>
+                )}
             </div>
 
             <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
                <button onClick={() => setActiveSection(null)} className="rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-100">
                  Cancel
                </button>
-               <button onClick={() => { toast('success', 'Settings saved'); setActiveSection(null); }} className="rounded-lg bg-primary-600 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700">
+               <button 
+                  onClick={async () => { 
+                    if (activeSection === 'general') {
+                      await saveSetting('store_name', settings.store_name);
+                      await saveSetting('merchant_name', settings.merchant_name);
+                      await saveSetting('support_email', settings.support_email);
+                    }
+                    setActiveSection(null); 
+                  }} 
+                  className="rounded-lg bg-primary-600 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700"
+                >
                  Save Changes
                </button>
             </div>

@@ -138,11 +138,14 @@ export function AdminDashboard() {
           value={formatCurrency(summary.totalRevenue)} 
           icon={DollarSign} 
           color="success"
-          trend={{ value: '12%', positive: true }}
+          trend={{ 
+            value: `${Math.round(((summary.dailyRevenue[6] || 0) / (summary.dailyRevenue[5] || 1)) * 100 - 100)}%`, 
+            positive: (summary.dailyRevenue[6] || 0) >= (summary.dailyRevenue[5] || 0) 
+          }}
           description={
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-gray-400 uppercase">7D Performance</span>
-              <AdminSparkline data={[4500, 5200, 4800, 6100, 5900, 7200, 6800]} color="success" />
+              <AdminSparkline data={summary.dailyRevenue} color="success" />
             </div>
           }
         />
@@ -248,25 +251,57 @@ export function AdminDashboard() {
             </div>
           </section>
 
-          {/* Smart Insights (AI-style) */}
+          {/* Smart Insights (Derived from real data) */}
           <div className="grid gap-4 sm:grid-cols-2">
              <div className="rounded-xl border bg-linear-to-br from-indigo-50 to-white p-5 shadow-sm border-indigo-100">
                 <div className="flex items-center gap-2 mb-3">
                    <Zap className="h-4 w-4 text-indigo-500" />
                    <h3 className="text-xs font-bold text-indigo-900 uppercase tracking-widest">Inventory Insight</h3>
                 </div>
-                <p className="text-sm font-bold text-gray-900">High demand for "Base Set" items</p>
-                <p className="text-xs text-gray-600 mt-1">Orders for Base Set cards are up 40% this week. Consider increasing stock levels.</p>
-                <button className="mt-4 text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline">View Stock Report</button>
+                {summary.recentOrders.length > 0 ? (
+                  <>
+                    <p className="text-sm font-bold text-gray-900">Recent demand detected</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      You have {summary.recentOrders.length} recent orders. {summary.lowStockCount > 0 ? `Plus, ${summary.lowStockCount} items are low on stock.` : 'Stock levels look healthy.'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-gray-900">Steady inventory levels</p>
+                    <p className="text-xs text-gray-600 mt-1">No major spikes in demand this week. Keep an eye on new arrivals.</p>
+                  </>
+                )}
+                <button 
+                  onClick={() => router.push('/admin/inventory')}
+                  className="mt-4 text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline"
+                >
+                  View Stock Report
+                </button>
              </div>
              <div className="rounded-xl border bg-linear-to-br from-amber-50 to-white p-5 shadow-sm border-amber-100">
                 <div className="flex items-center gap-2 mb-3">
                    <Users className="h-4 w-4 text-amber-500" />
                    <h3 className="text-xs font-bold text-amber-900 uppercase tracking-widest">Customer Insight</h3>
                 </div>
-                <p className="text-sm font-bold text-gray-900">New "Whale" customers</p>
-                <p className="text-xs text-gray-600 mt-1">3 new customers spent over $1,000 this week. Send a personalized thank you note?</p>
-                <button className="mt-4 text-[10px] font-bold text-amber-600 uppercase tracking-widest hover:underline">View Segments</button>
+                {customerCount > 0 ? (
+                  <>
+                    <p className="text-sm font-bold text-gray-900">Active customer base</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {customerCount} total customers registered. {customerCount > 10 ? 'Your segments are growing!' : 'Keep building your community.'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-gray-900">No customers yet</p>
+                    <p className="text-xs text-gray-600 mt-1">Start promoting your store to gain your first high-value customers.</p>
+                  </>
+                )}
+                <button 
+                  onClick={() => router.push('/admin/customers')}
+                  className="mt-4 text-[10px] font-bold text-amber-600 uppercase tracking-widest hover:underline"
+                >
+                  View Segments
+                </button>
              </div>
           </div>
         </div>

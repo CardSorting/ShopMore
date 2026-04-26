@@ -69,3 +69,19 @@ export interface ILockProvider {
   acquireLock(resourceId: string, owner: string, ttlMs?: number): Promise<boolean>;
   releaseLock(resourceId: string, owner: string): Promise<void>;
 }
+
+export interface IDiscountRepository {
+  getAll(): Promise<any[]>;
+  getById(id: string): Promise<any | null>;
+  getByCode(code: string): Promise<any | null>;
+  create(discount: any): Promise<any>;
+  update(id: string, updates: any): Promise<any>;
+  delete(id: string): Promise<void>;
+  incrementUsage(id: string): Promise<void>;
+}
+
+export interface ISettingsRepository {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T): Promise<void>;
+  getAll(): Promise<Record<string, any>>;
+}

@@ -232,6 +232,20 @@ export class OrderService {
 
     const revenueOrders = orders.filter((order) => order.status !== 'cancelled');
     const totalRevenue = revenueOrders.reduce((sum, order) => sum + order.total, 0);
+
+    // Calculate daily revenue for the last 7 days
+    const dailyRevenue = new Array(7).fill(0);
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    
+    for (const order of revenueOrders) {
+      const orderDate = new Date(order.createdAt);
+      const diffDays = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays >= 0 && diffDays < 7) {
+        dailyRevenue[6 - diffDays] += order.total;
+      }
+    }
+
     const lowStockProducts = products
       .filter((product) => classifyInventoryHealth(product.stock) !== 'healthy')
       .sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name))
@@ -287,6 +301,7 @@ export class OrderService {
       attentionItems,
       recentOrders: orders.slice(0, 8),
       lowStockProducts,
+      dailyRevenue,
     };
   }
 

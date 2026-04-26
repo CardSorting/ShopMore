@@ -14,6 +14,7 @@ export interface ProductTable {
   imageUrl: string;
   set: string | null;
   rarity: string | null;
+  status: string; // 'active' | 'draft' | 'archived'
   createdAt: string; // ISO string for SQLite
   updatedAt: string;
 }
@@ -72,6 +73,22 @@ export interface DiscountTable {
   createdAt: string;
 }
 
+export interface SettingTable {
+  key: string;
+  value: string; // JSON string
+  updatedAt: string;
+}
+
+export interface TransferTable {
+  id: string;
+  source: string;
+  status: string;
+  itemsCount: number;
+  receivedCount: number;
+  expectedAt: string;
+  createdAt: string;
+}
+
 export interface Database {
   products: ProductTable;
   users: UserTable;
@@ -80,4 +97,6 @@ export interface Database {
   hive_claims: HiveClaimTable;
   hive_audit: HiveAuditTable;
   discounts: DiscountTable;
+  settings: SettingTable;
+  transfers: TransferTable;
 }

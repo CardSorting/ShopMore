@@ -83,5 +83,15 @@ export function createApiClientServices() {
             batchUpdateOrderStatus: async (ids: string[], status: OrderStatus) => { for (const id of ids) await request<void>(`/api/admin/orders/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }); },
             getCustomerSummaries: (users: User[]) => request<any[]>('/api/admin/customers', { method: 'POST', body: JSON.stringify({ users }) }),
         },
+        discountService: {
+            getAllDiscounts: () => request<any[]>('/api/admin/discounts'),
+            createDiscount: (data: any) => request<any>('/api/admin/discounts', { method: 'POST', body: JSON.stringify(data) }),
+            deleteDiscount: (id: string) => request<void>(`/api/admin/discounts/${id}`, { method: 'DELETE' }),
+        },
+        settingsService: {
+            getSetupProgress: () => request<import('./pages/admin/AdminSettings').SetupGuideProgress>('/api/admin/setup-guide'),
+            getSettings: () => request<Record<string, any>>('/api/admin/settings'),
+            updateSetting: (key: string, value: any) => request<void>('/api/admin/settings', { method: 'POST', body: JSON.stringify({ key, value }) }),
+        },
     };
 }

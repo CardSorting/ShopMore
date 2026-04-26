@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import type { Address, CardRarity, OrderStatus, ProductCategory, ProductDraft, ProductUpdate, User } from '@domain/models';
+import type { Address, CardRarity, OrderStatus, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, User } from '@domain/models';
 import { AuthError, DomainError, OrderNotFoundError, ProductNotFoundError, UnauthorizedError } from '@domain/errors';
 import { getSessionUser } from './session';
 import { logger } from '@utils/logger';
 
 const ORDER_STATUSES = new Set<OrderStatus>(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']);
 const PRODUCT_CATEGORIES = new Set<ProductCategory>(['booster', 'single', 'deck', 'accessory', 'box']);
+const PRODUCT_STATUSES = new Set<ProductStatus>(['active', 'draft', 'archived']);
 const CARD_RARITIES = new Set<CardRarity>(['common', 'uncommon', 'rare', 'holo', 'secret']);
 const MAX_JSON_BODY_BYTES = 32 * 1024;
 const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9:_-]{16,160}$/;
@@ -163,6 +164,11 @@ export function requireProductCategory(value: unknown): ProductCategory {
     throw new DomainError('Product category is invalid.');
 }
 
+export function requireProductStatus(value: unknown): ProductStatus {
+    if (typeof value === 'string' && PRODUCT_STATUSES.has(value as ProductStatus)) return value as ProductStatus;
+    throw new DomainError('Product status is invalid.');
+}
+
 export function optionalCardRarity(value: unknown): CardRarity | undefined {
     if (value === undefined || value === null || value === '') return undefined;
     if (typeof value === 'string' && CARD_RARITIES.has(value as CardRarity)) return value as CardRarity;
@@ -202,6 +208,7 @@ export function parseProductDraft(body: Record<string, unknown>): ProductDraft {
         category: requireProductCategory(body.category),
         stock: requireInteger(body.stock, 'stock'),
         imageUrl: requireString(body.imageUrl, 'imageUrl'),
+        status: requireProductStatus(body.status ?? 'active'),
         set: optionalString(body.set, 'set'),
         rarity: optionalCardRarity(body.rarity),
     };
@@ -215,6 +222,7 @@ export function parseProductUpdate(body: Record<string, unknown>): ProductUpdate
     if ('category' in body) update.category = requireProductCategory(body.category);
     if ('stock' in body) update.stock = requireInteger(body.stock, 'stock');
     if ('imageUrl' in body) update.imageUrl = requireString(body.imageUrl, 'imageUrl');
+    if ('status' in body) update.status = requireProductStatus(body.status);
     if ('set' in body) update.set = optionalString(body.set, 'set');
     if ('rarity' in body) update.rarity = optionalCardRarity(body.rarity);
     return update;

@@ -171,7 +171,7 @@ export function AdminProducts() {
         || (stockFilter === 'low' && product.stock < 5)
         || (stockFilter === 'healthy' && product.stock >= 5);
       
-      const matchesStatus = statusFilter === 'all' || statusFilter === 'active'; // Simulating active for now
+      const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
       return matchesSearch && matchesStock && matchesStatus;
     });
 
@@ -388,7 +388,7 @@ export function AdminProducts() {
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <AdminStatusBadge status="active" type="order" />
+                        <AdminStatusBadge status={p.status} type="order" />
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">

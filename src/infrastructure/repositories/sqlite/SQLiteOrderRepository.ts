@@ -69,7 +69,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
     this.db = getSQLiteDB();
   }
 
-  private mapTableToOrder(row: OrderTable): Order {
+  private mapTableToOrder(row: any): Order {
     return {
       id: row.id,
       userId: row.userId,
@@ -78,6 +78,8 @@ export class SQLiteOrderRepository implements IOrderRepository {
       status: parseOrderStatus(row.status),
       shippingAddress: parseAddress(row.shippingAddress),
       paymentTransactionId: row.paymentTransactionId,
+      customerName: row.displayName,
+      customerEmail: row.email,
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt),
     };
@@ -110,8 +112,21 @@ export class SQLiteOrderRepository implements IOrderRepository {
   async getById(id: string): Promise<Order | null> {
     const result = await this.db
       .selectFrom('orders')
-      .selectAll()
-      .where('id', '=', id)
+      .innerJoin('users', 'users.id', 'orders.userId')
+      .select([
+        'orders.id',
+        'orders.userId',
+        'orders.items',
+        'orders.total',
+        'orders.status',
+        'orders.shippingAddress',
+        'orders.paymentTransactionId',
+        'orders.createdAt',
+        'orders.updatedAt',
+        'users.displayName',
+        'users.email'
+      ])
+      .where('orders.id', '=', id)
       .executeTakeFirst();
 
     return result ? this.mapTableToOrder(result) : null;
@@ -120,9 +135,22 @@ export class SQLiteOrderRepository implements IOrderRepository {
   async getByUserId(userId: string): Promise<Order[]> {
     const results = await this.db
       .selectFrom('orders')
-      .selectAll()
-      .where('userId', '=', userId)
-      .orderBy('createdAt', 'desc')
+      .innerJoin('users', 'users.id', 'orders.userId')
+      .select([
+        'orders.id',
+        'orders.userId',
+        'orders.items',
+        'orders.total',
+        'orders.status',
+        'orders.shippingAddress',
+        'orders.paymentTransactionId',
+        'orders.createdAt',
+        'orders.updatedAt',
+        'users.displayName',
+        'users.email'
+      ])
+      .where('orders.userId', '=', userId)
+      .orderBy('orders.createdAt', 'desc')
       .execute();
 
     return results.map(this.mapTableToOrder);
@@ -133,10 +161,25 @@ export class SQLiteOrderRepository implements IOrderRepository {
     limit?: number;
     cursor?: string;
   }): Promise<{ orders: Order[]; nextCursor?: string }> {
-    let query = this.db.selectFrom('orders').selectAll();
+    let query = this.db
+      .selectFrom('orders')
+      .innerJoin('users', 'users.id', 'orders.userId')
+      .select([
+        'orders.id',
+        'orders.userId',
+        'orders.items',
+        'orders.total',
+        'orders.status',
+        'orders.shippingAddress',
+        'orders.paymentTransactionId',
+        'orders.createdAt',
+        'orders.updatedAt',
+        'users.displayName',
+        'users.email'
+      ]);
 
     if (options?.status) {
-      query = query.where('status', '=', options.status);
+      query = query.where('orders.status', '=', options.status);
     }
 
     if (options?.cursor) {
@@ -148,10 +191,10 @@ export class SQLiteOrderRepository implements IOrderRepository {
 
       if (cursorOrder) {
         query = query.where((eb) => eb.or([
-          eb('createdAt', '<', cursorOrder.createdAt),
+          eb('orders.createdAt', '<', cursorOrder.createdAt),
           eb.and([
-            eb('createdAt', '=', cursorOrder.createdAt),
-            eb('id', '>', cursorOrder.id),
+            eb('orders.createdAt', '=', cursorOrder.createdAt),
+            eb('orders.id', '>', cursorOrder.id),
           ]),
         ]));
       }
@@ -159,8 +202,8 @@ export class SQLiteOrderRepository implements IOrderRepository {
 
     const limitCount = options?.limit ?? 20;
     const results = await query
-      .orderBy('createdAt', 'desc')
-      .orderBy('id', 'asc')
+      .orderBy('orders.createdAt', 'desc')
+      .orderBy('orders.id', 'asc')
       .limit(limitCount)
       .execute();
 

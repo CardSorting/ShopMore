@@ -57,18 +57,24 @@
 import { SQLiteProductRepository } from '@infrastructure/repositories/sqlite/SQLiteProductRepository';
 import { SQLiteCartRepository } from '@infrastructure/repositories/sqlite/SQLiteCartRepository';
 import { SQLiteOrderRepository } from '@infrastructure/repositories/sqlite/SQLiteOrderRepository';
+import { SQLiteDiscountRepository } from '@infrastructure/repositories/sqlite/SQLiteDiscountRepository';
 import { SQLiteAuthAdapter } from '@infrastructure/services/SQLiteAuthAdapter';
 import { StripePaymentProcessor } from '@infrastructure/services/StripePaymentProcessor';
 import { TrustedCheckoutGateway } from '@infrastructure/services/TrustedCheckoutGateway';
 import { SovereignLocker } from '@infrastructure/sqlite/SovereignLocker';
+import { SQLiteSettingsRepository } from '@infrastructure/repositories/sqlite/SQLiteSettingsRepository';
 import { ProductService } from './ProductService';
 import { CartService } from './CartService';
 import { OrderService } from './OrderService';
 import { AuthService } from './AuthService';
+import { DiscountService } from './DiscountService';
+import { SettingsService } from './SettingsService';
 import type {
   IProductRepository,
   ICartRepository,
   IOrderRepository,
+  IDiscountRepository,
+  ISettingsRepository,
   IAuthProvider,
   IPaymentProcessor,
   ILockProvider,
@@ -83,9 +89,11 @@ let authProviderInstance: IAuthProvider | null = null;
 let productRepoInstance: IProductRepository | null = null;
 let cartRepoInstance: ICartRepository | null = null;
 let orderRepoInstance: IOrderRepository | null = null;
+let discountRepoInstance: IDiscountRepository | null = null;
 let paymentProcessorInstance: IPaymentProcessor | null = null;
 let lockProviderInstance: ILockProvider | null = null;
 let checkoutGatewayInstance: ICheckoutGateway | null = null;
+let settingsRepoInstance: ISettingsRepository | null = null;
 
 function createCheckoutGateway(): ICheckoutGateway | undefined {
   return process.env.CHECKOUT_ENDPOINT ? new TrustedCheckoutGateway() : undefined;
@@ -99,6 +107,8 @@ function createRepositories() {
     productRepo: new SQLiteProductRepository(),
     cartRepo: new SQLiteCartRepository(),
     orderRepo: new SQLiteOrderRepository(),
+    discountRepo: new SQLiteDiscountRepository(),
+    settingsRepo: new SQLiteSettingsRepository(),
   };
 }
 
@@ -128,6 +138,8 @@ export function getServiceContainer() {
       new SovereignLocker(),
       createCheckoutGateway()
     ),
+    discountService: new DiscountService(new SQLiteDiscountRepository()),
+    settingsService: new SettingsService(new SQLiteSettingsRepository(), productRepo, new SQLiteDiscountRepository()),
   };
 }
 
@@ -140,11 +152,13 @@ export function getServiceContainer() {
  * @returns Container with cached singleton instances
  */
 export function getInitialServices() {
-  if (!productRepoInstance || !cartRepoInstance || !orderRepoInstance) {
-    const { productRepo, cartRepo, orderRepo } = createRepositories();
+  if (!productRepoInstance || !cartRepoInstance || !orderRepoInstance || !discountRepoInstance || !settingsRepoInstance) {
+    const { productRepo, cartRepo, orderRepo, discountRepo, settingsRepo } = createRepositories();
     productRepoInstance = productRepo;
     cartRepoInstance = cartRepo;
     orderRepoInstance = orderRepo;
+    discountRepoInstance = discountRepo;
+    settingsRepoInstance = settingsRepo;
   }
 
   // Auth selection
@@ -181,5 +195,7 @@ export function getInitialServices() {
       lockProviderInstance,
       checkoutGatewayInstance ?? undefined
     ),
+    discountService: new DiscountService(discountRepoInstance!),
+    settingsService: new SettingsService(settingsRepoInstance!, productRepoInstance!, discountRepoInstance!),
   };
 }

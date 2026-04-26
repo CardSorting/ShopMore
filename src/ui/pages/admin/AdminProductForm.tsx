@@ -123,6 +123,7 @@ export function AdminProductForm() {
       category: form.category,
       stock,
       imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400',
+      status: form.status,
       set: form.set || undefined,
       rarity: (form.rarity as CardRarity) || undefined,
     };

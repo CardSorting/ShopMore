@@ -57,6 +57,7 @@ const CATEGORY_TABS = [
 ];
 
 type StockFilter = 'all' | 'low' | 'healthy';
+type StatusFilter = 'active' | 'archived' | 'draft' | 'all';
 type SortKey = 'name' | 'price' | 'stock' | 'date';
 type ViewMode = 'list' | 'grid';
 
@@ -72,6 +73,7 @@ export function AdminProducts() {
   const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [sortBy, setSortBy] = useState<SortKey>('date');
   const [sortAsc, setSortAsc] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -168,7 +170,9 @@ export function AdminProducts() {
       const matchesStock = stockFilter === 'all'
         || (stockFilter === 'low' && product.stock < 5)
         || (stockFilter === 'healthy' && product.stock >= 5);
-      return matchesSearch && matchesStock;
+      
+      const matchesStatus = statusFilter === 'all' || statusFilter === 'active'; // Simulating active for now
+      return matchesSearch && matchesStock && matchesStatus;
     });
 
     result = [...result].sort((a, b) => {
@@ -251,19 +255,43 @@ export function AdminProducts() {
       </div>
 
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-        {/* ── Tabs ── */}
-        <div className="flex items-center border-b px-2 overflow-x-auto scrollbar-hide">
-          {CATEGORY_TABS.map((tab) => (
-            <AdminTab
-              key={tab.value}
-              label={tab.label}
-              count={tab.value === 'all' ? products.length : counts[tab.value]}
-              active={category === tab.value}
-              onClick={() => {
-                setCategory(tab.value as ProductCategory | 'all');
-              }}
-            />
-          ))}
+        <div className="flex items-center justify-between border-b px-4">
+          <div className="flex items-center overflow-x-auto scrollbar-hide">
+            {CATEGORY_TABS.map((tab) => (
+              <AdminTab
+                key={tab.value}
+                label={tab.label}
+                count={tab.value === 'all' ? products.length : counts[tab.value]}
+                active={category === tab.value}
+                onClick={() => {
+                  setCategory(tab.value as ProductCategory | 'all');
+                }}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-1 border-l pl-4">
+             <button 
+               onClick={() => setStatusFilter('active')}
+               className={`px-3 py-4 text-[10px] font-bold uppercase tracking-widest transition relative ${statusFilter === 'active' ? 'text-primary-600' : 'text-gray-400 hover:text-gray-900'}`}
+             >
+               Active
+               {statusFilter === 'active' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />}
+             </button>
+             <button 
+               onClick={() => setStatusFilter('draft')}
+               className={`px-3 py-4 text-[10px] font-bold uppercase tracking-widest transition relative ${statusFilter === 'draft' ? 'text-primary-600' : 'text-gray-400 hover:text-gray-900'}`}
+             >
+               Draft
+               {statusFilter === 'draft' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />}
+             </button>
+             <button 
+               onClick={() => setStatusFilter('archived')}
+               className={`px-3 py-4 text-[10px] font-bold uppercase tracking-widest transition relative ${statusFilter === 'archived' ? 'text-primary-600' : 'text-gray-400 hover:text-gray-900'}`}
+             >
+               Archived
+               {statusFilter === 'archived' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />}
+             </button>
+          </div>
         </div>
 
         {/* ── Search & Filter Bar ── */}

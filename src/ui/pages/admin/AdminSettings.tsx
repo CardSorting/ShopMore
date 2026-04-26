@@ -25,7 +25,9 @@ import {
   Smartphone,
   Eye,
   Languages,
-  ShoppingBag
+  ShoppingBag,
+  Settings,
+  X
 } from 'lucide-react';
 import { 
   AdminPageHeader, 
@@ -63,6 +65,7 @@ export function AdminSettings() {
   useAdminPageTitle('Settings');
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('all');
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
@@ -126,7 +129,7 @@ export function AdminSettings() {
               {SETTINGS_SECTIONS.filter(s => s.group === 'store').map((section) => (
                 <button
                   key={section.id}
-                  onClick={() => toast('info', `${section.label} — coming soon`)}
+                  onClick={() => setActiveSection(section.id)}
                   className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md hover:border-primary-200 active:scale-[0.98]"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
@@ -153,7 +156,7 @@ export function AdminSettings() {
               {SETTINGS_SECTIONS.filter(s => s.group === 'sales').map((section) => (
                 <button
                   key={section.id}
-                  onClick={() => toast('info', `${section.label} — coming soon`)}
+                  onClick={() => setActiveSection(section.id)}
                   className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md hover:border-primary-200 active:scale-[0.98]"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
@@ -180,7 +183,7 @@ export function AdminSettings() {
               {SETTINGS_SECTIONS.filter(s => s.group === 'advanced').map((section) => (
                 <button
                   key={section.id}
-                  onClick={() => toast('info', `${section.label} — coming soon`)}
+                  onClick={() => setActiveSection(section.id)}
                   className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md hover:border-primary-200 active:scale-[0.98]"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
@@ -212,6 +215,98 @@ export function AdminSettings() {
           View Guide
         </button>
       </div>
+
+      {/* ── Settings Detail Slide-over ── */}
+      {activeSection && (
+        <>
+          <div className="fixed inset-0 z-60 bg-gray-900/40 backdrop-blur-sm" onClick={() => setActiveSection(null)} />
+          <div className="fixed inset-y-0 right-0 z-70 w-full max-w-2xl overflow-y-auto bg-white shadow-2xl animate-in slide-in-from-right duration-300 border-l">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+              <div className="flex items-center gap-3">
+                 <div className="h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-500">
+                   {activeSection === 'payments' ? <CreditCard className="h-4 w-4" /> : <Settings className="h-4 w-4" />}
+                 </div>
+                 <h2 className="text-lg font-bold text-gray-900 capitalize">{activeSection} Settings</h2>
+              </div>
+              <button 
+                onClick={() => setActiveSection(null)}
+                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-10">
+               {activeSection === 'payments' ? (
+                 <>
+                   <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Active Providers</h3>
+                         <span className="flex items-center gap-2 text-[10px] font-bold text-green-600 uppercase">
+                           <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                           Live Mode
+                         </span>
+                      </div>
+                      <div className="rounded-xl border bg-gray-50/50 p-6 flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-lg bg-[#635BFF] flex items-center justify-center text-white font-bold">Stripe</div>
+                            <div>
+                               <p className="text-sm font-bold text-gray-900">Stripe Payments</p>
+                               <p className="text-xs text-gray-500 font-medium">Accept credit cards, Apple Pay, and Google Pay.</p>
+                            </div>
+                         </div>
+                         <button className="text-[10px] font-bold text-primary-600 uppercase hover:underline">Manage</button>
+                      </div>
+                   </div>
+
+                   <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Payment Capture</h3>
+                      <div className="space-y-3">
+                         <label className="flex items-start gap-4 cursor-pointer">
+                            <input type="radio" name="capture" defaultChecked className="mt-1 h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500" />
+                            <div>
+                               <p className="text-sm font-bold text-gray-900">Automatically capture payment for orders</p>
+                               <p className="text-xs text-gray-500 font-medium">Capture funds immediately when an order is placed.</p>
+                            </div>
+                         </label>
+                         <label className="flex items-start gap-4 cursor-pointer">
+                            <input type="radio" name="capture" className="mt-1 h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500" />
+                            <div>
+                               <p className="text-sm font-bold text-gray-900">Manually capture payment for orders</p>
+                               <p className="text-xs text-gray-500 font-medium">Authorizes funds and allows manual capture within 7 days.</p>
+                            </div>
+                         </label>
+                      </div>
+                   </div>
+
+                   <div className="rounded-xl bg-amber-50 border border-amber-100 p-4">
+                      <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                         <strong>Pro Tip:</strong> Manually capturing payments can reduce chargeback risk for high-ticket items, but adds friction to your fulfillment workflow.
+                      </p>
+                   </div>
+                 </>
+               ) : (
+                 <div className="text-center py-20">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 mb-4">
+                       <Settings className="h-8 w-8" />
+                    </div>
+                    <p className="text-sm font-bold text-gray-900 italic">This section is currently under development.</p>
+                    <p className="text-xs text-gray-500 mt-1">Check back soon for advanced configuration options.</p>
+                 </div>
+               )}
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
+               <button onClick={() => setActiveSection(null)} className="rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-100">
+                 Cancel
+               </button>
+               <button onClick={() => { toast('success', 'Settings saved'); setActiveSection(null); }} className="rounded-lg bg-primary-600 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700">
+                 Save Changes
+               </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

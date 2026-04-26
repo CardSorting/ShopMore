@@ -23,7 +23,8 @@ import {
   Truck,
   ExternalLink,
   Users,
-  Activity
+  Activity,
+  Zap
 } from 'lucide-react';
 import { formatCurrency, formatShortDate } from '@utils/formatters';
 import { 
@@ -168,6 +169,40 @@ export function AdminDashboard() {
       <div className="grid gap-8 lg:grid-cols-12">
         {/* ── Left Column: Operations ── */}
         <div className="lg:col-span-8 space-y-8">
+          {/* Setup Guide / Growth Guide (Shopify Style) */}
+          <section className="rounded-xl border border-primary-100 bg-linear-to-br from-white to-primary-50/30 p-6 shadow-sm">
+             <div className="flex items-start justify-between">
+               <div className="space-y-1">
+                 <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Next steps for PlayMoreTCG</h2>
+                 <p className="text-xs text-gray-500 font-medium">Complete these tasks to optimize your store for the upcoming set release.</p>
+               </div>
+               <span className="text-[10px] font-bold text-primary-600 bg-primary-100 px-2 py-0.5 rounded-full">2/4 COMPLETED</span>
+             </div>
+             
+             <div className="mt-6 grid gap-3">
+                <div className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-black/5 transition hover:shadow-md cursor-pointer group">
+                   <div className="h-6 w-6 shrink-0 rounded-full border-2 border-primary-500 flex items-center justify-center">
+                      <div className="h-2 w-2 rounded-full bg-primary-500" />
+                   </div>
+                   <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-900">Set up automatic discounts</p>
+                      <p className="text-xs text-gray-500">Boost sales by offering automated 'Buy X Get Y' deals.</p>
+                   </div>
+                   <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-1" />
+                </div>
+
+                <div className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-black/5 transition hover:shadow-md cursor-pointer group opacity-60">
+                   <div className="h-6 w-6 shrink-0 rounded-full bg-green-500 flex items-center justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-white" />
+                   </div>
+                   <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-900 line-through">Configure store branding</p>
+                      <p className="text-xs text-gray-500">Upload your logo and set your primary brand colors.</p>
+                   </div>
+                </div>
+             </div>
+          </section>
+
           {/* Fulfillment pipeline */}
           <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
             <div className="flex items-center justify-between border-b px-6 py-4 bg-gray-50/50">
@@ -207,38 +242,27 @@ export function AdminDashboard() {
             </div>
           </section>
 
-          {/* Actionable items */}
-          <section>
-            <div className="mb-4 flex items-center justify-between px-1">
-              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Things to do</h2>
-              {summary.attentionItems.length > 0 && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 uppercase tracking-wider">
-                  {summary.attentionItems.length} Actions Required
-                </span>
-              )}
-            </div>
-            <div className="space-y-4">
-              {summary.attentionItems.map((item) => (
-                <AdminActionPanel 
-                  key={item.id}
-                  title={item.label}
-                  description={item.description}
-                  buttonLabel="Resolve Now"
-                  href={item.href}
-                  variant={item.priority === 'high' ? 'primary' : 'outline'}
-                />
-              ))}
-              {summary.attentionItems.length === 0 && (
-                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white p-12 text-center shadow-sm">
-                  <div className="mb-4 rounded-full bg-green-50 p-3">
-                    <CheckCircle2 className="h-8 w-8 text-green-500" />
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900">You&apos;re all caught up!</h3>
-                  <p className="mt-1 text-xs font-medium text-gray-500">No urgent tasks need your attention right now.</p>
+          {/* Smart Insights (AI-style) */}
+          <div className="grid gap-4 sm:grid-cols-2">
+             <div className="rounded-xl border bg-linear-to-br from-indigo-50 to-white p-5 shadow-sm border-indigo-100">
+                <div className="flex items-center gap-2 mb-3">
+                   <Zap className="h-4 w-4 text-indigo-500" />
+                   <h3 className="text-xs font-bold text-indigo-900 uppercase tracking-widest">Inventory Insight</h3>
                 </div>
-              )}
-            </div>
-          </section>
+                <p className="text-sm font-bold text-gray-900">High demand for "Base Set" items</p>
+                <p className="text-xs text-gray-600 mt-1">Orders for Base Set cards are up 40% this week. Consider increasing stock levels.</p>
+                <button className="mt-4 text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline">View Stock Report</button>
+             </div>
+             <div className="rounded-xl border bg-linear-to-br from-amber-50 to-white p-5 shadow-sm border-amber-100">
+                <div className="flex items-center gap-2 mb-3">
+                   <Users className="h-4 w-4 text-amber-500" />
+                   <h3 className="text-xs font-bold text-amber-900 uppercase tracking-widest">Customer Insight</h3>
+                </div>
+                <p className="text-sm font-bold text-gray-900">New "Whale" customers</p>
+                <p className="text-xs text-gray-600 mt-1">3 new customers spent over $1,000 this week. Send a personalized thank you note?</p>
+                <button className="mt-4 text-[10px] font-bold text-amber-600 uppercase tracking-widest hover:underline">View Segments</button>
+             </div>
+          </div>
         </div>
 
         {/* ── Right Column: Insights ── */}
@@ -362,7 +386,7 @@ export function AdminDashboard() {
           </div>
           {lastUpdated && (
             <span className="text-[10px] font-medium text-gray-400">
-              Snapshot: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              Snapshot: {lastUpdated?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           )}
         </div>

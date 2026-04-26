@@ -332,6 +332,29 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <header className="hidden lg:flex h-12 shrink-0 items-center justify-between border-b bg-white/50 px-8 backdrop-blur-sm">
               <AdminBreadcrumb />
               <div className="flex items-center gap-6">
+                {/* Quick Actions Menu */}
+                <div className="relative group">
+                  <button className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-[10px] font-bold text-white shadow-sm transition hover:bg-primary-700 active:scale-95">
+                    <Plus className="h-3.5 w-3.5" />
+                    Create
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </button>
+                  <div className="invisible absolute right-0 top-full mt-2 w-48 origin-top-right rounded-xl border bg-white p-1 shadow-2xl transition-all opacity-0 group-hover:visible group-hover:opacity-100 z-50">
+                     <button onClick={() => router.push('/admin/products/new')} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-50 transition">
+                       <Package className="h-3.5 w-3.5 text-gray-400" />
+                       Add product
+                     </button>
+                     <button onClick={() => router.push('/admin/orders')} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-50 transition">
+                       <Plus className="h-3.5 w-3.5 text-gray-400" />
+                       Draft order
+                     </button>
+                     <button onClick={() => router.push('/admin/discounts')} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-50 transition">
+                       <Megaphone className="h-3.5 w-3.5 text-gray-400" />
+                       Create discount
+                     </button>
+                  </div>
+                </div>
+
                 <AdminNotificationBell />
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                   <div className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />

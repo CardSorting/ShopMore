@@ -1,7 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@infrastructure/server/services';
 import { jsonError, parseOrderStatus, readJsonObject, requireAdminSession } from '@infrastructure/server/apiGuards';
-import { DomainError } from '@domain/errors';
+import { DomainError, OrderNotFoundError } from '@domain/errors';
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        await requireAdminSession();
+        const { id } = await params;
+        const services = await getServerServices();
+        const order = await services.orderService.getOrder(id);
+        if (!order) throw new OrderNotFoundError(id);
+        return NextResponse.json(order);
+    } catch (error) {
+        return jsonError(error, 'Failed to load order details');
+    }
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {

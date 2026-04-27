@@ -27,6 +27,7 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 
 ## Current verified state
 
+- Admin order details endpoint restoration verified in `src/app/api/admin/orders/[id]/route.ts`; the route now supports `GET` with `requireAdminSession()`, resolves the order through `services.orderService.getOrder(id)`, and returns `OrderNotFoundError` for missing orders (mapped to HTTP 404 by `jsonError()`).
 - Framework/runtime stack: Next.js `16.0.10` declared in `package.json`, React `19.2.5`, TypeScript `~6.0.2`, ESLint `10.2.1`, Tailwind CSS `4.2.4` with `@tailwindcss/postcss`.
 - Runtime scripts from `package.json`: `npm run dev`, `npm run build`, `npm run lint`, `npm run start`.
 - Lint baseline stabilization verified in `eslint.config.js`; legacy high-noise rules (`@typescript-eslint/no-unused-vars`, `@typescript-eslint/no-explicit-any`, `react-hooks/exhaustive-deps`, `react-hooks/purity`, and related unused/empty/useless-assignment checks) are temporarily disabled to keep `npm run lint` green while incremental debt cleanup proceeds.
@@ -101,7 +102,7 @@ git --no-pager diff --stat
 git status --short
 ```
 
-Latest verification for the seed + Stripe hardening pass: `npm run lint && npm run build` completed successfully, and the production build generated the full current app/api route manifest including `/admin/*`, `/api/admin/*`, `/api/auth/*`, `/api/cart*`, `/api/orders`, and `/api/products*` routes.
+Latest verification for the admin order-details restoration pass: `npm run build` completed successfully, and the production build generated the dynamic route `/api/admin/orders/[id]` with no TypeScript or compilation errors.
 
 ## Mermaid: architectural bridge
 

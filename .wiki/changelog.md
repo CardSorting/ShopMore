@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-04-26 — Admin order details loading restoration
+
+### Problem verified
+
+- Admin order detail UI (`src/ui/pages/admin/AdminOrderDetail.tsx`) calls `orderService.getOrder(id)` and expects `GET /api/admin/orders/:id`.
+- The route file `src/app/api/admin/orders/[id]/route.ts` only implemented `PATCH` and had no `GET` handler, causing order detail requests to fail and surface "Failed to load order details".
+
+### Remediation performed
+
+- Added `GET` handler to `src/app/api/admin/orders/[id]/route.ts`.
+- Enforced admin authorization with `requireAdminSession()`.
+- Loaded the order through Core orchestration (`services.orderService.getOrder(id)`).
+- Returned `OrderNotFoundError` when no order exists so `jsonError()` maps missing orders to HTTP 404.
+- Preserved existing `PATCH` status update behavior unchanged.
+
+### Verification evidence
+
+- `npm run build` completed successfully after the route update.
+- Build output includes dynamic route `ƒ /api/admin/orders/[id]`, confirming the modified endpoint compiles in production build.
+
+### Files intentionally changed in this pass
+
+- `src/app/api/admin/orders/[id]/route.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Change is Infrastructure-only (HTTP adapter behavior).
+- Domain and Core contracts were already sufficient; no business-rule or orchestration contract changes were required.
+
 ## 2026-04-26 — Additional hardening pass: seed-path safety and cast-free order seeding
 
 ### Problem verified

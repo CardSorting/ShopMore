@@ -10,6 +10,7 @@ import type { Product, ProductCategory, ProductStatus, CardRarity, ProductDraft,
 import { DomainError, InsufficientStockError, ProductNotFoundError } from '@domain/errors';
 import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
+import { sql } from 'kysely';
 
 function parseProductCategory(value: string): ProductCategory {
   if (value === 'booster' || value === 'single' || value === 'deck' || value === 'accessory' || value === 'box') {
@@ -334,5 +335,68 @@ export class SQLiteProductRepository implements IProductRepository {
     });
 
     this.invalidateIndex(); // Ensure RAM stays synchronous with physical state
+  }
+
+  async getStats(): Promise<{
+    totalProducts: number;
+    totalUnits: number;
+    inventoryValue: number;
+    healthCounts: {
+      out_of_stock: number;
+      low_stock: number;
+      healthy: number;
+    };
+  }> {
+    const stats = await this.db
+      .selectFrom('products')
+      .select([
+        (eb) => eb.fn.count<number>('id').as('totalProducts'),
+        (eb) => eb.fn.sum<number>('stock').as('totalUnits'),
+        (eb) => eb.fn.sum<number>(sql<number>`${eb.ref('stock')} * ${eb.ref('price')}`).as('inventoryValue'),
+      ])
+      .executeTakeFirst();
+
+    const healthCounts = {
+      out_of_stock: 0,
+      low_stock: 0,
+      healthy: 0,
+    };
+
+    // Low stock is < 10, Out of stock is 0
+    const healthResults = await this.db
+      .selectFrom('products')
+      .select([
+        'stock',
+        (eb) => eb.fn.count<number>('id').as('count')
+      ])
+      .groupBy('stock')
+      .execute();
+
+    for (const row of healthResults) {
+      if (row.stock <= 0) healthCounts.out_of_stock += Number(row.count);
+      else if (row.stock < 10) healthCounts.low_stock += Number(row.count);
+      else healthCounts.healthy += Number(row.count);
+    }
+
+    return {
+      totalProducts: Number(stats?.totalProducts ?? 0),
+      totalUnits: Number(stats?.totalUnits ?? 0),
+      inventoryValue: Number(stats?.inventoryValue ?? 0),
+      healthCounts,
+    };
+  }
+
+  async getLowStockProducts(limit: number): Promise<Product[]> {
+    // We consider low stock as anything less than 10
+    const results = await this.db
+      .selectFrom('products')
+      .selectAll()
+      .where('stock', '<', 10)
+      .where('status', '=', 'active')
+      .orderBy('stock', 'asc')
+      .limit(limit)
+      .execute();
+
+    return results.map(row => this.mapTableToProduct(row));
   }
 }

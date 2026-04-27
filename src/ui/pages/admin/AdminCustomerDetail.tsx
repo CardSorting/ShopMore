@@ -54,6 +54,7 @@ export function AdminCustomerDetail({ id }: AdminCustomerDetailProps) {
         router.push('/admin/customers');
       }
     } catch (err) {
+      console.error('Failed to load customer details:', err);
       toast('error', 'Failed to load customer details');
     } finally {
       setLoading(false);

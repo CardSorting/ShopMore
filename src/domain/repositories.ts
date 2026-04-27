@@ -18,6 +18,17 @@ export interface IProductRepository {
   batchUpdateStock?(updates: { id: string; delta: number }[]): Promise<void>;
   batchDelete?(ids: string[]): Promise<void>;
   batchUpdate?(updates: { id: string; updates: ProductUpdate }[]): Promise<Product[]>;
+  getStats(): Promise<{
+    totalProducts: number;
+    totalUnits: number;
+    inventoryValue: number;
+    healthCounts: {
+      out_of_stock: number;
+      low_stock: number;
+      healthy: number;
+    };
+  }>;
+  getLowStockProducts(limit: number): Promise<Product[]>;
 }
 
 export interface ICartRepository {
@@ -38,6 +49,11 @@ export interface IOrderRepository {
   updateStatus(id: string, status: OrderStatus): Promise<void>;
   batchUpdateStatus?(ids: string[], status: OrderStatus): Promise<void>;
   seed?(order: Order): Promise<void>;
+  getDashboardStats(): Promise<{
+    totalRevenue: number;
+    dailyRevenue: number[]; // Last 7 days, index 0 is 6 days ago, index 6 is today
+    orderCountsByStatus: Record<OrderStatus, number>;
+  }>;
 }
 
 export interface IAuthProvider {

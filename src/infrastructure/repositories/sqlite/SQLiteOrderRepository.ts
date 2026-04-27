@@ -230,6 +230,85 @@ export class SQLiteOrderRepository implements IOrderRepository {
       .execute();
   }
 
+  async batchUpdateStatus(ids: string[], status: OrderStatus): Promise<void> {
+    const now = new Date().toISOString();
+    await this.db
+      .updateTable('orders')
+      .set({
+        status,
+        updatedAt: now,
+      })
+      .where('id', 'in', ids)
+      .execute();
+  }
+
+  async getDashboardStats(): Promise<{
+    totalRevenue: number;
+    dailyRevenue: number[];
+    orderCountsByStatus: Record<OrderStatus, number>;
+  }> {
+    const counts = await this.db
+      .selectFrom('orders')
+      .select([
+        'status',
+        (eb) => eb.fn.count<number>('id').as('count')
+      ])
+      .groupBy('status')
+      .execute();
+
+    const orderCountsByStatus: Record<OrderStatus, number> = {
+      pending: 0,
+      confirmed: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+
+    for (const row of counts) {
+      const status = row.status as OrderStatus;
+      if (orderCountsByStatus[status] !== undefined) {
+        orderCountsByStatus[status] = Number(row.count);
+      }
+    }
+
+    const revenueResult = await this.db
+      .selectFrom('orders')
+      .select((eb) => eb.fn.sum<number>('total').as('totalRevenue'))
+      .where('status', '!=', 'cancelled')
+      .executeTakeFirst();
+
+    // Daily revenue for last 7 days
+    const dailyRevenue = new Array(7).fill(0);
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const dailyResults = await this.db
+      .selectFrom('orders')
+      .select([
+        'createdAt',
+        'total'
+      ])
+      .where('status', '!=', 'cancelled')
+      .where('createdAt', '>=', sevenDaysAgo.toISOString())
+      .execute();
+
+    for (const row of dailyResults) {
+      const orderDate = new Date(row.createdAt);
+      const diffDays = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays >= 0 && diffDays < 7) {
+        dailyRevenue[6 - diffDays] += row.total;
+      }
+    }
+
+    return {
+      totalRevenue: Number(revenueResult?.totalRevenue ?? 0),
+      dailyRevenue,
+      orderCountsByStatus,
+    };
+  }
+
   async seed(order: Order): Promise<void> {
     await this.db
       .insertInto('orders')

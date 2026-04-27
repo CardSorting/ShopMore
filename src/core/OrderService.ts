@@ -30,6 +30,7 @@ import {
   PaymentFailedError,
   ProductNotFoundError,
 } from '@domain/errors';
+import { logger } from '@utils/logger';
 
 class InMemoryLockProvider implements ILockProvider {
   private locks = new Set<string>();
@@ -180,10 +181,26 @@ export class OrderService {
 
         return order;
       } catch (err) {
+        // [AUDIT] CRITICAL: Payment succeeded but DB record failed.
+        // We must log this to a persistent store that is unlikely to fail, or at least log to console.
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        await this.audit.record({
+          userId,
+          userEmail: 'system-reconciliation@playmore.tcg',
+          action: 'checkout_reconciliation_required',
+          targetId: paymentResult.transactionId || 'unknown',
+          details: {
+            error: errorMessage,
+            userId,
+            total,
+            items: cart.items.length,
+          }
+        }).catch(auditErr => {
+          logger.error('CRITICAL: Failed to even record reconciliation audit!', auditErr);
+        });
+
         throw new CheckoutReconciliationError(
-          err instanceof Error
-            ? `Payment ${paymentResult.transactionId} succeeded, but checkout finalization failed: ${err.message}`
-            : `Payment ${paymentResult.transactionId} succeeded, but checkout finalization failed.`
+          `Payment ${paymentResult.transactionId} succeeded, but checkout finalization failed: ${errorMessage}. Please contact support with your transaction ID.`
         );
       }
     } finally {
@@ -208,54 +225,21 @@ export class OrderService {
   }
 
   async getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
-    const [{ orders }, { products }] = await Promise.all([
-      this.orderRepo.getAll({ limit: 100 }),
-      this.productRepo.getAll({ limit: 100 }),
+    const [orderStats, productStats, { orders: latestOrders }, lowStockProducts] = await Promise.all([
+      this.orderRepo.getDashboardStats(),
+      this.productRepo.getStats(),
+      this.orderRepo.getAll({ limit: 10 }),
+      this.productRepo.getLowStockProducts(8),
     ]);
 
-    const orderCountsByStatus: AdminDashboardSummary['orderCountsByStatus'] = {
-      pending: 0,
-      confirmed: 0,
-      shipped: 0,
-      delivered: 0,
-      cancelled: 0,
-    };
     const fulfillmentCounts: AdminDashboardSummary['fulfillmentCounts'] = {
-      to_review: 0,
-      ready_to_ship: 0,
-      in_transit: 0,
-      completed: 0,
-      cancelled: 0,
+      to_review: orderStats.orderCountsByStatus.pending,
+      ready_to_ship: orderStats.orderCountsByStatus.confirmed,
+      in_transit: orderStats.orderCountsByStatus.shipped,
+      completed: orderStats.orderCountsByStatus.delivered,
+      cancelled: orderStats.orderCountsByStatus.cancelled,
     };
 
-    for (const order of orders) {
-      orderCountsByStatus[order.status] += 1;
-      fulfillmentCounts[classifyFulfillmentBucket(order.status)] += 1;
-    }
-
-    const revenueOrders = orders.filter((order) => order.status !== 'cancelled');
-    const totalRevenue = revenueOrders.reduce((sum, order) => sum + order.total, 0);
-
-    // Calculate daily revenue for the last 7 days
-    const dailyRevenue = new Array(7).fill(0);
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
-    
-    for (const order of revenueOrders) {
-      const orderDate = new Date(order.createdAt);
-      const diffDays = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays >= 0 && diffDays < 7) {
-        dailyRevenue[6 - diffDays] += order.total;
-      }
-    }
-
-    const lowStockProducts = products
-      .filter((product) => classifyInventoryHealth(product.stock) !== 'healthy')
-      .sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name))
-      .slice(0, 8);
-    const outOfStockCount = products.filter(
-      (product) => classifyInventoryHealth(product.stock) === 'out_of_stock'
-    ).length;
     const attentionItems: AdminDashboardSummary['attentionItems'] = [
       ...(fulfillmentCounts.to_review > 0
         ? [
@@ -279,32 +263,33 @@ export class OrderService {
             },
           ]
         : []),
-      ...(lowStockProducts.length > 0
+      ...(productStats.healthCounts.out_of_stock > 0 || productStats.healthCounts.low_stock > 0
         ? [
             {
               id: 'inventory-low-stock',
-              label: `${lowStockProducts.length} products need stock attention`,
+              label: `${productStats.healthCounts.out_of_stock + productStats.healthCounts.low_stock} products need stock attention`,
               description: 'Review products that are unavailable or close to selling out.',
               href: '/admin/inventory',
-              priority: outOfStockCount > 0 ? ('high' as const) : ('medium' as const),
+              priority: productStats.healthCounts.out_of_stock > 0 ? ('high' as const) : ('medium' as const),
             },
           ]
         : []),
     ];
 
+    const totalOrders = Object.values(orderStats.orderCountsByStatus).reduce((a, b) => a + b, 0);
+
     return {
-      productCount: products.length,
-      lowStockCount: products.filter((product) => classifyInventoryHealth(product.stock) === 'low_stock').length,
-      outOfStockCount,
-      totalRevenue,
-      averageOrderValue:
-        revenueOrders.length > 0 ? Math.round(totalRevenue / revenueOrders.length) : 0,
-      orderCountsByStatus,
+      productCount: productStats.totalProducts,
+      lowStockCount: productStats.healthCounts.low_stock,
+      outOfStockCount: productStats.healthCounts.out_of_stock,
+      totalRevenue: orderStats.totalRevenue,
+      averageOrderValue: totalOrders > 0 ? orderStats.totalRevenue / totalOrders : 0,
+      dailyRevenue: orderStats.dailyRevenue,
+      orderCountsByStatus: orderStats.orderCountsByStatus,
       fulfillmentCounts,
-      attentionItems,
-      recentOrders: orders.slice(0, 8),
+      recentOrders: latestOrders,
       lowStockProducts,
-      dailyRevenue,
+      attentionItems,
     };
   }
 
@@ -348,7 +333,8 @@ export class OrderService {
   async getCustomerSummaries(users: import('@domain/models').User[]): Promise<any[]> {
     const summaries = await Promise.all(
       users.map(async (user) => {
-        const orders = await this.orderRepo.getByUserId(user.id);
+        try {
+          const orders = await this.orderRepo.getByUserId(user.id);
         const spent = orders
           .filter((o) => o.status !== 'cancelled')
           .reduce((sum, o) => sum + o.total, 0);
@@ -356,21 +342,29 @@ export class OrderService {
           ? new Date(Math.max(...orders.map(o => o.createdAt.getTime())))
           : null;
         
+        const joinedTime = user.createdAt instanceof Date 
+          ? user.createdAt.getTime() 
+          : new Date(user.createdAt as any).getTime();
+
         let segment = 'new';
         if (spent > 100000) segment = 'big_spender';
         else if (orders.length > 5) segment = 'active';
-        else if (orders.length === 0 && (Date.now() - user.createdAt.getTime()) > 30 * 24 * 60 * 60 * 1000) segment = 'inactive';
+        else if (orders.length === 0 && (Date.now() - joinedTime) > 30 * 24 * 60 * 60 * 1000) segment = 'inactive';
 
-        return {
-          id: user.id,
-          name: user.displayName || user.email.split('@')[0],
-          email: user.email,
-          orders: orders.length,
-          spent,
-          lastOrder,
-          joined: user.createdAt,
-          segment
-        };
+          return {
+            id: user.id,
+            name: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            orders: orders.length,
+            spent,
+            lastOrder,
+            joined: user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt as any),
+            segment
+          };
+        } catch (err) {
+          console.error(`Failed to summarize customer ${user.email}:`, err);
+          throw err; // Re-throw to be caught by the caller
+        }
       })
     );
 

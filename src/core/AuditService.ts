@@ -3,15 +3,17 @@
  * System-wide audit logging for administrative forensics.
  * Compliant with BroccoliQ Level 7 integrity standards.
  */
-import { Kysely } from 'kysely';
+import { Kysely, sql } from 'kysely';
 import { getSQLiteDB } from '@infrastructure/sqlite/database';
+import { logger } from '@utils/logger';
 import type { Database } from '@infrastructure/sqlite/schema';
 
 export type AuditAction = 
   | 'product_created' | 'product_updated' | 'product_deleted'
   | 'order_status_changed' | 'order_refunded'
   | 'discount_created' | 'discount_deleted'
-  | 'settings_updated' | 'staff_added' | 'staff_removed';
+  | 'settings_updated' | 'staff_added' | 'staff_removed'
+  | 'checkout_reconciliation_required';
 
 export interface AuditEntry {
   id: string;

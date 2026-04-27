@@ -23,23 +23,21 @@ export class ProductService {
   }
 
   async getInventoryOverview(): Promise<InventoryOverview> {
+    const stats = await this.repo.getStats();
+    
+    // For the list of products in the overview, we still limit to 100 for performance
     const { products } = await this.repo.getAll({ limit: 100 });
-    const healthCounts: InventoryOverview['healthCounts'] = {
-      out_of_stock: 0,
-      low_stock: 0,
-      healthy: 0,
-    };
+    
     const enrichedProducts = products.map((product) => {
       const inventoryHealth = classifyInventoryHealth(product.stock);
-      healthCounts[inventoryHealth] += 1;
       return { ...product, inventoryHealth };
     });
 
     return {
-      totalProducts: products.length,
-      totalUnits: products.reduce((sum, product) => sum + product.stock, 0),
-      inventoryValue: products.reduce((sum, product) => sum + product.stock * product.price, 0),
-      healthCounts,
+      totalProducts: stats.totalProducts,
+      totalUnits: stats.totalUnits,
+      inventoryValue: stats.inventoryValue,
+      healthCounts: stats.healthCounts,
       products: enrichedProducts.sort((a, b) => {
         const rank = { out_of_stock: 0, low_stock: 1, healthy: 2 } as const;
         return rank[a.inventoryHealth] - rank[b.inventoryHealth] || a.stock - b.stock || a.name.localeCompare(b.name);

@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-04-27 — Checkout and post-payment order UX modernization
+
+### Problem verified
+
+- `src/ui/pages/CheckoutPage.tsx` had a checkout flow but still lacked several familiar Shopify/Stripe shopper patterns: inline field validation, clearer step gating, explanatory wallet-button state, mobile order-summary disclosure, free-shipping guidance, plain-language discount feedback, and a stronger secure-payment review area.
+- Checkout success previously relied on an inline success state instead of consistently rendering the richer reusable order confirmation experience with the finalized `Order`.
+- `src/ui/checkout/OrderConfirmation.tsx` needed a more receipt-like post-payment page with clearer order number, confirmation-email copy, estimated delivery, status timeline, next-step guidance, print/support actions, and policy navigation.
+- `src/ui/pages/OrdersPage.tsx` had order cards and search, but customer navigation could be clearer for non-technical users: no status filter, no no-results filter state, less direct action hierarchy, and status labels that did not fully mirror common ecommerce account pages.
+- Production build surfaced an unrelated Next.js static-generation requirement: `/products` used `useSearchParams()` through `ProductsPage` without a route-level Suspense boundary.
+
+### Remediation performed
+
+- Rebuilt `CheckoutPage` around a familiar `Information → Shipping → Payment` step model with guarded navigation, inline email/address validation, shopper-readable validation messages, saved address persistence, secure payment copy, and stable trusted-checkout idempotency preservation.
+- Added disabled explanatory Apple Pay / Google Pay placeholders so unavailable wallet checkout no longer appears deceptively actionable.
+- Added a mobile collapsible order summary, item count, order lines, discount-code feedback, free-shipping threshold/unlocked messaging, and buyer-protection / protected-packaging / support trust cues.
+- Updated checkout finalization to store the finalized `Order` and render `OrderConfirmation` after success instead of a separate inline success layout.
+- Rebuilt `OrderConfirmation` as a receipt-style post-payment page with order number/date, confirmation email, estimated delivery, status timeline, next-step cards, shipping/delivery cards, item list, receipt summary, print action, support link, order-tracking links, and shipping/refund policy navigation.
+- Rebuilt `OrdersPage` with a customer account-style hero, latest-order summary, order search, status filter, no-results state with filter reset, plain-language status labels, scannable order cards, delivery estimate, item previews, `View details`, `Buy again`, `Receipt`, and tracking actions.
+- Wrapped `/products` route rendering in `Suspense` in `src/app/products/page.tsx` to satisfy Next.js `useSearchParams()` CSR bailout requirements during production build.
+
+### Verification evidence
+
+- `npm run lint` completed successfully after the checkout/order UX pass.
+- `npm run build` completed successfully after adding the `/products` Suspense boundary; the production build generated 41 app routes and retained `/checkout`, `/orders`, `/orders/[id/]`, and `/products`.
+- Earlier build attempt compiled the changed checkout/order UI successfully and failed only at `/products` prerendering with `useSearchParams() should be wrapped in a suspense boundary`, confirming the additional route wrapper fix was required outside the checkout/order UI files.
+
+### Files intentionally changed in this pass
+
+- `src/ui/pages/CheckoutPage.tsx`
+- `src/ui/checkout/OrderConfirmation.tsx`
+- `src/ui/pages/OrdersPage.tsx`
+- `src/app/products/page.tsx`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- This is primarily a UI-layer pass. Checkout/order presentation consumes existing Domain `Address`, `Order`, and `OrderStatus` shapes without changing Domain rules or models.
+- Core order/payment orchestration and Infrastructure checkout/payment adapters were reused unchanged.
+- The `/products` route change is a framework boundary wrapper only; product-search behavior remains in the existing UI component.
+
 ## 2026-04-26 — Cart navigation clarity and Shopify/Stripe-style UX pass
 
 ### Problem verified

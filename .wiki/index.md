@@ -27,6 +27,12 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 
 ## Current verified state
 
+- Checkout UX modernization verified in `src/ui/pages/CheckoutPage.tsx`; checkout now uses a guarded `Information → Shipping → Payment` progression, inline contact/address validation, explanatory disabled wallet checkout placeholders, review cards, secure Stripe-style payment copy, mobile order-summary disclosure, discount-code feedback, free-shipping guidance, and buyer-protection trust cues.
+- Checkout success path verified in `src/ui/pages/CheckoutPage.tsx`; successful finalization stores the returned Domain `Order` and renders the shared `OrderConfirmation` experience while preserving stable checkout idempotency until confirmation.
+- Post-payment receipt experience verified in `src/ui/checkout/OrderConfirmation.tsx`; the page now presents order number/date, confirmation-email messaging, estimated delivery, customer next steps, status timeline, shipping/delivery cards, itemized receipt summary, print action, support link, order tracking, and shipping/refund policy navigation.
+- Customer order history UX verified in `src/ui/pages/OrdersPage.tsx`; account orders now include a familiar ecommerce hero, latest-order summary, search, status filter, no-results reset state, plain-language status labels, order progress tracker, item previews, delivery estimate, and clear `View details`, `Buy again`, `Receipt`, and tracking actions.
+- Products route prerender compatibility verified in `src/app/products/page.tsx`; `ProductsPage` is wrapped in a route-level `Suspense` boundary so its `useSearchParams()` usage satisfies Next.js production build requirements.
+
 - Storefront cart UX alignment verified in `src/ui/pages/CartPage.tsx`; the cart now renders authoritative `CartItem` snapshot fields for names, images, unit prices, line totals, and subtotal instead of calculating totals from current refetched product prices.
 - Cart page robustness verified in `src/ui/pages/CartPage.tsx`; it now includes loading, signed-out, empty, and error/retry states, per-line mutation pending state, clear-cart confirmation/pending state, stock/unavailable warnings from supplemental product fetches, `MAX_CART_QUANTITY` clamping, estimated-shipping copy, checkout disclaimer, and trust/help cues.
 - Event-based storefront cart synchronization verified: `src/ui/pages/CartPage.tsx` dispatches `cart:updated` after successful remove/update/clear mutations, and `src/ui/pages/ProductDetailPage.tsx` dispatches the same event after successful add-to-cart.
@@ -113,7 +119,7 @@ git --no-pager diff --stat
 git status --short
 ```
 
-Latest verification for the admin customer detail stabilization pass: `npm run build` completed successfully, and the production build generated dynamic routes `/api/admin/customers` and `/api/admin/orders/[id]` with no TypeScript or compilation errors.
+Latest verification for the checkout/order UX modernization pass: `npm run lint` and `npm run build` completed successfully. The production build generated 41 app routes including `/checkout`, `/orders`, `/orders/[id/]`, and `/products`.
 
 ## Mermaid: architectural bridge
 

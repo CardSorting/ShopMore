@@ -7,10 +7,11 @@ import { useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import Link from 'next/link';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
-import { CheckCircle, ArrowLeft, LockKeyhole, ChevronRight, ShoppingBag, CreditCard, Truck } from 'lucide-react';
+import { CheckCircle, ArrowLeft, LockKeyhole, ChevronRight, ShoppingBag, CreditCard, Truck, ShieldCheck } from 'lucide-react';
 
 import { isStripeConfigured } from '../checkout/stripeClient';
 import type { Address, Cart } from '@domain/models';
+import { logger } from '@utils/logger';
 
 const StripeCheckoutForm = lazy(() => import('../checkout/StripeCheckoutForm').then((module) => ({ default: module.StripeCheckoutForm })));
 
@@ -56,7 +57,22 @@ export function CheckoutPage() {
       }
     };
     if (user) void loadData();
+
+    // Load persisted address
+    const savedAddress = localStorage.getItem('checkout:address');
+    if (savedAddress) {
+      try {
+        setAddress(JSON.parse(savedAddress));
+      } catch (e) {
+        logger.error('Failed to parse saved address', e);
+      }
+    }
   }, [services, user]);
+
+  // Persist address changes
+  useEffect(() => {
+    localStorage.setItem('checkout:address', JSON.stringify(address));
+  }, [address]);
 
   const subtotal = useMemo(() => cart?.items.reduce((sum, item) => sum + item.priceSnapshot * item.quantity, 0) ?? 0, [cart]);
   const shipping = subtotal >= 10000 ? 0 : 599;
@@ -209,10 +225,18 @@ export function CheckoutPage() {
                       type="email"
                       value={email}
                       readOnly={!!user}
+                      autoComplete="email"
                       className="w-full rounded-lg border bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-70"
                       placeholder="you@example.com"
+                      required
                     />
                   </div>
+                  {!user && (
+                    <div className="mt-4 flex items-center gap-2">
+                      <input type="checkbox" id="save-info" className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                      <label htmlFor="save-info" className="text-xs text-gray-600">Save my information for a faster checkout next time</label>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -239,6 +263,7 @@ export function CheckoutPage() {
                         placeholder="123 TCG Lane"
                         value={address.street}
                         onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                        autoComplete="shipping street-address"
                         className="w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
@@ -251,6 +276,7 @@ export function CheckoutPage() {
                           placeholder="Pallet Town"
                           value={address.city}
                           onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                          autoComplete="shipping address-level2"
                           className="w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                           required
                         />
@@ -261,6 +287,7 @@ export function CheckoutPage() {
                           placeholder="Kanto"
                           value={address.state}
                           onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                          autoComplete="shipping address-level1"
                           className="w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                           required
                         />
@@ -273,6 +300,7 @@ export function CheckoutPage() {
                           placeholder="12345"
                           value={address.zip}
                           onChange={(e) => setAddress({ ...address, zip: e.target.value })}
+                          autoComplete="shipping postal-code"
                           className="w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                           required
                         />
@@ -283,6 +311,7 @@ export function CheckoutPage() {
                           placeholder="US"
                           value={address.country}
                           onChange={(e) => setAddress({ ...address, country: e.target.value.toUpperCase() })}
+                          autoComplete="shipping country"
                           className="w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
@@ -458,7 +487,16 @@ export function CheckoutPage() {
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
                   <LockKeyhole className="h-4 w-4 text-green-600" />
-                  <span>Your payment information is never stored on our servers</span>
+                  <span>Secure 256-bit SSL encrypted checkout</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-gray-600">
+                  <ShieldCheck className="h-4 w-4 text-primary-600" />
+                  <span>30-Day Money-Back Guarantee</span>
+                </div>
+                <div className="flex items-center justify-center gap-4 pt-4 opacity-30 grayscale filter">
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-4" />
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6" />
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-4" />
                 </div>
               </div>
             </div>

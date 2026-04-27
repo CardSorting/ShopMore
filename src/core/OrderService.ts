@@ -177,6 +177,7 @@ export class OrderService {
             name: item.name,
             quantity: item.quantity,
             unitPrice: item.priceSnapshot,
+            imageUrl: item.imageUrl,
           })),
           total,
           status: 'confirmed', // Created directly as confirmed

@@ -157,8 +157,13 @@ export function ProductDetailPage() {
             <div className="mb-8 space-y-4 border-t border-b py-6">
               <div className="flex items-center gap-3">
                 <div className={`h-2.5 w-2.5 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}`} />
-                <span className={`text-sm font-bold ${product.stock < 5 && product.stock > 0 ? 'text-amber-600' : product.stock === 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                  {product.stock > 10 ? 'In stock and ready to ship' : product.stock > 0 ? `Only ${product.stock} left in stock!` : 'Out of stock'}
+                <span className={`text-sm font-bold ${product.stock < 10 && product.stock > 0 ? 'text-amber-600' : product.stock === 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                  {product.stock > 10 ? 'In stock and ready to ship' : product.stock > 0 ? (
+                    <span className="flex items-center gap-1.5">
+                      Only {product.stock} left in stock - order soon!
+                      <span className="inline-flex h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                    </span>
+                  ) : 'Out of stock'}
                 </span>
               </div>
             </div>
@@ -312,6 +317,24 @@ export function ProductDetailPage() {
             )}
           </section>
         )}
+      </div>
+
+      {/* Mobile Sticky Add to Cart */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-lg border-t p-4 lg:hidden transition-transform duration-300 shadow-[0_-8px_30px_rgb(0,0,0,0.1)]">
+        <div className="flex items-center gap-4 max-w-7xl mx-auto">
+          <div className="hidden sm:flex flex-col">
+            <p className="text-[10px] font-bold text-gray-500 uppercase truncate max-w-[120px]">{product.name}</p>
+            <p className="text-sm font-black text-gray-900">${(product.price / 100).toFixed(2)}</p>
+          </div>
+          <button
+            onClick={handleAddToCart}
+            disabled={adding || product.stock === 0}
+            className="flex-1 h-12 flex items-center justify-center gap-2 bg-primary-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-primary-100 disabled:opacity-50"
+          >
+            {added ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+            {adding ? 'Adding...' : added ? 'Added!' : 'Add to Cart'}
+          </button>
+        </div>
       </div>
     </div>
   );

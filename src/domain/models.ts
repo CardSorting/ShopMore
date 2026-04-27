@@ -96,6 +96,7 @@ export interface OrderItem {
   name: string;
   quantity: number;
   unitPrice: number; // cents
+  imageUrl?: string;
 }
 
 export type OrderStatus =

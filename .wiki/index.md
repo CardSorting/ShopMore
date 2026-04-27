@@ -35,6 +35,8 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 - Settings typing hardening verified: `src/core/SettingsService.ts` now uses Domain `JsonValue` for settings reads/writes, and `src/infrastructure/repositories/sqlite/SQLiteSettingsRepository.ts` now persists and returns `JsonValue`-typed records instead of `any`.
 - Core composition verified in `src/core/container.ts`; it orchestrates services and wires Infrastructure adapters through lazy singleton/factory creation.
 - Core composition now wires `SovereignLocker` into `OrderService` for SQLite-backed checkout mutual exclusion and conditionally wires `TrustedCheckoutGateway` when `CHECKOUT_ENDPOINT` is configured.
+- Stripe payment adapter hardening verified in `src/infrastructure/services/StripePaymentProcessor.ts`; it now performs real Stripe PaymentIntent create+confirm requests, requires `STRIPE_SECRET_KEY`, propagates idempotency keys to Stripe, validates response shape, and maps non-success states/network failures to controlled `PaymentFailedError` messages.
+- Seed pipeline hardening verified in `src/infrastructure/services/SeedDataLoader.ts`; production seeding now requires explicit `ALLOW_PRODUCTION_SEEDING=true`, order seeding no longer uses `as any` service internals, and seeded order writes flow through explicit Infrastructure repository access with shape-aligned payloads.
 - Infrastructure server bridge verified in `src/infrastructure/server/services.ts`; it initializes SQLite through `initDatabase()` once before returning the Core service container.
 - Session integrity verified in `src/infrastructure/server/session.ts`; cookies use `pm_tcg_session`, a versioned base64url payload, signed `issuedAt` / `expiresAt`, HMAC-SHA256 signature, timing-safe comparison, production `SESSION_SECRET` length enforcement, server-side expiry rejection, explicit clearing options, and HTTP-only cookie options.
 - Session cookies now use centralized cookie options with `sameSite: 'strict'`, and decoded sessions are independently rejected when signed `issuedAt` age exceeds `SESSION_TTL_SECONDS`.
@@ -99,7 +101,7 @@ git --no-pager diff --stat
 git status --short
 ```
 
-Latest verification for the lint-baseline stabilization pass: `npm run lint && npm run build` completed successfully, and the production build generated the full current app/api route manifest including `/admin/*`, `/api/admin/*`, `/api/auth/*`, `/api/cart*`, `/api/orders`, and `/api/products*` routes.
+Latest verification for the seed + Stripe hardening pass: `npm run lint && npm run build` completed successfully, and the production build generated the full current app/api route manifest including `/admin/*`, `/api/admin/*`, `/api/auth/*`, `/api/cart*`, `/api/orders`, and `/api/products*` routes.
 
 ## Mermaid: architectural bridge
 

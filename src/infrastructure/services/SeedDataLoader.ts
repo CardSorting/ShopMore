@@ -3,6 +3,7 @@
  */
 import type { Product, OrderStatus, Address } from '@domain/models';
 import { getInitialServices } from '../../core/container';
+import { SQLiteOrderRepository } from '../repositories/sqlite/SQLiteOrderRepository';
 import { logger } from '@utils/logger';
 
 const INITIAL_CATALOG: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[] = [
@@ -128,7 +129,15 @@ const INITIAL_CUSTOMERS = [
   { email: 'gary.oak@oak.lab', password: 'Smell-ya-later123', displayName: 'Gary Oak' },
 ];
 
+function assertSeedingAllowed(): void {
+  const allowInProduction = process.env.ALLOW_PRODUCTION_SEEDING === 'true';
+  if (process.env.NODE_ENV === 'production' && !allowInProduction) {
+    throw new Error('Seeding is blocked in production unless ALLOW_PRODUCTION_SEEDING=true.');
+  }
+}
+
 export async function seedProducts(): Promise<number> {
+  assertSeedingAllowed();
   const services = getInitialServices();
   let created = 0;
 
@@ -149,6 +158,7 @@ export async function seedProducts(): Promise<number> {
 }
 
 export async function seedCustomers(): Promise<number> {
+  assertSeedingAllowed();
   const services = getInitialServices();
   let created = 0;
 
@@ -169,7 +179,9 @@ export async function seedCustomers(): Promise<number> {
 }
 
 export async function seedOrders(): Promise<number> {
+  assertSeedingAllowed();
   const services = getInitialServices();
+  const orderRepo = new SQLiteOrderRepository();
   const productsResult = await services.productService.getProducts({ limit: 100 });
   const products = productsResult.products;
   const customers = await services.authService.getAllUsers();
@@ -210,24 +222,22 @@ export async function seedOrders(): Promise<number> {
       const createdAt = new Date();
       createdAt.setDate(createdAt.getDate() - Math.floor(Math.random() * 30));
 
-      // Accessing repo directly via cast for seeding purposes
-      if ((services.orderService as any).orderRepo.seed) {
-        await (services.orderService as any).orderRepo.seed({
-          id: crypto.randomUUID(),
-          userId: customer.id,
-          customerName: customer.displayName,
-          customerEmail: customer.email,
-          items,
-          total,
-          status,
-          shippingAddress: address,
-          paymentTransactionId: status === 'pending' ? null : `fake_tx_${Math.random().toString(36).slice(2)}`,
-          riskScore: Math.floor(Math.random() * 20),
-          createdAt,
-          updatedAt: createdAt
-        });
-        created++;
-      }
+      await orderRepo.seed({
+        id: crypto.randomUUID(),
+        userId: customer.id,
+        customerName: customer.displayName,
+        customerEmail: customer.email,
+        items,
+        total,
+        status,
+        shippingAddress: address,
+        paymentTransactionId: status === 'pending' ? null : `seeded_tx_${crypto.randomUUID()}`,
+        riskScore: Math.floor(Math.random() * 20),
+        createdAt,
+        updatedAt: createdAt,
+        notes: [],
+      });
+      created++;
     } catch (err) {
       logger.error(`Failed to seed order ${i}.`, err);
     }

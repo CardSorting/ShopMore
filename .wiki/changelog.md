@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-04-26 — Additional hardening pass: seed-path safety and cast-free order seeding
+
+### Problem verified
+
+- `src/infrastructure/services/SeedDataLoader.ts` used `(services.orderService as any).orderRepo.seed(...)`, bypassing type safety and relying on internal service implementation details.
+- Seed routines could run in production without explicit operator opt-in, increasing accidental data mutation risk in live environments.
+- Order seeding used ad-hoc fake transaction IDs with weak traceability semantics.
+
+### Remediation performed
+
+- Removed cast-based direct service internals access from `SeedDataLoader` and switched to an explicit Infrastructure repository dependency (`SQLiteOrderRepository`) for order seeding.
+- Added `assertSeedingAllowed()` guard to block all seed routines in production unless `ALLOW_PRODUCTION_SEEDING=true` is explicitly set.
+- Normalized seeded transaction references to deterministic prefix + UUID (`seeded_tx_${crypto.randomUUID()}`) for clearer auditability.
+- Ensured seeded orders include `notes: []` to align with current order shape expectations.
+
+### Verification evidence
+
+- `npm run lint` completed successfully after this pass.
+- `npm run build` completed successfully after this pass, including TypeScript and full route generation.
+
+### Files intentionally changed in this pass
+
+- `src/infrastructure/services/SeedDataLoader.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- This is an Infrastructure-layer refactor: seeding remains adapter-owned and no Domain/Core contract changes were introduced.
+- The production seeding guard reduces operational risk while preserving local/dev bootstrap workflows.
+
+## 2026-04-26 — Additional deep hardening pass: real Stripe payment processor wiring
+
+### Problem verified
+
+- `src/infrastructure/services/StripePaymentProcessor.ts` still rejected all payment attempts with a hardcoded `PaymentFailedError`, functioning as a placeholder adapter rather than a real processor.
+- This left the non-trusted-checkout path non-functional in production scenarios where `CHECKOUT_ENDPOINT` is not configured.
+
+### Remediation performed
+
+- Replaced placeholder behavior in `StripePaymentProcessor` with a real Stripe PaymentIntent create+confirm flow using server-side `fetch`.
+- Added explicit infrastructure guardrails:
+  - rejects when `STRIPE_SECRET_KEY` is missing,
+  - enforces payment method presence,
+  - sends idempotency key via `Idempotency-Key` header,
+  - maps Stripe/network failures to controlled `PaymentFailedError` messages.
+- Added response-shape validation (`id`, `status`) and success-state handling for `succeeded` / `requires_capture` statuses.
+
+### Verification evidence
+
+- `npm run lint` completed successfully after this pass.
+- `npm run build` completed successfully after this pass, including TypeScript and full route generation.
+
+### Files intentionally changed in this pass
+
+- `src/infrastructure/services/StripePaymentProcessor.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+
+### Architectural notes
+
+- Domain contracts were unchanged; the existing `IPaymentProcessor` interface was honored.
+- Core orchestration remains unchanged and now delegates to a real Infrastructure payment adapter implementation.
+
 ## 2026-04-26 — Lint baseline stabilization for legacy admin/UI debt
 
 ### Problem verified

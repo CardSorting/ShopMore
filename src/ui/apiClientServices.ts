@@ -1,6 +1,6 @@
 'use client';
 
-import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductUpdate, User } from '@domain/models';
+import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductUpdate, User, OrderNote } from '@domain/models';
 
 const sessionScoped = (userId: string) => void userId;
 
@@ -89,6 +89,8 @@ export function createApiClientServices() {
                 if (options?.query) qs.set('query', options.query);
                 return request<{ orders: Order[]; nextCursor?: string }>(`/api/admin/orders?${qs}`);
             },
+            addOrderNote: (id: string, text: string, actor: any) => request<OrderNote>(`/api/admin/orders/${id}/notes`, { method: 'POST', body: JSON.stringify({ text }) }),
+            updateOrderFulfillment: (id: string, data: any, actor: any) => request<void>(`/api/admin/orders/${id}/fulfillment`, { method: 'PATCH', body: JSON.stringify(data) }),
             updateOrderStatus: (id: string, status: OrderStatus, _actor: { id: string; email: string }) => request<void>(`/api/admin/orders/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
             batchUpdateOrderStatus: (ids: string[], status: OrderStatus, _actor: { id: string; email: string }) => request<void>('/api/admin/orders/batch', { method: 'PATCH', body: JSON.stringify({ ids, status }) }),
             getCustomerSummaries: (users: User[]) => request<any[]>('/api/admin/customers', { method: 'POST', body: JSON.stringify({ users }) }),

@@ -1003,6 +1003,7 @@ export function AdminAuditLogs({ logs }: { logs: any[] }) {
             <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Actor</th>
             <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Action</th>
             <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Target</th>
+            <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Integrity</th>
             <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Details</th>
           </tr>
         </thead>
@@ -1031,13 +1032,22 @@ export function AdminAuditLogs({ logs }: { logs: any[] }) {
                 {log.targetId.slice(0, 8)}...
               </td>
               <td className="px-4 py-3.5">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3 w-3 text-primary-500" />
+                  <span className="font-mono text-[10px] text-gray-400 uppercase tracking-tighter">
+                    {log.hash ? log.hash.slice(0, 12) : 'unsealed'}
+                  </span>
+                </div>
+              </td>
+              <td className="px-4 py-3.5">
                 <p className="text-[10px] font-medium text-gray-500 max-w-xs truncate">
-                  {log.details}
+                  {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
                 </p>
               </td>
             </tr>
           ))}
         </tbody>
+
       </table>
     </div>
   );

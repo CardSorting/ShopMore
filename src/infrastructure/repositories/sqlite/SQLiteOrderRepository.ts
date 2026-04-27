@@ -78,6 +78,9 @@ export class SQLiteOrderRepository implements IOrderRepository {
       status: parseOrderStatus(row.status),
       shippingAddress: parseAddress(row.shippingAddress),
       paymentTransactionId: row.paymentTransactionId,
+      trackingNumber: row.trackingNumber,
+      shippingCarrier: row.shippingCarrier,
+      notes: row.notes ? JSON.parse(row.notes) : [],
       customerName: row.displayName,
       customerEmail: row.email,
       riskScore: row.riskScore || 0,
@@ -85,6 +88,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
       updatedAt: new Date(row.updatedAt),
     };
   }
+
 
   async create(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<Order> {
     const id = crypto.randomUUID();
@@ -100,6 +104,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
         status: order.status,
         shippingAddress: JSON.stringify(order.shippingAddress),
         paymentTransactionId: order.paymentTransactionId || null,
+        notes: JSON.stringify([]),
         riskScore: this.calculateRiskScore(order),
         createdAt: now,
         updatedAt: now,
@@ -141,6 +146,9 @@ export class SQLiteOrderRepository implements IOrderRepository {
         'orders.status',
         'orders.shippingAddress',
         'orders.paymentTransactionId',
+        'orders.trackingNumber',
+        'orders.shippingCarrier',
+        'orders.notes',
         'orders.riskScore',
         'orders.createdAt',
         'orders.updatedAt',
@@ -165,6 +173,9 @@ export class SQLiteOrderRepository implements IOrderRepository {
         'orders.status',
         'orders.shippingAddress',
         'orders.paymentTransactionId',
+        'orders.trackingNumber',
+        'orders.shippingCarrier',
+        'orders.notes',
         'orders.riskScore',
         'orders.createdAt',
         'orders.updatedAt',
@@ -195,6 +206,9 @@ export class SQLiteOrderRepository implements IOrderRepository {
         'orders.status',
         'orders.shippingAddress',
         'orders.paymentTransactionId',
+        'orders.trackingNumber',
+        'orders.shippingCarrier',
+        'orders.notes',
         'orders.riskScore',
         'orders.createdAt',
         'orders.updatedAt',
@@ -374,6 +388,7 @@ export class SQLiteOrderRepository implements IOrderRepository {
         status: order.status,
         shippingAddress: JSON.stringify(order.shippingAddress),
         paymentTransactionId: order.paymentTransactionId,
+        notes: JSON.stringify(order.notes),
         riskScore: order.riskScore,
         createdAt: order.createdAt.toISOString(),
         updatedAt: order.updatedAt.toISOString(),

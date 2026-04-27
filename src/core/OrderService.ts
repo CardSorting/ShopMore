@@ -173,6 +173,7 @@ export class OrderService {
           status: 'confirmed', // Created directly as confirmed
           shippingAddress,
           paymentTransactionId: paymentResult.transactionId,
+          notes: [],
           riskScore: 0, // Assigned by repository logic
         });
 
@@ -454,5 +455,77 @@ export class OrderService {
       }))
     };
   }
+
+  async addOrderNote(
+    orderId: string, 
+    text: string, 
+    actor: { id: string, email: string }
+  ): Promise<import('@domain/models').OrderNote> {
+    const order = await this.orderRepo.getById(orderId);
+    if (!order) throw new OrderNotFoundError(orderId);
+
+    const note: import('@domain/models').OrderNote = {
+      id: crypto.randomUUID(),
+      authorId: actor.id,
+      authorEmail: actor.email,
+      text,
+      createdAt: new Date(),
+    };
+
+    const nextNotes = [...order.notes, note];
+    
+    // In a real repo, this might be a separate table, but here we update the order JSON
+    await (this.orderRepo as any).db
+      .updateTable('orders')
+      .set({
+        notes: JSON.stringify(nextNotes),
+        updatedAt: new Date().toISOString()
+      })
+      .where('id', '=', orderId)
+      .execute();
+
+    await this.audit.record({
+      userId: actor.id,
+      userEmail: actor.email,
+      action: 'order_status_changed',
+      targetId: orderId,
+      details: { type: 'internal_note', noteId: note.id }
+    });
+
+    return note;
+  }
+
+  async updateOrderFulfillment(
+    orderId: string,
+    data: { trackingNumber?: string; shippingCarrier?: string },
+    actor: { id: string, email: string }
+  ): Promise<void> {
+    const order = await this.orderRepo.getById(orderId);
+    if (!order) throw new OrderNotFoundError(orderId);
+
+    await (this.orderRepo as any).db
+      .updateTable('orders')
+      .set({
+        trackingNumber: data.trackingNumber,
+        shippingCarrier: data.shippingCarrier,
+        updatedAt: new Date().toISOString()
+      })
+      .where('id', '=', orderId)
+      .execute();
+
+    await this.audit.record({
+      userId: actor.id,
+      userEmail: actor.email,
+      action: 'order_status_changed',
+      targetId: orderId,
+      details: { 
+        type: 'fulfillment_update', 
+        tracking: data.trackingNumber, 
+        carrier: data.shippingCarrier 
+      }
+    });
+  }
 }
+
+
 

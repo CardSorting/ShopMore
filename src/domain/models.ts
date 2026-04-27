@@ -74,10 +74,22 @@ export interface Order {
   paymentTransactionId: string | null;
   customerName?: string;
   customerEmail?: string;
+  trackingNumber?: string | null;
+  shippingCarrier?: string | null;
+  notes: OrderNote[];
   riskScore: number; // 0-100
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface OrderNote {
+  id: string;
+  authorId: string;
+  authorEmail: string;
+  text: string;
+  createdAt: Date;
+}
+
 
 export interface OrderItem {
   productId: string;

@@ -46,10 +46,14 @@ export interface OrderTable {
   status: string;
   shippingAddress: string; // JSON string
   paymentTransactionId: string | null;
+  trackingNumber: string | null;
+  shippingCarrier: string | null;
+  notes: string; // JSON string
   riskScore: number;
   createdAt: string;
   updatedAt: string;
 }
+
 
 export interface HiveClaimTable {
   id: string; // The resource being locked (e.g., 'checkout_user123' or 'stock_prod1')

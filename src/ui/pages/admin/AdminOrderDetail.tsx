@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
-import type { Order, OrderStatus } from '@domain/models';
+import type { Order, OrderStatus, OrderNote, OrderItem, Address } from '@domain/models';
 import {
   ChevronDown,
   Printer,
@@ -54,7 +54,6 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [noteInput, setNoteInput] = useState('');
-  const [internalNotes, setInternalNotes] = useState<{ id: string; text: string; date: Date }[]>([]);
 
   const loadOrder = useCallback(async () => {
     setLoading(true);
@@ -94,12 +93,37 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
     }
   }
 
-  function handlePostNote() {
+  async function handlePostNote() {
     if (!noteInput.trim() || !order) return;
-    const newNote = { id: crypto.randomUUID(), text: noteInput, date: new Date() };
-    setInternalNotes(prev => [...prev, newNote]);
-    setNoteInput('');
-    toast('success', 'Note added to timeline');
+    try {
+      const user = await services.authService.getCurrentUser();
+      const actor = { id: user?.id || 'unknown', email: user?.email || 'system' };
+      const newNote = await services.orderService.addOrderNote(order.id, noteInput, actor);
+      setOrder(prev => prev ? { ...prev, notes: [...prev.notes, newNote] } : null);
+      setNoteInput('');
+      toast('success', 'Note added to timeline');
+    } catch (err) {
+      toast('error', 'Failed to save note');
+    }
+  }
+
+  async function handleUpdateFulfillment(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!order) return;
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      trackingNumber: formData.get('trackingNumber') as string,
+      shippingCarrier: formData.get('shippingCarrier') as string,
+    };
+    try {
+      const user = await services.authService.getCurrentUser();
+      const actor = { id: user?.id || 'unknown', email: user?.email || 'system' };
+      await services.orderService.updateOrderFulfillment(order.id, data, actor);
+      setOrder(prev => prev ? { ...prev, ...data } : null);
+      toast('success', 'Fulfillment updated');
+    } catch (err) {
+      toast('error', 'Failed to update fulfillment');
+    }
   }
 
   if (loading) {
@@ -202,12 +226,12 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
                   </div>
                 </div>
 
-                {internalNotes.map((note) => (
+                {order.notes.map((note) => (
                   <div key={note.id} className="relative animate-in slide-in-from-left-2 duration-300">
                     <div className="absolute left-[-2.15rem] mt-1.5 h-4 w-4 rounded-full border-2 border-white bg-gray-400 shadow-sm" />
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-bold text-gray-900">Admin Note</p>
-                      <span className="text-xs font-medium text-gray-400 uppercase">{formatRelativeTime(note.date)}</span>
+                      <p className="text-sm font-bold text-gray-900">Note by {note.authorEmail}</p>
+                      <span className="text-xs font-medium text-gray-400 uppercase">{formatRelativeTime(new Date(note.createdAt))}</span>
                     </div>
                     <div className="mt-2 rounded-xl bg-amber-50/50 p-4 text-sm text-amber-900 italic leading-relaxed border border-amber-100/50 shadow-xs">
                       {note.text}
@@ -279,6 +303,46 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
                 <p className="text-xs text-green-700 mt-1">This order has reached its final status.</p>
               </div>
             )}
+          </div>
+
+          {/* Fulfillment Card */}
+          <div className="rounded-2xl border bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Truck className="h-4 w-4 text-primary-500" />
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-900">Logistics & Tracking</h3>
+            </div>
+            <form onSubmit={handleUpdateFulfillment} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Shipping Carrier</label>
+                <select 
+                  name="shippingCarrier"
+                  defaultValue={order.shippingCarrier || ''}
+                  className="w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500 transition"
+                >
+                  <option value="">Select Carrier</option>
+                  <option value="USPS">USPS</option>
+                  <option value="UPS">UPS</option>
+                  <option value="FedEx">FedEx</option>
+                  <option value="DHL">DHL</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tracking Number</label>
+                <input 
+                  name="trackingNumber"
+                  type="text"
+                  defaultValue={order.trackingNumber || ''}
+                  placeholder="e.g. 1Z999..."
+                  className="w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500 transition"
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full rounded-xl border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
+              >
+                Update Logistics
+              </button>
+            </form>
           </div>
 
           {/* Risk Card */}

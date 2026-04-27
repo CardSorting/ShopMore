@@ -79,8 +79,7 @@ npm run build
 ```
 
 ## Admin Setup
-
-Users are stored in SQLite. Promote a user by updating their `role` column to `admin` in the `users` table.
+Users are stored in SQLite. You can use the pre-created admin account for development. See the [Admin Access Guide](.wiki/admin-access.md) for credentials and instructions.
 
 ## Project Structure
 

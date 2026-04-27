@@ -1,5 +1,56 @@
 # Changelog
 
+## 2026-04-26 — Production Build and CSS Polish
+
+### Problem verified
+
+- Production build failed with `useSearchParams()` error in `/admin/products/bulk-edit`, requiring a Suspense boundary for CSR bailout.
+- CSS compilation warning regarding `@import` rule placement in `src/index.css`.
+
+### Remediation performed
+
+- Wrapped `AdminBulkProductEditor` in a `Suspense` boundary in `src/app/admin/products/bulk-edit/page.tsx` to ensure successful static generation.
+- Reordered `@import` statements in `src/index.css` to place the Google Font import before the Tailwind v4 import, complying with CSS standards and silencing build-time warnings.
+
+### Verification evidence
+
+- `npm run build` completed successfully with exit code 0.
+- All 36 app routes (including static and dynamic) generated without errors or warnings.
+
+### Files intentionally changed in this pass
+
+- `src/index.css`
+- `src/app/admin/products/bulk-edit/page.tsx`
+- `.wiki/changelog.md`
+
+## 2026-04-26 — Admin User Creation and Access Provisioning
+
+### Problem verified
+
+- No default admin user existed in the local database, requiring manual SQL intervention for operators to access the panel.
+- Missing documentation on how to navigate to the login page and access the admin dashboard.
+
+### Remediation performed
+
+- Created an admin user in the `playmore.db` with `role: 'admin'`.
+- Created [.wiki/admin-access.md](file:///Users/bozoegg/Desktop/PlayMoreTCG/.wiki/admin-access.md) containing:
+  - Default admin credentials (email/password).
+  - Step-by-step instructions for signing in and navigating to the dashboard.
+  - Verification commands for the database.
+- Updated `README.md` and `.wiki/index.md` to link to the new access guide.
+
+### Verification evidence
+
+- Admin user verified in `playmore.db` via `sqlite3` check.
+- Documentation links verified for correctness.
+
+### Files intentionally changed in this pass
+
+- `README.md`
+- `.wiki/index.md`
+- `.wiki/admin-access.md` (New)
+- `.wiki/changelog.md`
+
 ## 2026-04-26 — Comprehensive Admin Documentation Update
 
 ### Problem verified

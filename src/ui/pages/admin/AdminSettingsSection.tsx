@@ -146,7 +146,75 @@ export function AdminSettingsSection({ sectionId }: AdminSettingsSectionProps) {
                   </div>
                 </div>
               </div>
+            ) : sectionId === 'branding' ? (
+               <div className="space-y-8">
+                  <div className="space-y-4">
+                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest border-b pb-2">Visual Identity</h3>
+                     <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="space-y-2">
+                           <label className="text-xs font-bold text-gray-700">Primary Brand Color</label>
+                           <div className="flex gap-3">
+                              <input 
+                                type="color" 
+                                defaultValue={settings.primary_color || '#2563eb'} 
+                                onBlur={(e) => saveSetting('primary_color', e.target.value)}
+                                className="h-10 w-10 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+                              />
+                              <input 
+                                type="text" 
+                                defaultValue={settings.primary_color || '#2563eb'} 
+                                onBlur={(e) => saveSetting('primary_color', e.target.value)}
+                                className="flex-1 rounded-xl border bg-gray-50 px-4 py-2.5 text-sm font-mono focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition"
+                              />
+                           </div>
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-bold text-gray-700">Store Logo URL</label>
+                           <input 
+                             type="text" 
+                             defaultValue={settings.logo_url || ''} 
+                             onBlur={(e) => saveSetting('logo_url', e.target.value)}
+                             placeholder="https://..."
+                             className="w-full rounded-xl border bg-gray-50 px-4 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition"
+                           />
+                        </div>
+                     </div>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 p-6 flex gap-4">
+                     <Palette className="h-5 w-5 text-gray-400 shrink-0" />
+                     <p className="text-xs text-gray-500 leading-relaxed font-medium">
+                        Branding settings update your storefront and transaction emails in real-time. Use high-contrast colors for better accessibility.
+                     </p>
+                  </div>
+               </div>
+            ) : sectionId === 'notifications' ? (
+               <div className="space-y-8">
+                  <div className="space-y-4">
+                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest border-b pb-2">Staff Notifications</h3>
+                     <div className="space-y-3">
+                        {[
+                          { key: 'notify_new_order', label: 'New Order Alerts', desc: 'Receive an email for every successful purchase.' },
+                          { key: 'notify_low_stock', label: 'Low Stock Warnings', desc: 'Get notified when products drop below 5 units.' },
+                          { key: 'notify_risk_alert', label: 'High Risk Orders', desc: 'Alert staff when risk scores exceed 70.' }
+                        ].map(item => (
+                          <label key={item.key} className="flex items-center justify-between p-4 rounded-xl border bg-white hover:bg-gray-50 transition cursor-pointer">
+                             <div>
+                                <p className="text-sm font-bold text-gray-900">{item.label}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                             </div>
+                             <input 
+                               type="checkbox" 
+                               defaultChecked={settings[item.key] !== false}
+                               onChange={(e) => saveSetting(item.key, e.target.checked)}
+                               className="h-5 w-5 rounded-md border-gray-300 text-primary-600 focus:ring-primary-500"
+                             />
+                          </label>
+                        ))}
+                     </div>
+                  </div>
+               </div>
             ) : sectionId === 'staff' ? (
+
               <div className="space-y-8">
                 <div className="flex items-center justify-between">
                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Manage Staff Members</h3>

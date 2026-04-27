@@ -7,6 +7,7 @@ import { Kysely, sql } from 'kysely';
 import { getSQLiteDB } from '@infrastructure/sqlite/database';
 import { logger } from '@utils/logger';
 import type { Database } from '@infrastructure/sqlite/schema';
+import crypto from 'crypto';
 
 export type AuditAction = 
   | 'product_created' | 'product_updated' | 'product_deleted'
@@ -23,8 +24,11 @@ export interface AuditEntry {
   action: AuditAction;
   targetId: string;
   details: string; // JSON string
+  hash: string | null;
+  previousHash: string | null;
   createdAt: Date;
 }
+
 
 export class AuditService {
   private db: Kysely<Database>;
@@ -42,6 +46,21 @@ export class AuditService {
   }): Promise<void> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
+    const detailsStr = JSON.stringify(params.details || {});
+
+    // Forensic Integrity: Get the hash of the latest log to link the chain
+    const lastEntry = await this.db
+      .selectFrom('hive_audit')
+      .select('hash')
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .executeTakeFirst();
+
+    const previousHash = lastEntry?.hash || '0'.repeat(64);
+    
+    // Calculate current hash (id + action + targetId + details + previousHash + now)
+    const payload = `${id}|${params.action}|${params.targetId}|${detailsStr}|${previousHash}|${now}`;
+    const hash = crypto.createHash('sha256').update(payload).digest('hex');
 
     await this.db
       .insertInto('hive_audit')
@@ -51,19 +70,43 @@ export class AuditService {
         userEmail: params.userEmail,
         action: params.action,
         targetId: params.targetId,
-        details: JSON.stringify(params.details || {}),
+        details: detailsStr,
+        hash,
+        previousHash,
         createdAt: now,
       })
       .execute();
   }
 
-  async getRecentLogs(limit = 50): Promise<AuditEntry[]> {
-    const rows = await this.db
+
+  async getRecentLogs(options?: {
+    limit?: number;
+    userId?: string;
+    action?: string;
+    targetId?: string;
+    query?: string;
+  }): Promise<AuditEntry[]> {
+    let query = this.db
       .selectFrom('hive_audit')
       .selectAll()
       .orderBy('createdAt', 'desc')
-      .limit(limit)
-      .execute();
+      .limit(options?.limit || 50);
+
+    if (options?.userId) query = query.where('userId', '=', options.userId);
+    if (options?.action) query = query.where('action', '=', options.action);
+    if (options?.targetId) query = query.where('targetId', '=', options.targetId);
+    
+    if (options?.query) {
+      const needle = `%${options.query}%`;
+      query = query.where((eb) => eb.or([
+        eb('userEmail', 'like', needle),
+        eb('action', 'like', needle),
+        eb('details', 'like', needle),
+        eb('targetId', 'like', needle)
+      ]));
+    }
+
+    const rows = await query.execute();
 
     return rows.map(row => ({
       ...row,
@@ -72,3 +115,4 @@ export class AuditService {
     }));
   }
 }
+

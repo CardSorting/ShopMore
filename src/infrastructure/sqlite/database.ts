@@ -132,8 +132,18 @@ export async function initDatabase() {
     .addColumn('action', 'text', (col) => col.notNull())
     .addColumn('targetId', 'text', (col) => col.notNull())
     .addColumn('details', 'text', (col) => col.notNull())
+    .addColumn('hash', 'text')
+    .addColumn('previousHash', 'text')
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .execute();
+
+  // Migration for hive_audit: add hash and previousHash
+  try {
+    await db.schema.alterTable('hive_audit').addColumn('hash', 'text').execute();
+  } catch {}
+  try {
+    await db.schema.alterTable('hive_audit').addColumn('previousHash', 'text').execute();
+  } catch {}
 
   // Migration for hive_audit if it was created with the old schema
   try {
@@ -144,6 +154,7 @@ export async function initDatabase() {
   } catch (err) {
     // Columns might already exist
   }
+
 
   await db.schema
     .createTable('discounts')

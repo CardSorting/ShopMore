@@ -65,8 +65,11 @@ export interface HiveAuditTable {
   action: string;
   targetId: string;
   details: string; // JSON string
+  hash: string | null;
+  previousHash: string | null;
   createdAt: string; // ISO string
 }
+
 
 export interface DiscountTable {
   id: string;

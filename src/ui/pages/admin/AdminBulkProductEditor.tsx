@@ -129,7 +129,9 @@ export function AdminBulkProductEditor() {
             <tbody className="divide-y divide-gray-100">
               {products.map((p) => {
                 const changes = bulkChanges[p.id] || {};
-                const currentPrice = changes.price !== undefined ? changes.price : p.price;
+                const displayPrice = changes.price !== undefined 
+                  ? changes.price / 100 
+                  : p.price / 100;
                 const currentStock = changes.stock !== undefined ? changes.stock : p.stock;
                 const isPriceChanged = changes.price !== undefined;
                 const isStockChanged = changes.stock !== undefined;
@@ -151,10 +153,10 @@ export function AdminBulkProductEditor() {
                         <input 
                           type="number"
                           step="0.01"
-                          value={currentPrice}
+                          value={displayPrice}
                           onChange={(e) => setBulkChanges({
                             ...bulkChanges,
-                            [p.id]: { ...changes, price: parseFloat(e.target.value) || 0 }
+                            [p.id]: { ...changes, price: Math.round(parseFloat(e.target.value) * 100) || 0 }
                           })}
                           className={`w-full rounded-xl border bg-gray-50 py-2.5 pl-8 pr-4 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition ${isPriceChanged ? 'border-primary-500 ring-1 ring-primary-500' : ''}`}
                         />
@@ -174,6 +176,7 @@ export function AdminBulkProductEditor() {
                         />
                       </div>
                     </td>
+
                     <td className="px-6 py-4 text-right">
                       {(isPriceChanged || isStockChanged) && (
                         <button 

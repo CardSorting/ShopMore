@@ -108,8 +108,8 @@ export function OrdersPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 animate-pulse">
-        <div className="rounded-[2rem] bg-gray-100 h-52" />
-        {[1, 2].map((item) => <div key={item} className="h-72 rounded-[2rem] bg-gray-50" />)}
+        <div className="rounded-4xl bg-gray-100 h-52" />
+        {[1, 2].map((item) => <div key={item} className="h-72 rounded-4xl bg-gray-50" />)}
       </div>
     );
   }
@@ -131,7 +131,7 @@ export function OrdersPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <section className="mb-10 overflow-hidden rounded-[2rem] border border-gray-100 bg-gray-900 text-white shadow-2xl">
+      <section className="mb-10 overflow-hidden rounded-4xl border border-gray-100 bg-gray-900 text-white shadow-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-3">
           <div className="p-8 lg:col-span-2">
             <div className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary-300">
@@ -147,7 +147,7 @@ export function OrdersPage() {
         </div>
       </section>
 
-      <div className="mb-8 flex flex-col gap-4 rounded-[2rem] border border-gray-100 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+      <div className="mb-8 flex flex-col gap-4 rounded-4xl border border-gray-100 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search by order number or item name" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 py-4 pl-11 pr-4 text-sm font-bold outline-none transition focus:border-primary-500 focus:bg-white" />
@@ -161,7 +161,7 @@ export function OrdersPage() {
       </div>
 
       {filteredOrders.length === 0 ? (
-        <div className="rounded-[2rem] border border-gray-100 bg-white p-12 text-center shadow-sm">
+        <div className="rounded-4xl border border-gray-100 bg-white p-12 text-center shadow-sm">
           <Search className="mx-auto mb-4 h-10 w-10 text-gray-300" />
           <h2 className="text-2xl font-black text-gray-900">No matching orders</h2>
           <p className="mt-2 text-sm font-medium text-gray-500">Try a different item name, order number, or status filter.</p>
@@ -188,7 +188,7 @@ function OrderCard({ order, reordering, onReorder }: { order: Order; reordering:
   const itemPreview = order.items.slice(0, 3);
 
   return (
-    <article className="overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-xl shadow-gray-200/40">
+    <article className="overflow-hidden rounded-4xl border border-gray-100 bg-white shadow-xl shadow-gray-200/40">
       <div className="grid grid-cols-1 border-b border-gray-100 lg:grid-cols-4">
         <div className="bg-gray-50 p-6 lg:border-r lg:border-gray-100">
           <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black ${config.color}`}><StatusIcon className="h-4 w-4" /> {config.label}</div>
@@ -248,5 +248,5 @@ function Meta({ icon, label, value, mono }: { icon?: React.ReactNode; label: str
 }
 
 function HelpCard({ icon, title, text, href, action }: { icon: React.ReactNode; title: string; text: string; href: string; action: string }) {
-  return <Link href={href} className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"><div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-primary-600">{icon}</div><h3 className="text-lg font-black text-gray-900">{title}</h3><p className="mt-2 text-sm font-medium leading-6 text-gray-500">{text}</p><p className="mt-5 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary-600">{action} <ArrowRight className="h-3.5 w-3.5" /></p></Link>;
+  return <Link href={href} className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"><div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-primary-600">{icon}</div><h3 className="text-lg font-black text-gray-900">{title}</h3><p className="mt-2 text-sm font-medium leading-6 text-gray-500">{text}</p><p className="mt-5 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary-600">{action} <ArrowRight className="h-3.5 w-3.5" /></p></Link>;
 }

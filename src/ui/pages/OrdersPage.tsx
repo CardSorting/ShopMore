@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../hooks/useCart';
 import type { Order } from '@domain/models';
 import { Package, Truck, CheckCircle2, Clock, AlertCircle, ChevronRight, ShoppingBag, ExternalLink, RefreshCcw, HelpCircle } from 'lucide-react';
 import { logger } from '@utils/logger';
@@ -20,6 +21,7 @@ function formatMoney(cents: number): string {
 
 export function OrdersPage() {
   const { user } = useAuth();
+  const { addItem, openCart } = useCart();
   const services = useServices();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,13 +46,12 @@ export function OrdersPage() {
   }, [loadOrders]);
 
   const handleReorder = async (order: Order) => {
-    if (!user) return;
     setReordering(order.id);
     try {
       for (const item of order.items) {
-        await services.cartService.addToCart(user.id, item.productId, item.quantity);
+        await addItem(item.productId, item.quantity);
       }
-      window.dispatchEvent(new CustomEvent('cart:open'));
+      openCart();
     } catch (err) {
       logger.error('Failed to reorder items', err);
     } finally {

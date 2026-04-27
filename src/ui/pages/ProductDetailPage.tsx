@@ -8,14 +8,12 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../hooks/useCart';
 import type { Product } from '@domain/models';
 import { ShoppingCart, ArrowLeft, Check, ShieldCheck, Truck, LifeBuoy, PackageCheck, ChevronRight, AlertCircle } from 'lucide-react';
+
 import { MAX_CART_QUANTITY } from '@domain/rules';
 import { logger } from '@utils/logger';
-
-function emitCartUpdated(): void {
-  window.dispatchEvent(new CustomEvent('cart:updated'));
-}
 
 function toFriendlyError(err: unknown): string {
   if (err instanceof Error && err.message) {
@@ -33,6 +31,7 @@ function toFriendlyError(err: unknown): string {
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { addItem } = useCart();
   const services = useServices();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -75,13 +74,11 @@ export function ProductDetailPage() {
   const maxSelectableQuantity = product ? Math.max(1, Math.min(product.stock, MAX_CART_QUANTITY)) : 1;
 
   async function handleAddToCart() {
-    if (!user || !product) return;
+    if (!product) return;
     setAdding(true);
     setError(null);
     try {
-      await services.cartService.addToCart(user.id, product.id, Math.min(quantity, maxSelectableQuantity));
-      emitCartUpdated();
-      window.dispatchEvent(new CustomEvent('cart:open'));
+      await addItem(product.id, Math.min(quantity, maxSelectableQuantity));
       setAdded(true);
       setTimeout(() => setAdded(false), 2500);
     } catch (err) {
@@ -168,70 +165,69 @@ export function ProductDetailPage() {
               </div>
             </div>
 
-            {user ? (
-              <div className="space-y-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                  <div className="flex-1">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Quantity</p>
-                    <div className="inline-flex items-center rounded-xl border bg-white shadow-sm overflow-hidden h-14">
-                      <button
-                        type="button"
-                        aria-label={`Decrease quantity for ${product.name}`}
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        disabled={quantity <= 1 || adding}
-                        className="px-5 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
-                      >
-                        −
-                      </button>
-                      <span className="w-14 border-x px-3 py-2 text-center text-base font-bold text-gray-900" aria-live="polite">{quantity}</span>
-                      <button
-                        type="button"
-                        aria-label={`Increase quantity for ${product.name}`}
-                        onClick={() => setQuantity(Math.min(maxSelectableQuantity, quantity + 1))}
-                        disabled={quantity >= maxSelectableQuantity || adding}
-                        className="px-5 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
-                      >
-                        +
-                      </button>
-                    </div>
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Quantity</p>
+                  <div className="inline-flex items-center rounded-xl border bg-white shadow-sm overflow-hidden h-14">
+                    <button
+                      type="button"
+                      aria-label={`Decrease quantity for ${product.name}`}
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={quantity <= 1 || adding}
+                      className="px-5 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="w-14 border-x px-3 py-2 text-center text-base font-bold text-gray-900" aria-live="polite">{quantity}</span>
+                    <button
+                      type="button"
+                      aria-label={`Increase quantity for ${product.name}`}
+                      onClick={() => setQuantity(Math.min(maxSelectableQuantity, quantity + 1))}
+                      disabled={quantity >= maxSelectableQuantity || adding}
+                      className="px-5 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                    >
+                      +
+                    </button>
                   </div>
-                  
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={adding || product.stock === 0}
-                    className="flex-1 sm:flex-[2] h-14 flex items-center justify-center gap-3 bg-primary-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-primary-200 hover:bg-primary-700 hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                  >
-                    {added ? <Check className="w-6 h-6" /> : <ShoppingCart className="w-6 h-6" />}
-                    {adding ? 'Adding...' : added ? 'Added to Cart!' : 'Add to Cart'}
-                  </button>
                 </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 text-sm font-medium text-red-600 bg-red-50 p-4 rounded-xl border border-red-100">
-                    <AlertCircle className="h-5 w-5" />
-                    {error}
-                  </div>
-                )}
-
-                {added && (
-                  <div className="flex items-center justify-between gap-4 bg-green-50 border border-green-100 p-4 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                        <Check className="h-5 w-5" />
-                      </div>
-                      <p className="text-sm font-bold text-green-800">Added to your cart!</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Link href="/cart" className="text-sm font-bold text-green-700 underline underline-offset-4 hover:text-green-900">View cart</Link>
-                    </div>
-                  </div>
-                )}
+                
+                <button
+                  onClick={handleAddToCart}
+                  disabled={adding || product.stock === 0}
+                  className="flex-1 sm:flex-2 h-14 flex items-center justify-center gap-3 bg-primary-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-primary-200 hover:bg-primary-700 hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {added ? <Check className="w-6 h-6" /> : <ShoppingCart className="w-6 h-6" />}
+                  {adding ? 'Adding...' : added ? 'Added to Cart!' : 'Add to Cart'}
+                </button>
               </div>
-            ) : (
-              <Link href="/login" className="flex h-14 items-center justify-center rounded-xl bg-primary-600 text-white font-bold text-lg shadow-lg hover:bg-primary-700 transition-all">
-                Sign in to Add to Cart
-              </Link>
-            )}
+
+              {error && (
+                <div className="flex items-center gap-2 text-sm font-medium text-red-600 bg-red-50 p-4 rounded-xl border border-red-100">
+                  <AlertCircle className="h-5 w-5" />
+                  {error}
+                </div>
+              )}
+
+              {added && (
+                <div className="flex items-center justify-between gap-4 bg-green-50 border border-green-100 p-4 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                      <Check className="h-5 w-5" />
+                    </div>
+                    <p className="text-sm font-bold text-green-800">Added to your cart!</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => window.dispatchEvent(new CustomEvent('cart:open'))}
+                      className="text-sm font-bold text-green-700 underline underline-offset-4 hover:text-green-900"
+                    >
+                      View cart
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Trust Badges Section */}
             <div className="mt-12 grid grid-cols-2 gap-4 border-t pt-10">

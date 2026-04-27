@@ -5,8 +5,10 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useServices } from '../hooks/useServices';
+import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../hooks/useCart';
 import type { Product } from '@domain/models';
-import { Search, Filter, ShoppingBag, ChevronRight, PackageSearch } from 'lucide-react';
+import { Search, Filter, ShoppingBag, ChevronRight, PackageSearch, RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -216,6 +218,21 @@ export function ProductsPage() {
 }
 
 function ProductCard({ product }: { product: Product }) {
+  const { addItem } = useCart();
+  const [adding, setAdding] = useState(false);
+
+  const handleQuickAdd = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setAdding(true);
+    try {
+      await addItem(product.id, 1);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   return (
     <article className="group relative">
       <div className="aspect-square overflow-hidden rounded-3xl bg-gray-50 border shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
@@ -225,13 +242,26 @@ function ProductCard({ product }: { product: Product }) {
             alt={product.name}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
           />
-          {/* Quick Add Overlay */}
-          <div className="absolute inset-x-4 bottom-4 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-            <div className="rounded-2xl bg-white/90 backdrop-blur-md p-3 shadow-lg flex items-center justify-center gap-2 font-black text-xs text-gray-900 uppercase">
-              <ShoppingBag className="h-4 w-4" /> View Details
-            </div>
-          </div>
         </Link>
+        
+        {/* Quick Add Overlay */}
+        <div className="absolute inset-x-4 bottom-4 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+          <button
+            onClick={handleQuickAdd}
+            disabled={adding || product.stock === 0}
+            className="w-full rounded-2xl bg-white/95 backdrop-blur-md p-4 shadow-xl flex items-center justify-center gap-2 font-black text-xs text-gray-900 uppercase hover:bg-primary-600 hover:text-white transition-all disabled:opacity-50"
+          >
+            {adding ? (
+              <RefreshCcw className="h-4 w-4 animate-spin" />
+            ) : product.stock === 0 ? (
+              'Sold Out'
+            ) : (
+              <>
+                <ShoppingBag className="h-4 w-4" /> Quick Add
+              </>
+            )}
+          </button>
+        </div>
       </div>
       
       <div className="mt-6">

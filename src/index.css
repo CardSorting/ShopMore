@@ -106,3 +106,35 @@ input[type="number"] {
   background: var(--color-primary-200);
   color: var(--color-primary-900);
 }
+/* Global Navigation Progress Bar */
+@keyframes navProgress {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(-30%); }
+  100% { transform: translateX(0); }
+}
+
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(to right, #3b82f6, #1e40af);
+  z-index: 100;
+  transform-origin: 0% 50%;
+  animation: navProgress 2s ease-out infinite;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}

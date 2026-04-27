@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@ui/hooks/useAuth';
+import { CartProvider } from '@ui/hooks/useCart';
 import { ErrorBoundary } from '@ui/components/ErrorBoundary';
 import { StorefrontShell } from '@ui/layouts/StorefrontShell';
 import '../index.css';
@@ -15,9 +16,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <body>
                 <ErrorBoundary>
                     <AuthProvider>
-                        <StorefrontShell>
-                            {children}
-                        </StorefrontShell>
+                        <CartProvider>
+                            <StorefrontShell>
+                                {children}
+                            </StorefrontShell>
+                        </CartProvider>
                     </AuthProvider>
                 </ErrorBoundary>
             </body>

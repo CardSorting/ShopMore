@@ -9,45 +9,19 @@ import { useAuth } from '../hooks/useAuth';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { ShoppingCart, Package, LogIn, LogOut, Shield, User, Home, Menu, X, ChevronRight, Search } from 'lucide-react';
 import { useServices } from '../hooks/useServices';
+import { useCart } from '../hooks/useCart';
 import { CartDrawer } from '../components/CartDrawer';
 
 export function Navbar() {
   const { user, signOut } = useAuth();
+  const { totalItems, openCart } = useCart();
   const services = useServices();
   const router = useRouter();
   const pathname = usePathname();
-  const [cartCount, setCartCount] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef<HTMLFormElement>(null);
-
-  const loadCartCount = useCallback(async () => {
-    if (!user) {
-      setCartCount(0);
-      return;
-    }
-
-    try {
-      const cart = await services.cartService.getCart(user.id);
-      const count = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
-      setCartCount(count);
-    } catch {
-      setCartCount(0);
-    }
-  }, [services, user]);
-
-  useEffect(() => {
-    void loadCartCount();
-  }, [loadCartCount]);
-
-  useEffect(() => {
-    const refresh = () => {
-      void loadCartCount();
-    };
-    window.addEventListener('cart:updated', refresh);
-    return () => window.removeEventListener('cart:updated', refresh);
-  }, [loadCartCount]);
 
   // Close menu on route change
   useEffect(() => {
@@ -56,12 +30,7 @@ export function Navbar() {
 
   const handleSignOut = async () => {
     await signOut();
-    setCartCount(0);
     router.push('/');
-  };
-
-  const openCart = () => {
-    window.dispatchEvent(new CustomEvent('cart:open'));
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -74,7 +43,15 @@ export function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <>
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:bg-white focus:px-6 focus:py-3 focus:font-bold focus:text-primary-600 focus:shadow-2xl focus:rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+      >
+        Skip to main content
+      </a>
+
+      <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-4 lg:gap-8 flex-1">
@@ -121,9 +98,9 @@ export function Navbar() {
             >
               <ShoppingCart className="w-5 h-5 text-gray-500 group-hover:text-primary-600" />
               <span className="hidden sm:inline text-sm font-bold">Cart</span>
-              {user && cartCount > 0 && (
+              {totalItems > 0 && (
                 <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-black text-white shadow-sm">
-                  {cartCount > 99 ? '99+' : cartCount}
+                  {totalItems > 99 ? '99+' : totalItems}
                 </span>
               )}
             </button>
@@ -155,7 +132,7 @@ export function Navbar() {
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-              aria-label="Toggle menu"
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -237,5 +214,6 @@ export function Navbar() {
 
       <CartDrawer />
     </nav>
+    </>
   );
 }

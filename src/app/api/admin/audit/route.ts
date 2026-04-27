@@ -6,7 +6,7 @@ export async function GET() {
     try {
         await requireAdminSession();
         const services = await getServerServices();
-        const logs = await services.auditService.getRecentLogs(50);
+        const logs = await services.auditService.getRecentLogs({ limit: 50 });
         return NextResponse.json(logs);
     } catch (error) {
         return jsonError(error, 'Failed to load audit logs');

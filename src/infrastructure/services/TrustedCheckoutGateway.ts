@@ -3,7 +3,7 @@
  * Adapter for a trusted server-side checkout finalization endpoint.
  */
 import type { ICheckoutGateway } from '@domain/repositories';
-import type { Address, Order, OrderItem, OrderStatus } from '@domain/models';
+import type { Address, Order, OrderItem, OrderNote, OrderStatus } from '@domain/models';
 import { PaymentFailedError } from '@domain/errors';
 
 const CHECKOUT_TIMEOUT_MS = 15_000;
@@ -61,6 +61,8 @@ function parseTrustedOrder(value: unknown): Order {
   const createdAt = candidate.createdAt as string;
   const updatedAt = candidate.updatedAt as string;
 
+  const notes: OrderNote[] = Array.isArray(candidate.notes) ? (candidate.notes as OrderNote[]) : [];
+
   return {
     id: candidate.id,
     userId: candidate.userId,
@@ -70,6 +72,7 @@ function parseTrustedOrder(value: unknown): Order {
     shippingAddress,
     paymentTransactionId,
     riskScore,
+    notes,
     createdAt: new Date(createdAt),
     updatedAt: new Date(updatedAt),
   };

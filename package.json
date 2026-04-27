@@ -7,7 +7,12 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "npm rebuild better-sqlite3",
+    "seed": "tsx --tsconfig tsconfig.json migrate-and-seed.ts"
+  },
+  "engines": {
+    "node": ">=23.5.0"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.2.0",

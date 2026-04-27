@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  CreditCard,
   HelpCircle,
   Info,
+  Lock,
   LockKeyhole,
   Mail,
   PackageCheck,
@@ -206,8 +208,13 @@ export function CheckoutPage() {
   if (isSuccess && finalOrder) return <OrderConfirmation order={finalOrder} userEmail={email} userName={user?.displayName} />;
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur-md">
+    <div className="relative min-h-screen bg-white">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute -left-1/4 -top-1/4 h-1/2 w-1/2 rounded-full bg-primary-100/30 blur-[120px]" />
+        <div className="absolute -bottom-1/4 -right-1/4 h-1/2 w-1/2 rounded-full bg-blue-50/40 blur-[120px]" />
+      </div>
+
+      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/" className="text-2xl font-black tracking-tighter text-gray-900">PlayMore<span className="text-primary-600">TCG</span></Link>
           <div className="flex items-center gap-3">
@@ -408,44 +415,62 @@ export function CheckoutPage() {
           </div>
         </main>
 
-        <aside className="border-t border-gray-100 bg-gray-50/70 px-4 py-8 sm:px-6 lg:sticky lg:top-[73px] lg:col-span-5 lg:h-[calc(100vh-73px)] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:px-12">
+        <aside className="relative z-10 border-t border-gray-100 bg-gray-50/30 px-4 py-8 sm:px-6 lg:sticky lg:top-[73px] lg:col-span-5 lg:h-[calc(100vh-73px)] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:px-12">
           <div className="mx-auto max-w-md">
             <button onClick={() => setSummaryOpen(!summaryOpen)} className="mb-6 flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 lg:hidden"><span className="flex items-center gap-2 text-sm font-black text-gray-800"><ShoppingBag className="h-4 w-4" /> {summaryOpen ? 'Hide' : 'Show'} order summary</span><span className="flex items-center gap-2 font-black">{formatMoney(total)} <ChevronDown className={`h-4 w-4 transition ${summaryOpen ? 'rotate-180' : ''}`} /></span></button>
             <div className={`${summaryOpen ? 'block' : 'hidden'} lg:block`}>
-              <div className="mb-6 flex items-center justify-between"><h2 className="text-lg font-black text-gray-900">Order summary</h2><span className="text-xs font-bold text-gray-500">{totalItems} item{totalItems === 1 ? '' : 's'}</span></div>
-              <div className="max-h-72 space-y-4 overflow-y-auto pr-2">
-                {loadingCart ? [1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-gray-100" />) : cartItems.map((item) => (
-                  <div key={item.productId} className="flex items-center gap-4"><div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-white shadow-sm"><img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" /><span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-600 text-[10px] font-black text-white ring-2 ring-white">{item.quantity}</span></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-gray-900">{item.name}</p><p className="mt-1 text-[10px] font-bold text-gray-400">{formatMoney(item.priceSnapshot)} each</p></div><p className="text-xs font-black text-gray-900">{formatMoney(item.priceSnapshot * item.quantity)}</p></div>
-                ))}
-              </div>
-              <div className="mt-8 border-t border-gray-200 pt-6">
-                <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-400">Promo or gift card</p>
-                <div className="flex gap-2">
-                  <input value={discountCode} onChange={(e) => setDiscountCode(e.target.value)} placeholder="Discount code" className="min-w-0 flex-1 rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-primary-500" />
-                  <button onClick={handleApplyDiscount} disabled={isApplying || !discountCode.trim()} className="rounded-2xl bg-gray-200 px-5 py-3 text-xs font-black text-gray-700 disabled:opacity-50">
-                    {isApplying ? <RefreshCcw className="h-4 w-4 animate-spin" /> : 'Apply'}
-                  </button>
+              <div className="relative overflow-hidden rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-2xl shadow-gray-200/40 backdrop-blur-xl">
+                <div className="mb-8 flex items-center justify-between">
+                  <h2 className="text-xl font-black tracking-tight text-gray-900">Order summary</h2>
+                  <span className="rounded-full bg-gray-900 px-3 py-1 text-[10px] font-black text-white">{totalItems} item{totalItems === 1 ? '' : 's'}</span>
                 </div>
-                {discountMessage && <p className={`mt-3 text-xs font-bold ${appliedDiscount ? 'text-green-700' : 'text-amber-700'}`}>{discountMessage}</p>}
-                <p className="mt-2 text-[10px] font-medium text-gray-400">Previewed storefront discount. Final order totals are calculated at checkout completion.</p>
-                {appliedDiscount && (
-                  <div className="mt-3 flex items-center justify-between rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs font-black text-green-700">
-                    <span className="flex items-center gap-2"><Tag className="h-3.5 w-3.5" /> {appliedDiscount.code}</span>
-                    <button onClick={() => { setAppliedDiscount(null); setDiscountMessage(null); }} className="opacity-60 hover:opacity-100">Remove</button>
+                
+                <div className="max-h-80 space-y-5 overflow-y-auto pr-2 scrollbar-hide">
+                  {loadingCart ? [1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-gray-100/50" />) : cartItems.map((item) => (
+                    <div key={item.productId} className="flex items-center gap-4">
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white bg-white shadow-sm transition-transform hover:scale-105">
+                        <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                        <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-[10px] font-black text-white ring-2 ring-white shadow-lg">{item.quantity}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-gray-900">{item.name}</p>
+                        <p className="mt-1 text-[10px] font-bold text-gray-400">{formatMoney(item.priceSnapshot)} / unit</p>
+                      </div>
+                      <p className="text-sm font-black text-gray-900">{formatMoney(item.priceSnapshot * item.quantity)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-10 border-t border-gray-100 pt-8">
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-400">Promo or gift card</p>
+                  <div className="flex gap-2">
+                    <input value={discountCode} onChange={(e) => setDiscountCode(e.target.value)} placeholder="Discount code" className="min-w-0 flex-1 rounded-2xl border-2 border-gray-100 bg-white/50 px-5 py-4 text-sm font-bold outline-none transition focus:border-primary-500 focus:bg-white" />
+                    <button onClick={handleApplyDiscount} disabled={isApplying || !discountCode.trim()} className="rounded-2xl bg-gray-900 px-6 py-4 text-xs font-black text-white transition hover:bg-black disabled:opacity-50">
+                      {isApplying ? <RefreshCcw className="h-4 w-4 animate-spin" /> : 'Apply'}
+                    </button>
                   </div>
-                )}
-              </div>
-              <div className="mt-8 space-y-3 border-t border-gray-200 pt-6">
-                <SummaryRow label="Subtotal" value={formatMoney(subtotal)} />
-                <SummaryRow label="Shipping" value={shipping === 0 ? 'Free' : formatMoney(shipping)} />
-                <SummaryRow label="Estimated tax" value="Calculated after review" />
-                {appliedDiscount && <SummaryRow label="Discount" value={`-${formatMoney(appliedDiscount.amount)}`} isDiscount />}
-                <div className="flex items-end justify-between border-t border-gray-200 pt-5">
-                  <span className="text-lg font-black text-gray-900">Total</span>
-                  <span className="text-right">
-                    <span className="mr-2 text-[10px] font-black uppercase text-gray-400">USD</span>
-                    <span className="text-3xl font-black tracking-tighter text-gray-900">{formatMoney(total)}</span>
-                  </span>
+                  {discountMessage && <p className={`mt-3 text-xs font-bold ${appliedDiscount ? 'text-green-700' : 'text-amber-700'}`}>{discountMessage}</p>}
+                  <p className="mt-3 text-[10px] font-medium leading-relaxed text-gray-400">Final order totals are calculated at checkout completion.</p>
+                  {appliedDiscount && (
+                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-xs font-black text-green-700">
+                      <span className="flex items-center gap-2"><Tag className="h-4 w-4" /> {appliedDiscount.code}</span>
+                      <button onClick={() => { setAppliedDiscount(null); setDiscountMessage(null); }} className="opacity-40 hover:opacity-100">Remove</button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-10 space-y-4 border-t border-gray-100 pt-8">
+                  <SummaryRow label="Subtotal" value={formatMoney(subtotal)} />
+                  <SummaryRow label="Shipping" value={shipping === 0 ? 'Free' : formatMoney(shipping)} />
+                  <SummaryRow label="Estimated tax" value="Calculated after review" />
+                  {appliedDiscount && <SummaryRow label="Discount" value={`-${formatMoney(appliedDiscount.amount)}`} isDiscount />}
+                  <div className="flex items-end justify-between border-t border-gray-100 pt-6">
+                    <span className="text-xl font-black text-gray-900">Total</span>
+                    <span className="text-right">
+                      <span className="mr-2 text-[10px] font-black uppercase text-gray-400">USD</span>
+                      <span className="text-4xl font-black tracking-tighter text-gray-900">{formatMoney(total)}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
               {freeShippingRemaining > 0 ? (
@@ -457,11 +482,16 @@ export function CheckoutPage() {
                   <Truck className="mb-2 h-4 w-4" /> Free standard shipping unlocked.
                 </div>
               )}
-              <div className="mt-8 grid gap-4">
+              <div className="mt-10 grid gap-6 border-t border-white/60 pt-8">
                 <TrustItem icon={<ShieldCheck className="h-4 w-4" />} title="Buyer protection" text="Authenticity-backed singles and sealed products." />
                 <TrustItem icon={<PackageCheck className="h-4 w-4" />} title="Protected packaging" text="Sleeved, packed, and boxed for collectors." />
                 <TrustItem icon={<HelpCircle className="h-4 w-4" />} title="Support after purchase" text="Order help, returns guidance, and delivery questions." />
               </div>
+            </div>
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 border-t border-gray-100 pt-12 grayscale opacity-40">
+              <div className="flex items-center gap-2"><Lock className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.2em]">SSL Encrypted</span></div>
+              <div className="flex items-center gap-2"><CreditCard className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.2em]">Secure Payment</span></div>
+              <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.2em]">PCI Compliant</span></div>
             </div>
           </div>
         </aside>

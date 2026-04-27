@@ -83,25 +83,35 @@ export function OrderConfirmation({ order, userEmail, userName, context = 'confi
   const statusContent = STATUS_CONTENT[order.status];
 
   return (
-    <div className="min-h-screen bg-[#f6f7f9] px-4 py-8 md:py-14">
-      <div className="mx-auto max-w-6xl">
-        <div className={`mb-8 flex flex-col gap-4 rounded-[2rem] border p-6 shadow-sm md:flex-row md:items-center md:justify-between ${context === 'detail' ? 'border-gray-100 bg-white' : 'border-green-100 bg-green-50/30'}`}>
-          <div className="flex items-start gap-4">
-            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-lg ${context === 'detail' ? 'bg-gray-900 shadow-gray-200' : 'bg-green-500 shadow-green-200'}`}>
-              {context === 'detail' ? <Package className="h-7 w-7" /> : <CheckCircle className="h-8 w-8" />}
+    <div className="relative min-h-screen bg-[#f8f9fb] px-4 py-10 md:py-20">
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute -left-1/4 -top-1/4 h-1/2 w-1/2 rounded-full bg-primary-100/20 blur-[120px]" />
+        <div className="absolute -bottom-1/4 -right-1/4 h-1/2 w-1/2 rounded-full bg-blue-50/30 blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl">
+        <div className={`group relative mb-12 flex flex-col gap-6 overflow-hidden rounded-[3rem] border p-8 shadow-2xl backdrop-blur-3xl md:flex-row md:items-center md:justify-between ${context === 'detail' ? 'border-white bg-white/60 shadow-gray-200/40' : 'border-green-100/50 bg-green-50/40 shadow-green-200/30'}`}>
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/20 blur-3xl transition-transform duration-1000 group-hover:scale-150" />
+          
+          <div className="relative flex items-start gap-6">
+            <div className={`relative flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl text-white shadow-2xl ${context === 'detail' ? 'bg-gray-900 shadow-gray-400/50' : 'bg-green-500 shadow-green-300/50'}`}>
+              {context === 'detail' ? <Package className="h-10 w-10" /> : <CheckCircle className="h-10 w-10" />}
+              {!['cancelled', 'delivered'].includes(order.status) && (
+                <span className="absolute -right-1 -top-1 h-4 w-4 animate-ping rounded-full bg-current opacity-75" />
+              )}
             </div>
             <div>
-              <p className={`text-xs font-black uppercase tracking-[0.2em] ${context === 'detail' ? 'text-gray-400' : 'text-green-700'}`}>{context === 'detail' ? `Order #${orderNumber}` : 'Order confirmed'}</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-gray-900 md:text-5xl">{context === 'detail' ? statusContent.title : `Thank you${userName ? `, ${userName}` : ''}.`}</h1>
-              <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-gray-600">
+              <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${context === 'detail' ? 'text-gray-400' : 'text-green-700'}`}>{context === 'detail' ? `Order #${orderNumber}` : 'Order confirmed'}</p>
+              <h1 className="mt-2 text-4xl font-black tracking-tight text-gray-900 md:text-6xl">{context === 'detail' ? statusContent.title : `Thank you${userName ? `, ${userName}` : ''}.`}</h1>
+              <p className="mt-4 max-w-2xl text-base font-medium leading-relaxed text-gray-600">
                 {context === 'detail' ? statusContent.description : 'We received your order and sent a receipt to'} <span className="font-black text-gray-900">{context === 'detail' ? '' : displayEmail || 'your email'}</span>{context === 'detail' ? '' : '. You can track progress from your account at any time.'}
               </p>
             </div>
           </div>
-          <div className="rounded-2xl bg-gray-50 p-4 text-left md:text-right">
+          <div className="relative rounded-[2rem] bg-white/50 p-6 text-left backdrop-blur-md md:text-right">
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Status updated</p>
-            <p className="mt-1 text-lg font-black text-gray-900">{formatDate(order.updatedAt || order.createdAt)}</p>
-            <p className="mt-1 text-xs font-bold text-gray-500">Placed {formatDate(order.createdAt)}</p>
+            <p className="mt-2 text-2xl font-black text-gray-900">{formatDate(order.updatedAt || order.createdAt)}</p>
+            <p className="mt-1 text-xs font-bold text-gray-400">Placed {formatDate(order.createdAt)}</p>
           </div>
         </div>
 

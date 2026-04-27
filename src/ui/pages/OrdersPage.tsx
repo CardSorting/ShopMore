@@ -121,33 +121,56 @@ export function OrdersPage() {
 
   if (orders.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-28 text-center">
-        <div className="relative mx-auto mb-8 flex h-32 w-32 items-center justify-center rounded-full bg-gray-50">
-          <div className="absolute inset-0 rounded-full bg-primary-100 opacity-20 animate-ping" />
-          <ShoppingBag className="relative z-10 h-12 w-12 text-gray-300" />
+      <div className="mx-auto max-w-2xl px-4 py-24 text-center">
+        <div className="relative mx-auto mb-12 max-w-sm overflow-hidden rounded-[3rem] shadow-2xl shadow-primary-200/50">
+          <img 
+            src="/Users/bozoegg/.gemini/antigravity/brain/855fda9e-6218-4905-b0cf-94cdb4dbb540/empty_orders_state_1777311272023.png" 
+            alt="Empty order box" 
+            className="aspect-[4/3] w-full object-cover grayscale opacity-80"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
         </div>
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-primary-600">Order history</p>
-        <h1 className="mt-3 text-4xl font-black tracking-tight text-gray-900">No orders yet</h1>
-        <p className="mt-4 text-lg font-medium leading-7 text-gray-500">Your purchases, receipts, and tracking links will appear here after checkout.</p>
-        <Link href="/products" className="mt-10 inline-flex items-center gap-3 rounded-2xl bg-gray-900 px-10 py-5 font-black text-white shadow-xl transition hover:bg-black">Start shopping <ArrowRight className="h-5 w-5" /></Link>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary-600">Your collection awaits</p>
+        <h1 className="mt-4 text-4xl font-black tracking-tight text-gray-900 md:text-5xl">No orders yet</h1>
+        <p className="mt-5 text-lg font-medium leading-relaxed text-gray-500 px-6">Your purchases, receipts, and tracking links will appear here after checkout. Start building your ultimate deck today.</p>
+        <Link href="/products" className="mt-10 inline-flex items-center gap-3 rounded-[2rem] bg-gray-900 px-12 py-6 font-black text-white shadow-2xl transition hover:-translate-y-1 hover:bg-black">
+          Start shopping <ArrowRight className="h-5 w-5" />
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <section className="mb-10 overflow-hidden rounded-4xl border border-gray-100 bg-gray-900 text-white shadow-2xl">
-        <div className="grid grid-cols-1 lg:grid-cols-3">
-          <div className="p-8 lg:col-span-2">
-            <div className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary-300">
+      <section className="group relative mb-12 overflow-hidden rounded-[3rem] border border-gray-100 bg-gray-900 text-white shadow-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-primary-900),transparent)] opacity-50" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary-500/10 blur-3xl transition-transform duration-1000 group-hover:scale-150" />
+        
+        <div className="relative grid grid-cols-1 lg:grid-cols-3">
+          <div className="p-10 lg:col-span-2">
+            <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary-300">
               <Link href="/" className="hover:text-white">Store</Link><ChevronRight className="h-3 w-3" /><span>Orders</span>
             </div>
-            <h1 className="text-4xl font-black tracking-tight md:text-5xl">Your orders</h1>
-            <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-gray-300">Track shipments, print receipts, reorder favorites, and get help without needing to understand fulfillment statuses.</p>
+            <h1 className="text-4xl font-black tracking-tight md:text-6xl">Your orders</h1>
+            <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-gray-300">Track shipments, print receipts, and reorder favorites. Your collector journey, documented in detail.</p>
           </div>
-          <div className="border-t border-white/10 bg-white/5 p-8 lg:border-l lg:border-t-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Latest order</p>
-            {latestOrder && <div className="mt-4"><p className="font-mono text-sm font-black">#{latestOrder.id.toUpperCase().slice(0, 12)}</p><p className="mt-2 text-2xl font-black">{STATUS_CONFIG[latestOrder.status].label}</p><p className="mt-2 text-xs font-medium text-gray-300">Placed {formatDate(latestOrder.createdAt)}</p><Link href={`/orders/${latestOrder.id}`} className="mt-5 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary-300 hover:text-white">View latest <ArrowRight className="h-3.5 w-3.5" /></Link></div>}
+          <div className="border-t border-white/10 bg-white/5 p-10 backdrop-blur-sm lg:border-l lg:border-t-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Latest order</p>
+            {latestOrder && (
+              <div className="mt-6">
+                <div className="flex items-center gap-3">
+                  <p className="font-mono text-sm font-black text-primary-400">#{latestOrder.id.toUpperCase().slice(0, 12)}</p>
+                  {(latestOrder.status === 'pending' || latestOrder.status === 'shipped') && (
+                    <span className="flex h-2 w-2 rounded-full bg-primary-500 animate-pulse" />
+                  )}
+                </div>
+                <p className="mt-2 text-3xl font-black">{STATUS_CONFIG[latestOrder.status].label}</p>
+                <p className="mt-3 text-xs font-medium text-gray-400">Placed {formatDate(latestOrder.createdAt)}</p>
+                <Link href={`/orders/${latestOrder.id}`} className="mt-8 inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary-300 transition hover:text-white">
+                  View tracking details <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -220,17 +243,26 @@ function OrderCard({ order, reordering, onReorder }: { order: Order; reordering:
   const itemPreview = order.items.slice(0, 3);
 
   return (
-    <article className="overflow-hidden rounded-4xl border border-gray-100 bg-white shadow-xl shadow-gray-200/40">
+    <article className="group overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-2xl shadow-gray-200/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary-100/50">
       <div className="grid grid-cols-1 border-b border-gray-100 lg:grid-cols-4">
-        <div className="bg-gray-50 p-6 lg:border-r lg:border-gray-100">
-          <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black ${config.color}`}><StatusIcon className="h-4 w-4" /> {config.label}</div>
-          <p className="mt-4 text-sm font-medium leading-6 text-gray-500">{config.description}</p>
+        <div className="bg-gray-50/50 p-8 lg:border-r lg:border-gray-100">
+          <div className={`inline-flex items-center gap-3 rounded-full border px-4 py-2.5 text-[10px] font-black uppercase tracking-widest ${config.color}`}>
+            <StatusIcon className="h-4 w-4" /> 
+            {config.label}
+            {(order.status === 'pending' || order.status === 'shipped') && (
+              <span className="flex h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
+            )}
+          </div>
+          <p className="mt-6 text-sm font-medium leading-relaxed text-gray-500">{config.description}</p>
         </div>
-        <div className="grid grid-cols-2 gap-6 p-6 lg:col-span-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 p-8 lg:col-span-3 md:grid-cols-4">
           <Meta icon={<Calendar className="h-4 w-4" />} label="Order date" value={formatDate(order.createdAt)} />
           <Meta label="Order number" value={`#${order.id.toUpperCase().slice(0, 12)}`} mono />
           <Meta icon={<MapPin className="h-4 w-4" />} label="Ship to" value={order.customerName || 'Customer'} />
-          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Total</p><p className="mt-2 text-2xl font-black text-primary-600">{formatMoney(order.total)}</p></div>
+          <div className="group/total">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Total</p>
+            <p className="mt-2 text-3xl font-black text-primary-600 transition-transform group-hover/total:scale-105">{formatMoney(order.total)}</p>
+          </div>
         </div>
       </div>
 

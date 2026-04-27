@@ -9,8 +9,9 @@ import { useParams } from 'next/navigation';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import type { Product } from '@domain/models';
-import { ShoppingCart, ArrowLeft, Check } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Check, ShieldCheck, Truck, LifeBuoy, PackageCheck, ChevronRight, AlertCircle } from 'lucide-react';
 import { MAX_CART_QUANTITY } from '@domain/rules';
+import { logger } from '@utils/logger';
 
 function emitCartUpdated(): void {
   window.dispatchEvent(new CustomEvent('cart:updated'));
@@ -34,6 +35,9 @@ export function ProductDetailPage() {
   const { user } = useAuth();
   const services = useServices();
   const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingRelated, setLoadingRelated] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
@@ -41,8 +45,27 @@ export function ProductDetailPage() {
 
   const loadProduct = useCallback(async () => {
     if (!id) return;
-    const loaded = await services.productService.getProduct(id);
-    setProduct(loaded);
+    setLoading(true);
+    try {
+      const loaded = await services.productService.getProduct(id);
+      setProduct(loaded);
+      
+      // Load related products
+      setLoadingRelated(true);
+      try {
+        const related = await services.productService.getProducts({ category: loaded.category, limit: 5 });
+        setRelatedProducts(related.products.filter(p => p.id !== id).slice(0, 4));
+      } catch (err) {
+        logger.error('Failed to load related products', err);
+      } finally {
+        setLoadingRelated(false);
+      }
+    } catch (err) {
+      logger.error('Failed to load product', err);
+      setError('Product not found.');
+    } finally {
+      setLoading(false);
+    }
   }, [id, services.productService]);
 
   useEffect(() => {
@@ -58,6 +81,7 @@ export function ProductDetailPage() {
     try {
       await services.cartService.addToCart(user.id, product.id, Math.min(quantity, maxSelectableQuantity));
       emitCartUpdated();
+      window.dispatchEvent(new CustomEvent('cart:open'));
       setAdded(true);
       setTimeout(() => setAdded(false), 2500);
     } catch (err) {
@@ -67,98 +91,227 @@ export function ProductDetailPage() {
     }
   }
 
-  if (!product) return <div className="max-w-7xl mx-auto p-8 text-center text-gray-400">Loading...</div>;
+  if (loading || !product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8 animate-pulse">
+        <div className="h-4 w-32 bg-gray-200 rounded mb-8" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="aspect-square bg-gray-200 rounded-2xl" />
+          <div className="space-y-6">
+            <div className="h-4 w-24 bg-gray-200 rounded" />
+            <div className="h-10 w-3/4 bg-gray-200 rounded" />
+            <div className="h-8 w-1/4 bg-gray-200 rounded" />
+            <div className="h-32 w-full bg-gray-100 rounded" />
+            <div className="h-12 w-full bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/products" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
-        <ArrowLeft className="w-4 h-4" />
-        Back to Products
-      </Link>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <nav aria-label="Breadcrumb" className="mb-8 flex items-center gap-2 text-sm text-gray-500">
+          <Link href="/" className="hover:text-gray-900">Home</Link>
+          <ChevronRight className="h-3 w-3" />
+          <Link href="/products" className="hover:text-gray-900">Products</Link>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-gray-900 font-medium truncate">{product.name}</span>
+        </nav>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="aspect-square rounded-lg overflow-hidden bg-white border">
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-        </div>
-
-        <div>
-          <p className="text-sm text-primary-600 font-medium uppercase mb-2">{product.category}</p>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
-          {product.set && <p className="text-sm text-gray-500 mb-4">{product.set}</p>}
-          {product.rarity && (
-            <span className="inline-block bg-primary-100 text-primary-700 text-xs font-medium px-2 py-1 rounded-full mb-4">
-              {product.rarity}
-            </span>
-          )}
-
-          <p className="text-3xl font-bold text-gray-900 mb-6">${(product.price / 100).toFixed(2)}</p>
-
-          <p className="text-gray-600 mb-6 leading-relaxed">{product.description}</p>
-
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`text-sm ${product.stock < 5 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-              {product.stock} in stock
-            </span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
+          {/* Left: Image Gallery */}
+          <div className="space-y-4">
+            <div className="aspect-square rounded-3xl overflow-hidden bg-gray-50 border shadow-inner">
+              <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+            </div>
           </div>
 
-          {user ? (
-            <div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Quantity</p>
-                  <div className="inline-flex items-center rounded-md border bg-white">
-                    <button
-                      type="button"
-                      aria-label={`Decrease quantity for ${product.name}`}
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      disabled={quantity <= 1 || adding}
-                      className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      −
-                    </button>
-                    <span className="w-12 border-x px-3 py-2 text-center text-sm font-medium" aria-live="polite">{quantity}</span>
-                    <button
-                      type="button"
-                      aria-label={`Increase quantity for ${product.name}`}
-                      onClick={() => setQuantity(Math.min(maxSelectableQuantity, quantity + 1))}
-                      disabled={quantity >= maxSelectableQuantity || adding}
-                      className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500">Up to {maxSelectableQuantity} available for this order.</p>
-                </div>
-                <button
-                  onClick={handleAddToCart}
-                  disabled={adding || product.stock === 0}
-                  className="flex items-center gap-2 bg-primary-600 text-white px-6 py-2.5 rounded-md font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {added ? <Check className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
-                  {adding ? 'Adding...' : added ? 'Added!' : 'Add to Cart'}
-                </button>
+          {/* Right: Product Details */}
+          <div className="flex flex-col">
+            <div className="mb-6">
+              <p className="text-sm text-primary-600 font-bold uppercase tracking-widest mb-2">{product.category}</p>
+              <h1 className="text-4xl font-extrabold text-gray-900 leading-tight mb-4">{product.name}</h1>
+              
+              <div className="flex flex-wrap gap-2 mb-6">
+                {product.set && (
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                    {product.set}
+                  </span>
+                )}
+                {product.rarity && (
+                  <span className="inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700 ring-1 ring-inset ring-primary-700/10">
+                    {product.rarity}
+                  </span>
+                )}
               </div>
 
-              {error && (
-                <p className="mt-3 text-sm text-red-600">{error}</p>
-              )}
-
-              {added && (
-                <div className="mt-4 border border-green-200 bg-green-50 text-green-800 rounded-lg p-4">
-                  <p className="font-medium">Added to cart</p>
-                  <div className="mt-2 flex items-center gap-3 text-sm">
-                    <Link href="/cart" className="font-medium underline">View cart</Link>
-                    <Link href="/products" className="underline">Continue shopping</Link>
-                  </div>
-                </div>
-              )}
+              <p className="text-3xl font-black text-gray-900">${(product.price / 100).toFixed(2)}</p>
             </div>
-          ) : (
-            <Link href="/login" className="inline-block bg-primary-600 text-white px-6 py-2.5 rounded-md font-medium hover:bg-primary-700">
-              Sign in to Add to Cart
-            </Link>
-          )}
+
+            <div className="prose prose-sm text-gray-600 mb-8 max-w-none">
+              <p className="leading-relaxed">{product.description}</p>
+            </div>
+
+            <div className="mb-8 space-y-4 border-t border-b py-6">
+              <div className="flex items-center gap-3">
+                <div className={`h-2.5 w-2.5 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className={`text-sm font-bold ${product.stock < 5 && product.stock > 0 ? 'text-amber-600' : product.stock === 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                  {product.stock > 10 ? 'In stock and ready to ship' : product.stock > 0 ? `Only ${product.stock} left in stock!` : 'Out of stock'}
+                </span>
+              </div>
+            </div>
+
+            {user ? (
+              <div className="space-y-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Quantity</p>
+                    <div className="inline-flex items-center rounded-xl border bg-white shadow-sm overflow-hidden h-14">
+                      <button
+                        type="button"
+                        aria-label={`Decrease quantity for ${product.name}`}
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        disabled={quantity <= 1 || adding}
+                        className="px-5 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                      >
+                        −
+                      </button>
+                      <span className="w-14 border-x px-3 py-2 text-center text-base font-bold text-gray-900" aria-live="polite">{quantity}</span>
+                      <button
+                        type="button"
+                        aria-label={`Increase quantity for ${product.name}`}
+                        onClick={() => setQuantity(Math.min(maxSelectableQuantity, quantity + 1))}
+                        disabled={quantity >= maxSelectableQuantity || adding}
+                        className="px-5 py-2 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={adding || product.stock === 0}
+                    className="flex-1 sm:flex-[2] h-14 flex items-center justify-center gap-3 bg-primary-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-primary-200 hover:bg-primary-700 hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                  >
+                    {added ? <Check className="w-6 h-6" /> : <ShoppingCart className="w-6 h-6" />}
+                    {adding ? 'Adding...' : added ? 'Added to Cart!' : 'Add to Cart'}
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 text-sm font-medium text-red-600 bg-red-50 p-4 rounded-xl border border-red-100">
+                    <AlertCircle className="h-5 w-5" />
+                    {error}
+                  </div>
+                )}
+
+                {added && (
+                  <div className="flex items-center justify-between gap-4 bg-green-50 border border-green-100 p-4 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                        <Check className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm font-bold text-green-800">Added to your cart!</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Link href="/cart" className="text-sm font-bold text-green-700 underline underline-offset-4 hover:text-green-900">View cart</Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link href="/login" className="flex h-14 items-center justify-center rounded-xl bg-primary-600 text-white font-bold text-lg shadow-lg hover:bg-primary-700 transition-all">
+                Sign in to Add to Cart
+              </Link>
+            )}
+
+            {/* Trust Badges Section */}
+            <div className="mt-12 grid grid-cols-2 gap-4 border-t pt-10">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-green-50 text-green-600">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">Secure Checkout</p>
+                  <p className="text-[10px] text-gray-500">100% Encrypted Payment</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                  <Truck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">Fast Shipping</p>
+                  <p className="text-[10px] text-gray-500">Dispatched in 24h</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
+                  <PackageCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">Authentic Cards</p>
+                  <p className="text-[10px] text-gray-500">Verified TCG Quality</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-gray-50 text-gray-600">
+                  <LifeBuoy className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">Expert Support</p>
+                  <p className="text-[10px] text-gray-500">We love TCG collectors</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Related Products */}
+        {(relatedProducts.length > 0 || loadingRelated) && (
+          <section className="mt-20 border-t pt-20 pb-12">
+            <div className="mb-10 flex items-center justify-between">
+              <h2 className="text-3xl font-black text-gray-900 tracking-tight">You might also like</h2>
+              <Link href="/products" className="text-sm font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                View all <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+            
+            {loadingRelated ? (
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="animate-pulse space-y-4">
+                    <div className="aspect-square rounded-2xl bg-gray-100" />
+                    <div className="h-4 w-2/3 bg-gray-100 rounded" />
+                    <div className="h-4 w-1/3 bg-gray-50 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                {relatedProducts.map((p) => (
+                  <article key={p.id} className="group relative">
+                    <div className="aspect-square overflow-hidden rounded-2xl bg-gray-100 border shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:-translate-y-1">
+                      <Link href={`/products/${p.id}`}>
+                        <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                      </Link>
+                    </div>
+                    <div className="mt-6">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-primary-600 mb-1">{p.category}</p>
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-primary-600 transition-colors line-clamp-1">
+                        <Link href={`/products/${p.id}`}>{p.name}</Link>
+                      </h3>
+                      <p className="mt-2 text-lg font-black text-gray-900">${(p.price / 100).toFixed(2)}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );

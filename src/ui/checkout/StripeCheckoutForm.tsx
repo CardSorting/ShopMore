@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { stripePromise } from './stripeClient';
+import { AlertCircle, CreditCard, LockKeyhole, ShieldCheck } from 'lucide-react';
 import type { FormEvent } from 'react';
 import type { Address } from '@domain/models';
 import { validateAddress } from '@utils/validators';
@@ -22,6 +23,14 @@ function StripeCheckoutFields({ address, onSuccess, onPlaceOrder, isPlacing }: S
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
+
+  const categorizeStripeError = (message: string) => {
+    if (message.includes('card_declined')) return 'Your card was declined. Please try a different card or contact your bank.';
+    if (message.includes('expired_card')) return 'Your card has expired. Please use a different card.';
+    if (message.includes('incorrect_cvc')) return 'The CVC code is incorrect. Please check the code and try again.';
+    if (message.includes('insufficient_funds')) return 'Your card has insufficient funds. Please try a different payment method.';
+    return message;
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -52,13 +61,13 @@ function StripeCheckoutFields({ address, onSuccess, onPlaceOrder, isPlacing }: S
       });
 
       if (error) {
-        setError(error.message || 'Payment failed');
+        setError(categorizeStripeError(error.message || 'Payment failed'));
         onPlaceOrder(false);
       } else {
         await onSuccess(paymentMethod.id);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err instanceof Error ? categorizeStripeError(err.message) : 'An unexpected error occurred');
       onPlaceOrder(false);
     }
   };
@@ -66,36 +75,70 @@ function StripeCheckoutFields({ address, onSuccess, onPlaceOrder, isPlacing }: S
   const isAddressValid = validateAddress(address).valid;
 
   return (
-    <form onSubmit={handleSubmit} className="border-t pt-6">
-      <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full bg-primary-600 text-white text-xs flex items-center justify-center">2</span>
-        Payment Details
-      </h2>
-      <div className="bg-gray-50 rounded-md p-4 border border-gray-200 mb-6">
+    <form onSubmit={handleSubmit} className="p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-primary-600" />
+          Payment details
+        </h2>
+        <div className="flex gap-1">
+          <div className="h-6 w-9 rounded bg-gray-100 border flex items-center justify-center text-[8px] font-bold text-gray-400">VISA</div>
+          <div className="h-6 w-9 rounded bg-gray-100 border flex items-center justify-center text-[8px] font-bold text-gray-400">MC</div>
+          <div className="h-6 w-9 rounded bg-gray-100 border flex items-center justify-center text-[8px] font-bold text-gray-400">AMEX</div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl p-4 border shadow-sm ring-1 ring-gray-900/5 focus-within:ring-2 focus-within:ring-primary-500 transition-all mb-6">
         <CardElement options={{
           style: {
             base: {
               fontSize: '16px',
-              color: '#424770',
-              '::placeholder': { color: '#aab7c4' },
+              color: '#111827',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              '::placeholder': { color: '#9ca3af' },
             },
-            invalid: { color: '#9e2146' },
+            invalid: { color: '#dc2626' },
           },
         }} />
       </div>
 
-      {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
+      {error && (
+        <div 
+          role="alert" 
+          aria-live="assertive"
+          className="mb-4 flex items-center gap-2 text-sm font-medium text-red-600 bg-red-50 p-3 rounded-lg border border-red-100"
+        >
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
 
       <button
         type="submit"
         disabled={!stripe || isPlacing || !isAddressValid}
-        className="w-full bg-primary-600 text-white py-3 rounded-md font-medium hover:bg-primary-700 disabled:opacity-50"
+        aria-busy={isPlacing}
+        className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-4 font-bold text-white shadow-lg transition-all hover:bg-black hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
       >
-        {isPlacing ? 'Authorizing secure payment...' : 'Authorize Payment & Place Order'}
+        {isPlacing ? (
+          <>
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            Processing...
+          </>
+        ) : (
+          <>
+            Pay & Place Order
+            <LockKeyhole className="h-4 w-4 text-gray-400 group-hover:text-white transition-colors" />
+          </>
+        )}
       </button>
-      <p className="mt-3 text-xs text-gray-500">
-        Payment authorization is finalized by the trusted checkout service before stock or order records are committed.
-      </p>
+
+      <div className="mt-6 flex items-center justify-center gap-4 border-t pt-6 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+        <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-green-600" /> SSL SECURE</span>
+        <span className="h-3 w-px bg-gray-200" />
+        <span className="flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-green-600" /> ENCRYPTED</span>
+        <span className="h-3 w-px bg-gray-200" />
+        <span className="flex items-center gap-1.5">STRIPE VERIFIED</span>
+      </div>
     </form>
   );
 }

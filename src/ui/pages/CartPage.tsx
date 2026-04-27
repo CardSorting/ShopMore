@@ -12,6 +12,8 @@ import { MAX_CART_QUANTITY } from '@domain/rules';
 import { logger } from '@utils/logger';
 
 const ESTIMATED_SHIPPING_CENTS = 599;
+const FREE_SHIPPING_THRESHOLD_CENTS = 10000; // $100.00
+
 
 function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -92,6 +94,10 @@ export function CartPage() {
   const [error, setError] = useState<string | null>(null);
   const [linePending, setLinePending] = useState<Record<string, boolean>>({});
   const [clearPending, setClearPending] = useState(false);
+  const [showPromo, setShowPromo] = useState(false);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(false);
+
 
   const loadCart = useCallback(async () => {
     setLoading(true);
@@ -137,11 +143,32 @@ export function CartPage() {
     return () => { cancelled = true; };
   }, [cart, services]);
 
+  useEffect(() => {
+    if (userId && (!cart || cart.items.length === 0)) {
+      const loadFeatured = async () => {
+        setLoadingFeatured(true);
+        try {
+          const result = await services.productService.getProducts({ limit: 4 });
+          setFeaturedProducts(result.products);
+        } catch (err) {
+          logger.error('Failed to load featured products for empty cart.', err);
+        } finally {
+          setLoadingFeatured(false);
+        }
+      };
+      void loadFeatured();
+    }
+  }, [userId, cart, services]);
+
   const items = cart?.items ?? [];
   const hasPendingMutation = clearPending || Object.values(linePending).some(Boolean);
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.priceSnapshot * item.quantity, 0), [items]);
-  const estimatedTotal = subtotal + ESTIMATED_SHIPPING_CENTS;
+  const shippingCents = subtotal >= FREE_SHIPPING_THRESHOLD_CENTS ? 0 : ESTIMATED_SHIPPING_CENTS;
+  const estimatedTotal = subtotal + shippingCents;
   const totalItems = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+
+  const shippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD_CENTS) * 100);
+  const remainingForFreeShipping = FREE_SHIPPING_THRESHOLD_CENTS - subtotal;
 
   const setItemPending = (productId: string, pending: boolean) => setLinePending((current) => ({ ...current, [productId]: pending }));
 
@@ -248,11 +275,203 @@ export function CartPage() {
                 );
               })}
             </div>
-            <aside className="lg:col-span-1"><div className="rounded-2xl border bg-white p-6 shadow-sm lg:sticky lg:top-20"><div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">Order summary</h2><span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">{totalItems} {totalItems === 1 ? 'item' : 'items'}</span></div><div className="space-y-3 text-sm"><div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{formatMoney(subtotal)}</span></div><div className="flex justify-between text-gray-600"><span>Estimated shipping</span><span>{formatMoney(ESTIMATED_SHIPPING_CENTS)}</span></div><div className="flex justify-between border-t pt-3 text-base font-bold text-gray-900"><span>Estimated total</span><span>{formatMoney(estimatedTotal)}</span></div></div><p className="mt-4 rounded-xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-600">You can review shipping, taxes, and payment details before placing your order.</p>{hasPendingMutation ? <button disabled className="mt-5 flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-gray-300 py-3 font-semibold text-gray-600">Saving cart…</button> : <Link href="/checkout" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-3 font-semibold text-white transition hover:bg-primary-700">Checkout securely<ChevronRight className="h-4 w-4" /></Link>}<Link href="/products" className="mt-3 flex w-full items-center justify-center rounded-xl border py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">Continue shopping</Link><div className="mt-6 space-y-3 border-t pt-5 text-sm text-gray-600"><p className="flex items-center gap-2"><LockKeyhole className="h-4 w-4 text-green-600" /> Encrypted Stripe-style payment flow</p><p className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-green-600" /> Secure account-backed cart</p><p className="flex items-center gap-2"><PackageCheck className="h-4 w-4 text-green-600" /> Authentic TCG products</p><p className="flex items-center gap-2"><Truck className="h-4 w-4 text-green-600" /> Ships within 24 hours when available</p><p className="flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-green-600" /> Need help? Contact support before checkout.</p></div></div></aside>
+            <aside className="lg:col-span-1">
+              <div className="rounded-2xl border bg-white p-6 shadow-sm lg:sticky lg:top-20">
+                <div className="mb-5 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">Order summary</h2>
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">{totalItems} {totalItems === 1 ? 'item' : 'items'}</span>
+                </div>
+
+                {remainingForFreeShipping > 0 ? (
+                  <div className="mb-6">
+                    <div className="mb-2 flex items-center justify-between text-xs">
+                      <span className="font-medium text-gray-600">Free shipping progress</span>
+                      <span className="text-gray-500">{formatMoney(remainingForFreeShipping)} away</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full bg-primary-600 transition-all duration-500"
+                        style={{ width: `${shippingProgress}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">Add {formatMoney(remainingForFreeShipping)} more to unlock free shipping!</p>
+                  </div>
+                ) : (
+                  <div className="mb-6 rounded-xl bg-green-50 p-3 text-center ring-1 ring-inset ring-green-600/10">
+                    <p className="text-xs font-semibold text-green-700 flex items-center justify-center gap-1">
+                      <Truck className="h-3.5 w-3.5" /> You&apos;ve earned free shipping!
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>{formatMoney(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Estimated shipping</span>
+                    <span className={shippingCents === 0 ? 'font-medium text-green-600' : ''}>
+                      {shippingCents === 0 ? 'FREE' : formatMoney(shippingCents)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Estimated taxes</span>
+                    <span>$0.00</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-3 text-base font-bold text-gray-900">
+                    <span>Estimated total</span>
+                    <span>{formatMoney(estimatedTotal)}</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 border-t pt-4">
+                  <button
+                    onClick={() => setShowPromo(!showPromo)}
+                    className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                  >
+                    {showPromo ? '− Remove promo code' : '+ Add promo code'}
+                  </button>
+                  {showPromo && (
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Discount code"
+                        className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
+                        Apply
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <p className="mt-4 rounded-xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-600">
+                  You can review shipping, taxes, and payment details before placing your order.
+                </p>
+
+                {hasPendingMutation ? (
+                  <button disabled className="mt-5 flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-gray-300 py-4 font-semibold text-gray-600">
+                    Saving cart…
+                  </button>
+                ) : (
+                  <Link href="/checkout" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-4 font-bold text-white shadow-lg transition hover:bg-primary-700 hover:shadow-xl active:scale-[0.98]">
+                    Checkout securely<LockKeyhole className="h-4 w-4" />
+                  </Link>
+                )}
+                <Link href="/products" className="mt-3 flex w-full items-center justify-center rounded-xl border py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                  Continue shopping
+                </Link>
+
+                <div className="mt-8 space-y-4 border-t pt-6 text-sm text-gray-600">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-50 text-green-600">
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Secure checkout</p>
+                      <p className="text-xs">Your data is encrypted and safe</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                      <Truck className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Fast shipping</p>
+                      <p className="text-xs">Orders ship within 24 hours</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                      <LifeBuoy className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Expert support</p>
+                      <p className="text-xs">Help available via chat or email</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
           </div>
         ) : (
-          <div className="rounded-2xl border bg-white px-4 py-16 text-center text-gray-500 shadow-sm"><ShoppingBag className="mx-auto mb-4 h-14 w-14 rounded-full bg-primary-50 p-3 text-primary-600" /><p className="text-xl font-semibold text-gray-900">Your cart is empty</p><p className="mx-auto mt-2 max-w-md">Find cards, sealed products, and accessories, then return here when you&apos;re ready to checkout.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link href="/products" className="rounded-lg bg-primary-600 px-5 py-2.5 font-medium text-white hover:bg-primary-700">Shop products</Link><Link href="/" className="rounded-lg border px-5 py-2.5 font-medium text-gray-700 hover:bg-gray-50">Back home</Link></div></div>
+          <div className="space-y-12">
+            <div className="rounded-3xl border border-dashed border-gray-300 bg-white px-4 py-20 text-center shadow-sm">
+              <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary-50">
+                <ShoppingBag className="h-12 w-12 text-primary-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900">Your cart is empty</h2>
+              <p className="mx-auto mt-3 max-w-md text-lg text-gray-600">
+                Looks like you haven&apos;t added anything to your cart yet.
+              </p>
+              <div className="mt-10 flex flex-wrap justify-center gap-4">
+                <Link href="/products" className="rounded-xl bg-primary-600 px-8 py-3.5 text-lg font-bold text-white shadow-lg shadow-primary-200 transition hover:bg-primary-700 hover:shadow-xl active:scale-95">
+                  Start shopping
+                </Link>
+                <Link href="/" className="rounded-xl border border-gray-300 bg-white px-8 py-3.5 text-lg font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95">
+                  Back to home
+                </Link>
+              </div>
+            </div>
+
+            {featuredProducts.length > 0 && (
+              <section>
+                <div className="mb-8 flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Recommended for you</h2>
+                  <Link href="/products" className="text-sm font-semibold text-primary-600 hover:text-primary-700">
+                    View all cards &rarr;
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {featuredProducts.map((p) => (
+                    <article key={p.id} className="group relative rounded-2xl border bg-white p-3 shadow-sm transition hover:shadow-md">
+                      <Link href={`/products/${p.id}`} className="block aspect-square overflow-hidden rounded-xl bg-gray-100">
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                        />
+                      </Link>
+                      <div className="mt-4 px-1 pb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary-600">{p.category}</p>
+                        <h3 className="mt-1 line-clamp-1 text-sm font-bold text-gray-900">
+                          <Link href={`/products/${p.id}`} className="hover:text-primary-600">
+                            {p.name}
+                          </Link>
+                        </h3>
+                        <div className="mt-3 flex items-center justify-between">
+                          <p className="text-base font-black text-gray-900">{formatMoney(p.price)}</p>
+                          <Link
+                            href={`/products/${p.id}`}
+                            className="rounded-full bg-gray-900 p-1.5 text-white transition hover:bg-primary-600"
+                            aria-label={`View ${p.name}`}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+            
+            {loadingFeatured && (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="animate-pulse space-y-4">
+                    <div className="aspect-square rounded-2xl bg-gray-200" />
+                    <div className="h-4 w-2/3 rounded bg-gray-200" />
+                    <div className="h-4 w-1/3 rounded bg-gray-100" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
+
       </div>
     </div>
   );

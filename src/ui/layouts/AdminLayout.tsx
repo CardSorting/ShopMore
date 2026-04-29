@@ -103,7 +103,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <Search className="h-5 w-5" />
             </button>
             <AdminNotificationBell />
-            <div className="h-8 w-8 rounded-full bg-linear-to-br from-primary-400 to-primary-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm ml-2">PM</div>
+            <div className="h-8 w-8 rounded-full bg-linear-to-br from-primary-500 to-primary-700 flex items-center justify-center text-[10px] font-bold text-white shadow-sm ml-2">SM</div>
           </div>
         </header>
         
@@ -119,7 +119,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           {/* ── Sidebar ── */}
           <aside 
             className={`
-              fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-[#EBEBED]
+              fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-[#F8F8F9]
               transition-all duration-200 ease-in-out
               lg:sticky lg:top-0 lg:h-screen
               ${collapsed ? 'lg:w-[64px]' : 'lg:w-[240px]'}
@@ -134,7 +134,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 </div>
                 {!collapsed && (
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-gray-900 leading-tight">PlayMoreTCG</p>
+                    <p className="truncate text-sm font-bold text-gray-900 leading-tight">ShopMore</p>
                     <p className="text-[10px] text-gray-500 font-medium">Online store · Live</p>
                   </div>
                 )}
@@ -154,7 +154,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                   `}
                 >
                   <Search className="h-[18px] w-[18px]" />
-                  {!collapsed && <span className="flex-1 text-left">Search</span>}
+                  {!collapsed && <span className="flex-1 text-left font-medium">Search</span>}
                   {!collapsed && (
                     <kbd className="flex items-center gap-0.5 rounded border bg-white px-1 py-0.5 text-[9px] font-medium text-gray-400">
                       <Command className="h-2 w-2" />K
@@ -174,13 +174,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                     <div className="space-y-0.5">
                       {group.items.map(({ href, label, description, icon: Icon }) => {
                         const active = isActive(href);
-                        return (
-                          <Link
-                            key={href}
-                            href={href}
-                            title={collapsed ? `${label} — ${description}` : description}
-                            className={`
-                              group flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150
+                          return (
+                            <Link
+                              key={href}
+                              href={href}
+                              title={collapsed ? `${label} — ${description}` : description}
+                              className={`
+                                group flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-150
                               ${active 
                                 ? 'bg-white text-gray-900 shadow-sm ring-1 ring-black/5' 
                                 : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
@@ -252,8 +252,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
               {/* User Profile */}
               <div className={`mt-2 flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-gray-200 cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
-                <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-linear-to-br from-primary-400 to-primary-600 shadow-sm">
-                  <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white">PM</div>
+                <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-linear-to-br from-primary-500 to-primary-700 shadow-sm">
+                  <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white">SM</div>
                 </div>
                 {!collapsed && (
                   <div className="min-w-0 flex-1">

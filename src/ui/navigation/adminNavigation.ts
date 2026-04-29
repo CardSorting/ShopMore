@@ -69,8 +69,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     ],
   },
   {
-    id: 'retail',
-    label: 'Retail Ops',
+    id: 'pos',
     items: [
       {
         id: 'pos',
@@ -78,17 +77,56 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Point of Sale',
         description: 'Open the register and sell to in-store customers',
         icon: Zap,
-        aliases: ['pos', 'register', 'checkout', 'counter', 'sell'],
+        aliases: ['pos', 'register', 'checkout', 'counter', 'sell', 'terminal'],
       },
+    ],
+  },
+  {
+    id: 'orders',
+    items: [
       {
         id: 'orders',
         href: '/admin/orders',
         label: 'Orders',
         description: 'Review, fulfill, and manage all transactions',
         icon: ClipboardList,
-        aliases: ['sales', 'fulfillment', 'shipping', 'purchases', 'transactions'],
+        aliases: ['sales', 'fulfillment', 'shipping', 'purchases', 'transactions', 'billing'],
         badge: 'orders',
       },
+    ],
+  },
+  {
+    id: 'products',
+    items: [
+      {
+        id: 'products',
+        href: '/admin/products',
+        label: 'Products',
+        description: 'Manage inventory listings and pricing',
+        icon: Package,
+        aliases: ['catalog', 'items', 'listings', 'inventory', 'merchandise'],
+      },
+      {
+        id: 'collections',
+        href: '/admin/collections',
+        label: 'Collections',
+        description: 'Group products for organization',
+        icon: Tag,
+        aliases: ['tags', 'product groups', 'merchandising', 'featured products', 'categories'],
+      },
+      {
+        id: 'inventory',
+        href: '/admin/inventory',
+        label: 'Inventory',
+        description: 'Track quantity across all locations',
+        icon: Boxes,
+        aliases: ['stock', 'quantity', 'warehouse', 'restock', 'availability'],
+      },
+    ],
+  },
+  {
+    id: 'customers',
+    items: [
       {
         id: 'customers',
         href: '/admin/customers',
@@ -100,54 +138,16 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     ],
   },
   {
-    id: 'catalog',
-    label: 'Catalog',
+    id: 'procurement',
+    label: 'Supply Chain',
     items: [
-      {
-        id: 'products',
-        href: '/admin/products',
-        label: 'Products',
-        description: 'Manage inventory listings and pricing',
-        icon: Package,
-        aliases: ['catalog', 'items', 'listings', 'cards', 'merchandise'],
-      },
-      {
-        id: 'collections',
-        href: '/admin/collections',
-        label: 'Collections',
-        description: 'Group products for organization',
-        icon: Tag,
-        aliases: ['tags', 'product groups', 'merchandising', 'featured products', 'sets'],
-      },
-    ],
-  },
-  {
-    id: 'inventory',
-    label: 'Inventory',
-    items: [
-      {
-        id: 'inventory',
-        href: '/admin/inventory',
-        label: 'Stock Levels',
-        description: 'Track quantity across all locations',
-        icon: Boxes,
-        aliases: ['stock', 'quantity', 'warehouse', 'restock', 'availability'],
-      },
       {
         id: 'purchase-orders',
         href: '/admin/purchase-orders',
         label: 'Purchase Orders',
         description: 'Order and receive stock from suppliers',
         icon: Truck,
-        aliases: ['po', 'incoming stock', 'receiving', 'vendor orders'],
-      },
-      {
-        id: 'transfers',
-        href: '/admin/inventory',
-        label: 'Store Transfers',
-        description: 'Move stock between internal locations',
-        icon: RefreshCw,
-        aliases: ['internal transfer', 'move stock', 'location transfer'],
+        aliases: ['po', 'incoming stock', 'receiving', 'vendor orders', 'procurement'],
       },
       {
         id: 'suppliers',
@@ -160,17 +160,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     ],
   },
   {
-    id: 'online-store',
-    label: 'Online Store',
+    id: 'content',
+    label: 'Content',
     items: [
-      {
-        id: 'themes',
-        href: '/admin/settings',
-        label: 'Themes',
-        description: 'Customize your store’s look and feel',
-        icon: Megaphone, // Placeholder until a better icon is chosen
-        aliases: ['design', 'theme', 'look', 'styling'],
-      },
       {
         id: 'pages',
         href: '/admin/settings',
@@ -180,12 +172,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         aliases: ['content', 'blog', 'about', 'contact'],
       },
       {
-        id: 'navigation-menu',
+        id: 'files',
         href: '/admin/settings',
-        label: 'Navigation',
-        description: 'Configure menus and links',
+        label: 'Files',
+        description: 'Upload and manage media assets',
         icon: ExternalLink,
-        aliases: ['menus', 'links', 'footer', 'header'],
+        aliases: ['images', 'media', 'uploads', 'assets', 'documents'],
       },
     ],
   },
@@ -205,7 +197,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   },
   {
     id: 'insights',
-    label: 'Reports',
+    label: 'Insights',
     items: [
       {
         id: 'analytics',
@@ -222,6 +214,19 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Activity history and compliance logs',
         icon: Shield,
         aliases: ['security', 'activity', 'history', 'logs', 'compliance'],
+      },
+    ],
+  },
+  {
+    id: 'extensions',
+    items: [
+      {
+        id: 'apps',
+        href: '/admin/settings',
+        label: 'Apps',
+        description: 'Extend functionality with plugins',
+        icon: Zap,
+        aliases: ['plugins', 'extensions', 'addons', 'integrations', 'marketplace'],
       },
     ],
   },
@@ -254,7 +259,7 @@ export const ADMIN_QUICK_ACTIONS: AdminQuickAction[] = [
     label: 'Add product',
     description: 'Create a new product listing',
     icon: Package,
-    aliases: ['create listing', 'new card', 'new item', 'add listing'],
+    aliases: ['create listing', 'new item', 'add listing', 'upload product'],
     group: 'Create',
   },
   {

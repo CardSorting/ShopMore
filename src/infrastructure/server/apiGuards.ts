@@ -1,25 +1,14 @@
 import { NextResponse } from 'next/server';
-import type { Address, CardRarity, JsonValue, OrderStatus, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, User, ProductSalesChannel } from '@domain/models';
+import type { Address, JsonValue, OrderStatus, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, User, ProductSalesChannel } from '@domain/models';
 import { AuthError, DomainError, OrderNotFoundError, ProductNotFoundError, UnauthorizedError } from '@domain/errors';
 import { getSessionUser } from './session';
 import { logger } from '@utils/logger';
 
 const ORDER_STATUSES = new Set<OrderStatus>(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']);
-const PRODUCT_CATEGORIES = new Set<ProductCategory>([
-    'booster',
-    'single',
-    'deck',
-    'accessory',
-    'box',
-    'elite_trainer_box',
-    'sealed_case',
-    'graded_card',
-    'supplies',
-    'other',
-]);
+
 const PRODUCT_STATUSES = new Set<ProductStatus>(['active', 'draft', 'archived']);
 const PRODUCT_SALES_CHANNELS = new Set<ProductSalesChannel>(['online_store', 'pos', 'draft_order']);
-const CARD_RARITIES = new Set<CardRarity>(['common', 'uncommon', 'rare', 'holo', 'secret']);
+
 const MAX_JSON_BODY_BYTES = 32 * 1024;
 const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9:_-]{16,160}$/;
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -215,8 +204,9 @@ export function requireJsonValue(value: unknown, field: string): JsonValue {
 }
 
 export function requireProductCategory(value: unknown): ProductCategory {
-    if (typeof value === 'string' && PRODUCT_CATEGORIES.has(value as ProductCategory)) return value as ProductCategory;
-    throw new DomainError('Product category is invalid.');
+    const str = optionalString(value, 'category');
+    if (!str) throw new DomainError('Product category is required.');
+    return str;
 }
 
 export function requireProductStatus(value: unknown): ProductStatus {
@@ -224,10 +214,8 @@ export function requireProductStatus(value: unknown): ProductStatus {
     throw new DomainError('Product status is invalid.');
 }
 
-export function optionalCardRarity(value: unknown): CardRarity | undefined {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (typeof value === 'string' && CARD_RARITIES.has(value as CardRarity)) return value as CardRarity;
-    throw new DomainError('Card rarity is invalid.');
+export function optionalClassification(value: unknown): string | undefined {
+    return optionalString(value, 'classification');
 }
 
 export function optionalSalesChannels(value: unknown): ProductSalesChannel[] | undefined {
@@ -297,7 +285,7 @@ export function parseProductDraft(body: Record<string, unknown>): ProductDraft {
         imageUrl: requireString(body.imageUrl, 'imageUrl'),
         status: requireProductStatus(body.status ?? 'active'),
         set: optionalString(body.set, 'set'),
-        rarity: optionalCardRarity(body.rarity),
+        rarity: optionalClassification(body.rarity),
     };
 }
 
@@ -332,7 +320,7 @@ export function parseProductUpdate(body: Record<string, unknown>): ProductUpdate
     if ('imageUrl' in body) update.imageUrl = requireString(body.imageUrl, 'imageUrl');
     if ('status' in body) update.status = requireProductStatus(body.status);
     if ('set' in body) update.set = optionalString(body.set, 'set');
-    if ('rarity' in body) update.rarity = optionalCardRarity(body.rarity);
+    if ('rarity' in body) update.rarity = optionalClassification(body.rarity);
     return update;
 }
 

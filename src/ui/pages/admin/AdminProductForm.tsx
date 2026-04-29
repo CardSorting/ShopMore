@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
-import type { CardRarity, Product, ProductCategory, ProductSalesChannel } from '@domain/models';
+import type { Product, ProductCategory, ProductSalesChannel } from '@domain/models';
 import {
   ArrowLeft,
   BarChart3,
@@ -28,18 +28,15 @@ import { CategorySelect, TagInput } from '../../components/admin/AdminInputs';
 
 
 const CATEGORIES: ProductCategory[] = [
-  'booster',
-  'single',
-  'deck',
-  'accessory',
-  'box',
-  'elite_trainer_box',
-  'sealed_case',
-  'graded_card',
-  'supplies',
+  'apparel',
+  'electronics',
+  'digital_goods',
+  'collectibles',
+  'home_goods',
+  'accessories',
   'other',
 ];
-const RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
+const CLASSIFICATIONS = ['New', 'Refurbished', 'Vintage', 'Limited Edition', 'Standard'];
 const SALES_CHANNELS: Array<{ value: ProductSalesChannel; label: string }> = [
   { value: 'online_store', label: 'Online store' },
   { value: 'pos', label: 'Point of sale' },
@@ -100,7 +97,7 @@ export function AdminProductForm() {
     weightGrams: '',
     status: 'active' as 'active' | 'draft' | 'archived',
     salesChannels: ['online_store'] as ProductSalesChannel[],
-    category: 'booster' as ProductCategory,
+    category: 'general' as ProductCategory,
     productType: '',
     vendor: '',
     collections: '',
@@ -112,7 +109,7 @@ export function AdminProductForm() {
     supplier: '',
     manufacturerSku: '',
     set: '',
-    rarity: '' as CardRarity | '',
+    rarity: '',
     adminNotes: '',
   });
   const [saving, setSaving] = useState(false);
@@ -121,9 +118,9 @@ export function AdminProductForm() {
   const [unsaved, setUnsaved] = useState(false);
 
   useEffect(() => {
-    const title = isEdit ? `${form.name || 'Edit product'} · PlayMoreTCG Admin` : 'Add product · PlayMoreTCG Admin';
+    const title = isEdit ? `${form.name || 'Edit product'} · ShopMore Admin` : 'Add product · ShopMore Admin';
     document.title = title;
-    return () => { document.title = 'PlayMoreTCG'; };
+    return () => { document.title = 'ShopMore'; };
   }, [isEdit, form.name]);
 
   const loadProduct = useCallback(async () => {
@@ -261,7 +258,7 @@ export function AdminProductForm() {
       imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400',
       status: form.status,
       set: form.set || undefined,
-      rarity: (form.rarity as CardRarity) || undefined,
+      rarity: form.rarity || undefined,
     };
 
     try {
@@ -340,7 +337,7 @@ export function AdminProductForm() {
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Inventory</h2>
             <div className="grid gap-4 md:grid-cols-3">
-              <TextInput label="SKU" name="sku" value={form.sku} onChange={handleChange} placeholder="PM-1024-BS" />
+              <TextInput label="SKU" name="sku" value={form.sku} onChange={handleChange} placeholder="SKU-12345" />
               <TextInput label="Barcode / UPC" name="barcode" value={form.barcode} onChange={handleChange} />
               <TextInput label="Quantity available" name="stock" value={form.stock} onChange={handleChange} type="number" required />
               <TextInput label="Reorder point" name="reorderPoint" value={form.reorderPoint} onChange={handleChange} type="number" />
@@ -363,7 +360,7 @@ export function AdminProductForm() {
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Supplier & intake</h2>
             <div className="grid gap-4 md:grid-cols-3">
-              <TextInput label="Manufacturer" name="manufacturer" value={form.manufacturer} onChange={handleChange} placeholder="Pokémon, Ultra PRO…" />
+              <TextInput label="Manufacturer / Brand" name="manufacturer" value={form.manufacturer} onChange={handleChange} placeholder="Vendor name" />
               <TextInput label="Supplier / wholesaler" name="supplier" value={form.supplier} onChange={handleChange} />
               <TextInput label="Manufacturer SKU" name="manufacturerSku" value={form.manufacturerSku} onChange={handleChange} />
             </div>
@@ -372,10 +369,15 @@ export function AdminProductForm() {
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Variants / options</h2>
-              <span className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">Placeholder</span>
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Custom Attributes (Metafields)</h2>
+              <span className="rounded-full bg-primary-100 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-600">Extensible</span>
             </div>
-            <p className="rounded-lg border-2 border-dashed bg-gray-50 p-6 text-center text-xs font-medium text-gray-500">Future variants can model condition, language, edition, finish, and grading details.</p>
+            <p className="rounded-lg border-2 border-dashed bg-gray-50 p-6 text-center text-xs font-medium text-gray-500">
+              Define custom fields like "Material", "Color", or "Internal ID" using the Metafields engine.
+            </p>
+            <div className="mt-4 flex justify-center">
+              <button type="button" className="text-[10px] font-bold uppercase tracking-widest text-primary-600 hover:underline">Add custom field</button>
+            </div>
           </section>
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
@@ -386,8 +388,8 @@ export function AdminProductForm() {
               <div className="md:col-span-2"><TextArea label="SEO description" name="seoDescription" value={form.seoDescription} onChange={handleChange} rows={3} /></div>
             </div>
             <div className="mt-4 rounded-lg border bg-gray-50 p-4">
-              <p className="truncate text-sm font-medium text-[#1a0dab]">{form.seoTitle || form.name || 'Your Product Title'} | PlayMoreTCG</p>
-              <p className="truncate text-xs text-[#006621]">https://playmoretcg.com/products/{previewHandle(form.name, form.handle)}</p>
+              <p className="truncate text-sm font-medium text-[#1a0dab]">{form.seoTitle || form.name || 'Your Product Title'} | ShopMore</p>
+              <p className="truncate text-xs text-[#006621]">https://shopmore.io/products/{previewHandle(form.name, form.handle)}</p>
               <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#4d5156]">{form.seoDescription || form.description || 'Add SEO details to preview how this product could appear in search results.'}</p>
             </div>
           </section>
@@ -430,8 +432,14 @@ export function AdminProductForm() {
                 placeholder="Vintage, holo, sealed..."
                 suggestions={['New Release', 'Pre-order', 'Best Seller', 'Limited Edition', 'Bargain Bin']}
               />
-              <TextInput label="Set / TCG collection" name="set" value={form.set} onChange={handleChange} placeholder="Base Set" />
-              <div><label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Rarity</label><select name="rarity" value={form.rarity} onChange={handleChange} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500"><option value="">None</option>{RARITIES.map((rarity) => <option key={rarity} value={rarity}>{rarity.charAt(0).toUpperCase() + rarity.slice(1)}</option>)}</select></div>
+              <TextInput label="Collection / Series" name="set" value={form.set} onChange={handleChange} placeholder="Summer 2026, Core..." />
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Classification</label>
+                <select name="rarity" value={form.rarity} onChange={handleChange} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500">
+                  <option value="">None</option>
+                  {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </div>
           </section>
 

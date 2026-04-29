@@ -238,17 +238,17 @@ export function AdminSettingsSection({ sectionId }: AdminSettingsSectionProps) {
                       <label className="text-xs font-bold text-gray-700">Store Name</label>
                       <input 
                         type="text" 
-                        defaultValue={settings.store_name || 'PlayMore TCG'} 
+                        defaultValue={settings.store_name || 'My Store'} 
                         onBlur={(e) => saveSetting('store_name', e.target.value)}
                         className="w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition"
-                        placeholder="e.g. PlayMore TCG"
+                        placeholder="e.g. Acme Corp"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-700">Merchant Name</label>
                       <input 
                         type="text" 
-                        defaultValue={settings.merchant_name || 'PlayMore Retail Group'} 
+                        defaultValue={settings.merchant_name || ''} 
                         onBlur={(e) => saveSetting('merchant_name', e.target.value)}
                         className="w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition"
                         placeholder="Legal business name"
@@ -262,9 +262,10 @@ export function AdminSettingsSection({ sectionId }: AdminSettingsSectionProps) {
                     <label className="text-xs font-bold text-gray-700">Support Email</label>
                     <input 
                       type="email" 
-                      defaultValue={settings.support_email || 'support@playmoretcg.com'} 
+                      defaultValue={settings.support_email || ''} 
                       onBlur={(e) => saveSetting('support_email', e.target.value)}
                       className="w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition"
+                      placeholder="support@example.com"
                     />
                   </div>
                 </div>

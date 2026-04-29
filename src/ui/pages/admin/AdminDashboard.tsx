@@ -111,7 +111,7 @@ export function AdminDashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight sm:text-3xl">
-            {getGreeting()}, Admin 👋
+            {getGreeting()} 👋
           </h1>
           <p className="mt-1 text-sm font-medium text-gray-500">
             Monitor your store&apos;s performance and fulfill orders.
@@ -184,10 +184,10 @@ export function AdminDashboard() {
         <div className="lg:col-span-8 space-y-8">
           <section className="rounded-xl border border-primary-100 bg-linear-to-br from-white to-primary-50/30 p-6 shadow-sm">
              <div className="flex items-start justify-between">
-               <div className="space-y-1">
-                 <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Next steps for PlayMoreTCG</h2>
-                 <p className="text-xs text-gray-500 font-medium">Complete these tasks to optimize your store for the upcoming set release.</p>
-               </div>
+              <div className="space-y-1">
+                <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Store Setup & Optimization</h2>
+                <p className="text-xs text-gray-500 font-medium">Complete these tasks to launch your store and optimize for growth.</p>
+              </div>
                <span className="text-[10px] font-bold text-primary-600 bg-primary-100 px-2 py-0.5 rounded-full">
                  {setupProgress?.completedCount}/{setupProgress?.totalCount} COMPLETED
                </span>

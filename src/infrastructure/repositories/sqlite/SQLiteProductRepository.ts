@@ -6,28 +6,14 @@ import { Kysely } from 'kysely';
 import { getSQLiteDB } from '../../sqlite/database';
 import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
-import type { Product, ProductCategory, ProductStatus, CardRarity, ProductDraft, ProductUpdate, ProductSalesChannel } from '@domain/models';
+import type { Product, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, ProductSalesChannel } from '@domain/models';
 import { DomainError, InsufficientStockError, InvalidProductError, ProductNotFoundError } from '@domain/errors';
 import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
 import { sql } from 'kysely';
 
 function parseProductCategory(value: string): ProductCategory {
-  if (
-    value === 'booster'
-    || value === 'single'
-    || value === 'deck'
-    || value === 'accessory'
-    || value === 'box'
-    || value === 'elite_trainer_box'
-    || value === 'sealed_case'
-    || value === 'graded_card'
-    || value === 'supplies'
-    || value === 'other'
-  ) {
-    return value;
-  }
-  throw new DomainError('Stored product category is invalid.');
+  return value || 'other';
 }
 
 function nullableText(value: string | undefined): string | null {
@@ -86,12 +72,8 @@ function isUniqueSkuConstraintError(error: unknown): boolean {
     && (error.message.includes('idx_products_sku_unique') || error.message.includes('products.sku'));
 }
 
-function parseCardRarity(value: string | null): CardRarity | undefined {
-  if (value === null || value === '') return undefined;
-  if (value === 'common' || value === 'uncommon' || value === 'rare' || value === 'holo' || value === 'secret') {
-    return value;
-  }
-  throw new DomainError('Stored product rarity is invalid.');
+function parseClassification(value: string | null): string | undefined {
+  return value || undefined;
 }
 
 function parseProductStatus(value: string | null): ProductStatus {
@@ -147,7 +129,7 @@ export class SQLiteProductRepository implements IProductRepository {
       imageUrl: row.imageUrl,
       status: parseProductStatus(row.status),
       set: row.set || undefined,
-      rarity: parseCardRarity(row.rarity),
+      rarity: parseClassification(row.rarity),
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt),
     };

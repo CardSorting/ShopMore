@@ -6,8 +6,8 @@ import { StorefrontShell } from '@ui/layouts/StorefrontShell';
 import '../index.css';
 
 export const metadata: Metadata = {
-    title: 'PlayMoreTCG',
-    description: 'TCG ecommerce storefront',
+    title: 'ShopMore | Open Source Commerce',
+    description: 'A sovereign, customizable ecommerce platform.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

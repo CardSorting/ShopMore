@@ -3,7 +3,6 @@
  */
 import type {
   Address,
-  CardRarity,
   CartItem,
   FulfillmentBucket,
   InventoryHealth,
@@ -52,19 +51,7 @@ export const MAX_REORDER_QUANTITY = 100_000;
 export const MAX_WEIGHT_GRAMS = 100_000;
 export const MAX_ADDRESS_FIELD_LENGTH = 120;
 
-const PRODUCT_CATEGORIES: ProductCategory[] = [
-  'booster',
-  'single',
-  'deck',
-  'accessory',
-  'box',
-  'elite_trainer_box',
-  'sealed_case',
-  'graded_card',
-  'supplies',
-  'other',
-];
-const CARD_RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
+
 const PRODUCT_SALES_CHANNELS: ProductSalesChannel[] = ['online_store', 'pos', 'draft_order'];
 const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   pending: ['confirmed', 'cancelled'],
@@ -102,14 +89,14 @@ function assertValidStock(stock: number): void {
 }
 
 function assertValidCategory(category: ProductCategory): void {
-  if (!PRODUCT_CATEGORIES.includes(category)) {
-    throw new InvalidProductError('Product category is invalid');
+  if (!category || category.trim().length === 0) {
+    throw new InvalidProductError('Product category is required');
   }
 }
 
-function assertValidRarity(rarity: CardRarity | undefined): void {
-  if (rarity && !CARD_RARITIES.includes(rarity)) {
-    throw new InvalidProductError('Card rarity is invalid');
+function assertValidClassification(rarity: string | undefined): void {
+  if (rarity && rarity.trim().length > 64) {
+    throw new InvalidProductError('Classification is too long');
   }
 }
 
@@ -225,7 +212,7 @@ export function assertValidProductDraft(product: ProductDraft): void {
   assertOptionalMoneyCents(product.cost, 'Cost');
   assertValidStock(product.stock);
   assertValidCategory(product.category);
-  assertValidRarity(product.rarity);
+  assertValidClassification(product.rarity);
   assertValidProductIntakeFields(product);
   assertValidProductOperationsFields(product);
 
@@ -246,7 +233,7 @@ export function assertValidProductUpdate(updates: ProductUpdate): void {
   if (updates.cost !== undefined) assertOptionalMoneyCents(updates.cost, 'Cost');
   if (updates.stock !== undefined) assertValidStock(updates.stock);
   if (updates.category !== undefined) assertValidCategory(updates.category);
-  if ('rarity' in updates) assertValidRarity(updates.rarity);
+  if ('rarity' in updates) assertValidClassification(updates.rarity);
   assertValidProductIntakeFields(updates);
   assertValidProductOperationsFields(updates);
   if (updates.set && updates.set.trim().length > MAX_PRODUCT_SET_LENGTH) {

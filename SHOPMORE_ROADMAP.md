@@ -29,10 +29,11 @@ The true power of ShopMore lies in its **Extensibility Substrate**.
 
 ## 3. Implementation Roadmap
 
-### Phase 1: Neutralization & Standardization (Immediate)
-*   [ ] **Terminology Clean-up**: Refactoring all TCG-specific references (Cards, Rarity, Sets) to generic Product metadata.
-*   [ ] **Navigation Re-Architecture**: Implementing the "Approachable Merchant Layout" (Home, Products, Orders, Customers, Analytics, Settings).
-*   [ ] **Global Search Hardening**: Finalizing the `SearchCommandPalette` as a universal discovery tool for all product types.
+### Phase 1: Neutralization & Standardization (Completed)
+*   [x] **Terminology Clean-up**: Refactored all TCG-specific references to generic Product metadata.
+*   [x] **Navigation Re-Architecture**: Implemented the "Approachable Merchant Layout" (Sales, Orders, Products, Customers, Content, Insights, Apps).
+*   [x] **Global Search Hardening**: Finalized the `SearchCommandPalette` as a universal discovery tool.
+*   [x] **Visual Sovereignty**: Transitioned branding to "ShopMore" with a neutral, high-performance UI.
 
 ### Phase 2: The Extensibility Framework
 *   [ ] **Dynamic Schema**: Adding support for JSON-based `metafields` in the `Product` and `Order` models.

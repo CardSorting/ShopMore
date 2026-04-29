@@ -8,4 +8,4 @@ export const COLLECTIONS = {
   USERS: 'users',
 } as const;
 
-export const APP_NAME = 'PlayMoreTCG';
+export const APP_NAME = 'ShopMore';

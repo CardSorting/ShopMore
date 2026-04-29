@@ -122,12 +122,7 @@ export interface ProductManagementOverview {
   productsNeedingAttention: ProductManagementProduct[];
 }
 
-export type CardRarity =
-  | 'common'
-  | 'uncommon'
-  | 'rare'
-  | 'holo'
-  | 'secret';
+
 
 export interface User {
   id: string;

@@ -41,17 +41,33 @@ export type ProductDraft = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
 
 export type ProductUpdate = Partial<ProductDraft>;
 
-export type ProductCategory =
-  | 'booster'
-  | 'single'
-  | 'deck'
-  | 'accessory'
-  | 'box'
-  | 'elite_trainer_box'
-  | 'sealed_case'
-  | 'graded_card'
-  | 'supplies'
-  | 'other';
+export type ProductCategory = string;
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  address?: Address;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Collection {
+  id: string;
+  name: string;
+  handle: string;
+  description?: string;
+  imageUrl?: string;
+  productCount: number;
+  status: 'active' | 'archived' | 'draft';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 
 export type ProductStatus = 'active' | 'draft' | 'archived';
 
@@ -410,6 +426,9 @@ export interface PurchaseOrder {
   id: string;
   supplier: string;
   referenceNumber?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  expectedAt?: Date;
   status: PurchaseOrderStatus;
   items: PurchaseOrderItem[];
   notes?: string;
@@ -417,6 +436,7 @@ export interface PurchaseOrder {
   createdAt: Date;
   updatedAt: Date;
 }
+
 
 export type ReceivingSessionStatus = 'in_progress' | 'completed' | 'cancelled';
 
@@ -461,6 +481,7 @@ export interface InventoryLocation {
   name: string;
   type: InventoryLocationType;
   address?: string;
+  code?: string;
   isDefault: boolean;
   isActive: boolean;
   createdAt: Date;

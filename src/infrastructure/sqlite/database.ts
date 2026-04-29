@@ -349,6 +349,35 @@ export async function initDatabase() {
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
 
+  await db.schema
+    .createTable('suppliers')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('name', 'text', (col) => col.notNull())
+    .addColumn('contactName', 'text')
+    .addColumn('email', 'text')
+    .addColumn('phone', 'text')
+    .addColumn('website', 'text')
+    .addColumn('address', 'text')
+    .addColumn('notes', 'text')
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('collections')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('name', 'text', (col) => col.notNull())
+    .addColumn('handle', 'text', (col) => col.notNull().unique())
+    .addColumn('description', 'text')
+    .addColumn('imageUrl', 'text')
+    .addColumn('productCount', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('status', 'text', (col) => col.notNull().defaultTo('active'))
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
   // BroccoliQ Level 11: High-Velocity Performance Indices
   await db.schema
     .createIndex('idx_products_category')
@@ -474,4 +503,19 @@ export async function initDatabase() {
     .column('locationId')
     .ifNotExists()
     .execute();
+
+  await db.schema
+    .createIndex('idx_suppliers_name')
+    .on('suppliers')
+    .column('name')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_collections_status')
+    .on('collections')
+    .column('status')
+    .ifNotExists()
+    .execute();
 }
+

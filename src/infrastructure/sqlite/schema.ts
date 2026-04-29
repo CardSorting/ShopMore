@@ -206,6 +206,31 @@ export interface InventoryLevelTable {
   updatedAt: string;
 }
 
+export interface SupplierTable {
+  id: string;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  address: string | null; // JSON string
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CollectionTable {
+  id: string;
+  name: string;
+  handle: string;
+  description: string | null;
+  imageUrl: string | null;
+  productCount: number;
+  status: string; // 'active' | 'archived'
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Database {
   products: ProductTable;
   users: UserTable;
@@ -222,4 +247,7 @@ export interface Database {
   receiving_items: ReceivingItemTable;
   inventory_locations: InventoryLocationTable;
   inventory_levels: InventoryLevelTable;
+  suppliers: SupplierTable;
+  collections: CollectionTable;
 }
+

@@ -160,3 +160,21 @@ export interface IInventoryLevelRepository {
   adjustQuantity(productId: string, locationId: string, delta: number, reason: string): Promise<import('./models').InventoryLevel>;
   updateReorderPoint(productId: string, locationId: string, reorderPoint: number, reorderQty: number): Promise<import('./models').InventoryLevel>;
 }
+
+export interface ISupplierRepository {
+  getAll(options?: { query?: string; limit?: number; offset?: number }): Promise<import('./models').Supplier[]>;
+  getById(id: string): Promise<import('./models').Supplier | null>;
+  save(supplier: import('./models').Supplier): Promise<import('./models').Supplier>;
+  delete(id: string): Promise<void>;
+  count(options?: { query?: string }): Promise<number>;
+}
+
+export interface ICollectionRepository {
+  getAll(options?: { status?: 'active' | 'archived'; limit?: number }): Promise<import('./models').Collection[]>;
+  getById(id: string): Promise<import('./models').Collection | null>;
+  getByHandle(handle: string): Promise<import('./models').Collection | null>;
+  save(collection: import('./models').Collection): Promise<import('./models').Collection>;
+  delete(id: string): Promise<void>;
+  updateProductCount(id: string, delta: number): Promise<void>;
+}
+

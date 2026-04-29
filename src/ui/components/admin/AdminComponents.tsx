@@ -1052,3 +1052,50 @@ export function AdminAuditLogs({ logs }: { logs: any[] }) {
     </div>
   );
 }
+
+/**
+ * PRODUCTION COMPONENT: AdminModal
+ * Standardized overlay for creation, editing, and granular workflows.
+ */
+interface AdminModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}
+
+export function AdminModal({ isOpen, onClose, title, children }: AdminModalProps) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+      <div 
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300" 
+        onClick={onClose} 
+      />
+      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-300">
+        <div className="flex items-center justify-between border-b px-8 py-6">
+          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          <button 
+            onClick={onClose}
+            className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-8">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -3,7 +3,7 @@
  */
 'use client';
 
-import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductManagementOverview, ProductSavedView, ProductSavedViewResult, ProductUpdate, User, OrderNote, PurchaseOrder, InventoryLocation } from '@domain/models';
+import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductManagementOverview, ProductSavedView, ProductSavedViewResult, ProductUpdate, User, OrderNote, PurchaseOrder, InventoryLocation, Supplier, Collection } from '@domain/models';
 
 const sessionScoped = (userId: string) => void userId;
 const DATE_FIELD_KEYS = new Set(['createdAt', 'updatedAt', 'joined', 'lastOrder', 'startsAt', 'endsAt', 'expectedAt', 'estimatedDeliveryDate', 'at']);
@@ -180,6 +180,34 @@ export function createApiClientServices() {
             },
             verifyChain: () => request<{ valid: boolean; total: number; corruptedId?: string }>('/api/admin/audit/verify'),
         },
+        supplierService: {
+            list: (options?: { query?: string; limit?: number }) => {
+                const qs = new URLSearchParams();
+                if (options?.query) qs.set('query', options.query);
+                if (options?.limit) qs.set('limit', String(options.limit));
+                return request<Supplier[]>(`/api/admin/suppliers?${qs}`);
+            },
+            get: (id: string) => request<Supplier>(`/api/admin/suppliers/${id}`),
+            create: (data: Partial<Supplier>) => request<Supplier>('/api/admin/suppliers', { method: 'POST', body: JSON.stringify(data) }),
+            update: (id: string, updates: Partial<Supplier>) => request<Supplier>(`/api/admin/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
+            delete: (id: string) => request<void>(`/api/admin/suppliers/${id}`, { method: 'DELETE' }),
+        },
+        collectionService: {
+            list: (options?: { status?: string; limit?: number }) => {
+                const qs = new URLSearchParams();
+                if (options?.status) qs.set('status', options.status);
+                if (options?.limit) qs.set('limit', String(options.limit));
+                return request<Collection[]>(`/api/admin/collections?${qs}`);
+            },
+            get: (id: string) => request<Collection>(`/api/admin/collections/${id}`),
+            create: (data: Partial<Collection>) => request<Collection>('/api/admin/collections', { method: 'POST', body: JSON.stringify(data) }),
+            update: (id: string, updates: Partial<Collection>) => request<Collection>(`/api/admin/collections/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
+            delete: (id: string) => request<void>(`/api/admin/collections/${id}`, { method: 'DELETE' }),
+        },
+        locationService: {
+            getLocations: () => request<InventoryLocation[]>('/api/admin/locations'),
+            createLocation: (data: any) => request<InventoryLocation>('/api/admin/locations', { method: 'POST', body: JSON.stringify(data) }),
+            updateLocation: (id: string, updates: any) => request<InventoryLocation>(`/api/admin/locations/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
+        },
     };
-
 }

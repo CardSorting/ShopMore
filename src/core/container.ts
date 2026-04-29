@@ -17,6 +17,8 @@ import { SQLiteTransferRepository } from '@infrastructure/repositories/sqlite/SQ
 import { SQLitePurchaseOrderRepository } from '@infrastructure/repositories/sqlite/SQLitePurchaseOrderRepository';
 import { SQLiteInventoryLocationRepository } from '@infrastructure/repositories/sqlite/SQLiteInventoryLocationRepository';
 import { SQLiteInventoryLevelRepository } from '@infrastructure/repositories/sqlite/SQLiteInventoryLevelRepository';
+import { SQLiteSupplierRepository } from '@infrastructure/repositories/sqlite/SQLiteSupplierRepository';
+import { SQLiteCollectionRepository } from '@infrastructure/repositories/sqlite/SQLiteCollectionRepository';
 import { ProductService } from './ProductService';
 import { CartService } from './CartService';
 import { OrderService } from './OrderService';
@@ -25,6 +27,8 @@ import { DiscountService } from './DiscountService';
 import { SettingsService } from './SettingsService';
 import { TransferService } from './TransferService';
 import { PurchaseOrderService } from './PurchaseOrderService';
+import { SupplierService } from './SupplierService';
+import { CollectionService } from './CollectionService';
 import { AuditService } from './AuditService';
 import type {
   IProductRepository,
@@ -34,6 +38,8 @@ import type {
   ISettingsRepository,
   ITransferRepository,
   IPurchaseOrderRepository,
+  ISupplierRepository,
+  ICollectionRepository,
   IInventoryLocationRepository,
   IInventoryLevelRepository,
   IAuthProvider,
@@ -62,6 +68,8 @@ let purchaseOrderRepoInstance: IPurchaseOrderRepository | null = null;
 let inventoryLocationRepoInstance: IInventoryLocationRepository | null = null;
 let inventoryLevelRepoInstance: IInventoryLevelRepository | null = null;
 let purchaseOrderServiceInstance: PurchaseOrderService | null = null;
+let supplierServiceInstance: SupplierService | null = null;
+let collectionServiceInstance: CollectionService | null = null;
 
 function createCheckoutGateway(): ICheckoutGateway | undefined {
   return process.env.CHECKOUT_ENDPOINT ? new TrustedCheckoutGateway() : undefined;
@@ -78,8 +86,11 @@ function createRepositories() {
     purchaseOrderRepo: new SQLitePurchaseOrderRepository(),
     inventoryLocationRepo: new SQLiteInventoryLocationRepository(),
     inventoryLevelRepo: new SQLiteInventoryLevelRepository(),
+    supplierRepo: new SQLiteSupplierRepository(),
+    collectionRepo: new SQLiteCollectionRepository(),
   };
 }
+
 
 /**
  * FACTORY PATTERN: Creates fresh service instances
@@ -116,10 +127,13 @@ export function getServiceContainer() {
     discountService: new DiscountService(discountRepo, new AuditService()),
     settingsService: new SettingsService(settingsRepo, productRepo, discountRepo, new AuditService()),
     transferService: new TransferService(transferRepo, productRepo),
-    purchaseOrderService: new PurchaseOrderService(purchaseOrderRepo, productRepo, inventoryLevelRepo),
+    purchaseOrderService: new PurchaseOrderService(purchaseOrderRepo, productRepo, inventoryLevelRepo, new AuditService()),
+    supplierService: new SupplierService(new SQLiteSupplierRepository(), new AuditService()),
+    collectionService: new CollectionService(new SQLiteCollectionRepository(), new AuditService()),
     auditService: new AuditService(),
   };
 }
+
 
 /**
  * SINGLETON PATTERN: Gets global cached services (Production Default)
@@ -188,10 +202,19 @@ export function getInitialServices() {
         purchaseOrderServiceInstance = new PurchaseOrderService(
           purchaseOrderRepoInstance!,
           productRepoInstance!,
-          inventoryLevelRepoInstance!
+          inventoryLevelRepoInstance!,
+          getAuditService()
         );
       }
       return purchaseOrderServiceInstance;
+    })(),
+    supplierService: (() => {
+      if (!supplierServiceInstance) supplierServiceInstance = new SupplierService(new SQLiteSupplierRepository(), getAuditService());
+      return supplierServiceInstance;
+    })(),
+    collectionService: (() => {
+      if (!collectionServiceInstance) collectionServiceInstance = new CollectionService(new SQLiteCollectionRepository(), getAuditService());
+      return collectionServiceInstance;
     })(),
     inventoryLocationRepo: inventoryLocationRepoInstance!,
     inventoryLevelRepo: inventoryLevelRepoInstance!,

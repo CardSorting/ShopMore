@@ -20,6 +20,7 @@ import type {
   IPurchaseOrderRepository,
   IProductRepository,
   IInventoryLevelRepository,
+  IInventoryLocationRepository,
 } from '@domain/repositories';
 import {
   PurchaseOrderNotFoundError,
@@ -29,6 +30,7 @@ import {
   ProductNotFoundError,
 } from '@domain/errors';
 import { purchaseOrderRules } from '@domain/rules';
+import { AuditService } from './AuditService';
 
 export interface CreatePurchaseOrderInput {
   supplier: string;
@@ -91,8 +93,10 @@ export class PurchaseOrderService {
   constructor(
     private purchaseOrderRepo: IPurchaseOrderRepository,
     private productRepo: IProductRepository,
-    private inventoryLevelRepo: IInventoryLevelRepository
+    private inventoryLevelRepo: IInventoryLevelRepository,
+    private auditService: AuditService
   ) {}
+
 
   // ─────────────────────────────────────────────
   // Purchase Order CRUD
@@ -143,8 +147,19 @@ export class PurchaseOrderService {
       updatedAt: new Date(),
     };
 
-    return await this.purchaseOrderRepo.save(order);
+    const saved = await this.purchaseOrderRepo.save(order);
+
+    await this.auditService.record({
+      userId: 'system', // Should be passed in real app
+      userEmail: 'admin@playmore.tcg',
+      action: 'purchase_order.created',
+      targetId: saved.id,
+      details: { supplier: saved.supplier, itemCount: saved.items.length }
+    });
+
+    return saved;
   }
+
 
   async getPurchaseOrder(id: string): Promise<PurchaseOrder> {
     const order = await this.purchaseOrderRepo.findById(id);
@@ -244,16 +259,38 @@ export class PurchaseOrderService {
     if (!purchaseOrderRules.canSubmit(order)) {
       throw new InvalidPurchaseOrderError('Cannot submit order in current status or with no items');
     }
-    return await this.purchaseOrderRepo.updateStatus(id, 'ordered');
+    const updated = await this.purchaseOrderRepo.updateStatus(id, 'ordered');
+
+    await this.auditService.record({
+      userId: 'system',
+      userEmail: 'admin@playmore.tcg',
+      action: 'purchase_order.submitted',
+      targetId: id,
+      details: { status: 'ordered' }
+    });
+
+    return updated;
   }
+
 
   async cancelOrder(id: string): Promise<PurchaseOrder> {
     const order = await this.getPurchaseOrder(id);
     if (!purchaseOrderRules.canCancel(order)) {
       throw new CannotCancelPurchaseOrderError(order.status);
     }
-    return await this.purchaseOrderRepo.updateStatus(id, 'cancelled');
+    const updated = await this.purchaseOrderRepo.updateStatus(id, 'cancelled');
+
+    await this.auditService.record({
+      userId: 'system',
+      userEmail: 'admin@playmore.tcg',
+      action: 'purchase_order.cancelled',
+      targetId: id,
+      details: { status: 'cancelled' }
+    });
+
+    return updated;
   }
+
 
   async closeOrder(input: ClosePurchaseOrderInput): Promise<PurchaseOrder> {
     const order = await this.getPurchaseOrder(input.id);
@@ -269,13 +306,24 @@ export class PurchaseOrderService {
       .filter((value): value is string => Boolean(value?.trim()))
       .join('\n');
 
-    return await this.purchaseOrderRepo.save({
+    const saved = await this.purchaseOrderRepo.save({
       ...order,
       status: 'closed',
       notes: notes || order.notes,
       updatedAt: new Date(),
     });
+
+    await this.auditService.record({
+      userId: 'system',
+      userEmail: 'admin@playmore.tcg',
+      action: 'purchase_order.closed',
+      targetId: input.id,
+      details: { discrepancyReason: input.discrepancyReason, notes: input.notes }
+    });
+
+    return saved;
   }
+
 
   // ─────────────────────────────────────────────
   // Receiving Workflow
@@ -425,12 +473,25 @@ export class PurchaseOrderService {
       ? await this.purchaseOrderRepo.saveReceivingSession(session)
       : session;
 
+    await this.auditService.record({
+      userId: input.receivedBy,
+      userEmail: 'admin@playmore.tcg',
+      action: 'purchase_order.items_received',
+      targetId: input.purchaseOrderId,
+      details: { 
+        sessionId: session.id,
+        itemCount: input.items.length,
+        totalQty: input.items.reduce((s, i) => s + i.receivedQty, 0)
+      }
+    });
+
     return {
       purchaseOrder: savedOrder,
       session: savedSession,
       inventoryUpdates,
     };
   }
+
 
   // ─────────────────────────────────────────────
   // Overview Dashboard

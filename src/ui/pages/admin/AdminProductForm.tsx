@@ -24,6 +24,8 @@ import {
 import { validatePriceCents, validateStock } from '@utils/validators';
 import { formatCurrency, humanizeCategory } from '@utils/formatters';
 import { SkeletonPage, useToast } from '../../components/admin/AdminComponents';
+import { CategorySelect, TagInput } from '../../components/admin/AdminInputs';
+
 
 const CATEGORIES: ProductCategory[] = [
   'booster',
@@ -407,15 +409,32 @@ export function AdminProductForm() {
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400"><Settings className="h-4 w-4" /> Product organization</h2>
             <div className="space-y-4">
-              <div><label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Category</label><select name="category" value={form.category} onChange={handleChange} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500">{CATEGORIES.map((category) => <option key={category} value={category}>{humanizeCategory(category)}</option>)}</select></div>
+              <CategorySelect 
+                label="Category" 
+                value={form.category} 
+                onChange={(val) => { setForm(f => ({ ...f, category: val })); setUnsaved(true); }}
+                categories={CATEGORIES}
+              />
               <TextInput label="Product type" name="productType" value={form.productType} onChange={handleChange} placeholder="Sealed booster box" />
               <TextInput label="Vendor / brand" name="vendor" value={form.vendor} onChange={handleChange} placeholder="Pokémon" />
-              <TextInput label="Collections" name="collections" value={form.collections} onChange={handleChange} placeholder="Featured, Scarlet & Violet" />
-              <TextInput label="Tags" name="tags" value={form.tags} onChange={handleChange} placeholder="Vintage, holo, sealed" />
+              <TagInput 
+                label="Collections" 
+                tags={csvToList(form.collections)} 
+                onChange={(tags) => { setForm(f => ({ ...f, collections: tags.join(', ') })); setUnsaved(true); }}
+                placeholder="Featured, Scarlet & Violet..."
+              />
+              <TagInput 
+                label="Tags" 
+                tags={csvToList(form.tags)} 
+                onChange={(tags) => { setForm(f => ({ ...f, tags: tags.join(', ') })); setUnsaved(true); }}
+                placeholder="Vintage, holo, sealed..."
+                suggestions={['New Release', 'Pre-order', 'Best Seller', 'Limited Edition', 'Bargain Bin']}
+              />
               <TextInput label="Set / TCG collection" name="set" value={form.set} onChange={handleChange} placeholder="Base Set" />
               <div><label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Rarity</label><select name="rarity" value={form.rarity} onChange={handleChange} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500"><option value="">None</option>{RARITIES.map((rarity) => <option key={rarity} value={rarity}>{rarity.charAt(0).toUpperCase() + rarity.slice(1)}</option>)}</select></div>
             </div>
           </section>
+
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400"><CheckCircle2 className="h-4 w-4" /> Setup checklist</h2>

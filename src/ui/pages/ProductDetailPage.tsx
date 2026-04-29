@@ -10,7 +10,8 @@ import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import type { Product } from '@domain/models';
-import { ShoppingCart, ArrowLeft, Check, ShieldCheck, Truck, LifeBuoy, PackageCheck, ChevronRight, AlertCircle } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Check, ShieldCheck, Truck, LifeBuoy, PackageCheck, ChevronRight, AlertCircle, Heart, Plus } from 'lucide-react';
+import { useWishlist } from '../hooks/useWishlist';
 
 import { MAX_CART_QUANTITY } from '@domain/rules';
 import { logger } from '@utils/logger';
@@ -41,6 +42,30 @@ export function ProductDetailPage() {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showWishlistDropdown, setShowWishlistDropdown] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [creatingCollection, setCreatingCollection] = useState(false);
+
+  const { wishlists, isInWishlist, addToWishlist, removeFromWishlist, createCollection } = useWishlist();
+  const isFavorite = id ? isInWishlist(id) : false;
+
+  async function handleAddToCollection(wishlistId: string) {
+    await addToWishlist(id!, wishlistId);
+    setShowWishlistDropdown(false);
+  }
+
+  async function handleCreateAndAdd() {
+    if (!newCollectionName.trim()) return;
+    setCreatingCollection(true);
+    try {
+      const newList = await createCollection(newCollectionName.trim());
+      await addToWishlist(id!, newList.id);
+      setNewCollectionName('');
+      setShowWishlistDropdown(false);
+    } finally {
+      setCreatingCollection(false);
+    }
+  }
 
   const loadProduct = useCallback(async () => {
     if (!id) return;
@@ -200,6 +225,65 @@ export function ProductDetailPage() {
                   {added ? <Check className="w-6 h-6" /> : <ShoppingCart className="w-6 h-6" />}
                   {adding ? 'Adding...' : added ? 'Added to Cart!' : 'Add to Cart'}
                 </button>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setShowWishlistDropdown(!showWishlistDropdown)}
+                    className={`h-14 w-14 flex items-center justify-center rounded-xl border-2 transition-all ${
+                      isFavorite 
+                        ? 'bg-red-50 border-red-200 text-red-500 shadow-sm' 
+                        : 'bg-white border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-100'
+                    }`}
+                    title="Add to Wishlist"
+                  >
+                    <Heart className={`w-6 h-6 ${isFavorite ? 'fill-current' : ''}`} />
+                  </button>
+
+                  {showWishlistDropdown && (
+                    <div className="absolute right-0 bottom-full mb-4 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Save to Collection</h4>
+                        <button onClick={() => setShowWishlistDropdown(false)} className="text-gray-400 hover:text-gray-600">
+                          <Plus className="w-4 h-4 rotate-45" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1 mb-4 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                        {wishlists.map(list => (
+                          <button
+                            key={list.id}
+                            onClick={() => handleAddToCollection(list.id)}
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors flex items-center justify-between group"
+                          >
+                            {list.name}
+                            {isInWishlist(product.id) && wishlists.find(w => w.id === list.id && isInWishlist(product.id)) && (
+                              <Check className="w-4 h-4 text-green-500" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="New collection..."
+                            value={newCollectionName}
+                            onChange={(e) => setNewCollectionName(e.target.value)}
+                            className="flex-1 bg-gray-50 border-none rounded-lg px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-primary-500"
+                          />
+                          <button 
+                            onClick={handleCreateAndAdd}
+                            disabled={creatingCollection || !newCollectionName.trim()}
+                            className="p-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {error && (

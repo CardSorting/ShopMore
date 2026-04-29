@@ -193,3 +193,15 @@ export interface ITaxonomyRepository {
   deleteType(id: string): Promise<void>;
 }
 
+
+export interface IWishlistRepository {
+  getByUserId(userId: string): Promise<import('./models').Wishlist[]>;
+  getById(id: string): Promise<import('./models').Wishlist | null>;
+  create(wishlist: Omit<import('./models').Wishlist, 'id' | 'createdAt' | 'updatedAt'>): Promise<import('./models').Wishlist>;
+  update(id: string, name: string): Promise<import('./models').Wishlist>;
+  delete(id: string): Promise<void>;
+  addItem(wishlistId: string, productId: string): Promise<void>;
+  removeItem(wishlistId: string, productId: string): Promise<void>;
+  getItems(wishlistId: string): Promise<import('./models').Product[]>;
+  isProductInWishlist(userId: string, productId: string): Promise<boolean>;
+}

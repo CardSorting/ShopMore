@@ -31,7 +31,9 @@ import { PurchaseOrderService } from './PurchaseOrderService';
 import { SupplierService } from './SupplierService';
 import { CollectionService } from './CollectionService';
 import { TaxonomyService } from './TaxonomyService';
+import { WishlistService } from './WishlistService';
 import { AuditService } from './AuditService';
+import { SQLiteWishlistRepository } from '@infrastructure/repositories/sqlite/SQLiteWishlistRepository';
 import type {
   IProductRepository,
   ICartRepository,
@@ -45,6 +47,7 @@ import type {
   IInventoryLocationRepository,
   IInventoryLevelRepository,
   ITaxonomyRepository,
+  IWishlistRepository,
   IAuthProvider,
   IPaymentProcessor,
   ILockProvider,
@@ -75,6 +78,8 @@ let supplierServiceInstance: SupplierService | null = null;
 let collectionServiceInstance: CollectionService | null = null;
 let taxonomyRepoInstance: ITaxonomyRepository | null = null;
 let taxonomyServiceInstance: TaxonomyService | null = null;
+let wishlistRepoInstance: IWishlistRepository | null = null;
+let wishlistServiceInstance: WishlistService | null = null;
 
 function createCheckoutGateway(): ICheckoutGateway | undefined {
   return process.env.CHECKOUT_ENDPOINT ? new TrustedCheckoutGateway() : undefined;
@@ -94,6 +99,7 @@ function createRepositories() {
     supplierRepo: new SQLiteSupplierRepository(),
     collectionRepo: new SQLiteCollectionRepository(),
     taxonomyRepo: new SQLiteTaxonomyRepository(),
+    wishlistRepo: new SQLiteWishlistRepository(),
   };
 }
 
@@ -112,6 +118,7 @@ export function getServiceContainer() {
     purchaseOrderRepo,
     inventoryLocationRepo,
     inventoryLevelRepo,
+    wishlistRepo,
   } = createRepositories();
   const authProvider = new SQLiteAuthAdapter();
   const authService = new AuthService(authProvider);
@@ -137,6 +144,7 @@ export function getServiceContainer() {
     supplierService: new SupplierService(new SQLiteSupplierRepository(), new AuditService()),
     collectionService: new CollectionService(new SQLiteCollectionRepository(), new AuditService()),
     taxonomyService: new TaxonomyService(new SQLiteTaxonomyRepository(), new AuditService()),
+    wishlistService: new WishlistService(wishlistRepo, productRepo, new AuditService()),
     auditService: new AuditService(),
   };
 }
@@ -157,6 +165,7 @@ export function getInitialServices() {
     purchaseOrderRepoInstance = repos.purchaseOrderRepo;
     inventoryLocationRepoInstance = repos.inventoryLocationRepo;
     inventoryLevelRepoInstance = repos.inventoryLevelRepo;
+    wishlistRepoInstance = repos.wishlistRepo;
   }
 
   if (!authProviderInstance) {
@@ -226,6 +235,10 @@ export function getInitialServices() {
     taxonomyService: (() => {
       if (!taxonomyServiceInstance) taxonomyServiceInstance = new TaxonomyService(new SQLiteTaxonomyRepository(), getAuditService());
       return taxonomyServiceInstance;
+    })(),
+    wishlistService: (() => {
+      if (!wishlistServiceInstance) wishlistServiceInstance = new WishlistService(wishlistRepoInstance!, productRepoInstance!, getAuditService());
+      return wishlistServiceInstance;
     })(),
     inventoryLocationRepo: inventoryLocationRepoInstance!,
     inventoryLevelRepo: inventoryLevelRepoInstance!,

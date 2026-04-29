@@ -247,6 +247,23 @@ export interface ProductTypeTable {
   updatedAt: string;
 }
 
+
+export interface WishlistTable {
+  id: string;
+  userId: string;
+  name: string;
+  isDefault: number; // 0 | 1
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WishlistItemTable {
+  id: string;
+  wishlistId: string;
+  productId: string;
+  createdAt: string;
+}
+
 export interface Database {
   products: ProductTable;
   users: UserTable;
@@ -267,5 +284,7 @@ export interface Database {
   collections: CollectionTable;
   product_categories: ProductCategoryTable;
   product_types: ProductTypeTable;
+  wishlists: WishlistTable;
+  wishlist_items: WishlistItemTable;
 }
 

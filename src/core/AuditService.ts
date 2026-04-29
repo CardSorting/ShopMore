@@ -20,7 +20,8 @@ export type AuditAction =
   | 'supplier.created' | 'supplier.updated' | 'supplier.deleted'
   | 'collection.created' | 'collection.updated' | 'collection.deleted'
   | 'category_created' | 'category_updated' | 'category_deleted'
-  | 'product_type_created' | 'product_type_updated' | 'product_type_deleted';
+  | 'product_type_created' | 'product_type_updated' | 'product_type_deleted'
+  | 'wishlist_created' | 'wishlist_updated' | 'wishlist_deleted';
 
 export interface AuditEntry {
   id: string;

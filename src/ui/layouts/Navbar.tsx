@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { ShoppingCart, Package, Shield, User, Home, Menu, X, ChevronRight, Search, Sparkles, Archive, Layers3 } from 'lucide-react';
+import { ShoppingCart, Package, Shield, User, Home, Menu, X, ChevronRight, Search, Sparkles, Archive, Layers3, Heart } from 'lucide-react';
 import { useCart } from '../hooks/useCart';
 import { CartDrawer } from '../components/CartDrawer';
 
@@ -105,9 +105,19 @@ export function Navbar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 ml-4">
-            <button 
-              onClick={openCart}
+            <div className="flex items-center gap-2 sm:gap-4 ml-4">
+              {user && (
+                <Link 
+                  href="/wishlist" 
+                  className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-red-500 transition-colors relative"
+                  aria-label="View wishlist"
+                >
+                  <Heart className="w-5 h-5" />
+                </Link>
+              )}
+              
+              <button 
+                onClick={openCart}
               className="group flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-gray-700 transition-all hover:bg-gray-100 relative"
               aria-label="Open cart"
             >
@@ -185,12 +195,14 @@ export function Navbar() {
                   </Link>
                 );
               })}
-              {user && (
                 <Link href="/orders" className="flex items-center justify-between rounded-xl px-4 py-3 text-base font-black text-gray-900 hover:bg-gray-50 transition-colors">
                   <span className="flex items-center gap-3"><ShoppingCart className="w-5 h-5 text-gray-400" /> My Orders</span>
                   <ChevronRight className="h-4 w-4 text-gray-300" />
                 </Link>
-              )}
+                <Link href="/wishlist" className="flex items-center justify-between rounded-xl px-4 py-3 text-base font-black text-gray-900 hover:bg-gray-50 transition-colors">
+                  <span className="flex items-center gap-3"><Heart className="w-5 h-5 text-gray-400" /> My Wishlist</span>
+                  <ChevronRight className="h-4 w-4 text-gray-300" />
+                </Link>
             </div>
             
             <div className="pt-6 border-t">

@@ -507,3 +507,23 @@ export interface InventoryLevel {
   reorderQty: number;
   updatedAt: Date;
 }
+
+// ─────────────────────────────────────────────
+// Wishlist & Collections
+// ─────────────────────────────────────────────
+
+export interface Wishlist {
+  id: string;
+  userId: string;
+  name: string;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WishlistItem {
+  id: string;
+  wishlistId: string;
+  productId: string;
+  createdAt: Date;
+}

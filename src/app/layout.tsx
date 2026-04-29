@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@ui/hooks/useAuth';
 import { CartProvider } from '@ui/hooks/useCart';
+import { WishlistProvider } from '@ui/hooks/useWishlist';
 import { ErrorBoundary } from '@ui/components/ErrorBoundary';
 import { StorefrontShell } from '@ui/layouts/StorefrontShell';
 import '../index.css';
@@ -17,9 +18,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <ErrorBoundary>
                     <AuthProvider>
                         <CartProvider>
-                            <StorefrontShell>
-                                {children}
-                            </StorefrontShell>
+                            <WishlistProvider>
+                                <StorefrontShell>
+                                    {children}
+                                </StorefrontShell>
+                            </WishlistProvider>
                         </CartProvider>
                     </AuthProvider>
                 </ErrorBoundary>

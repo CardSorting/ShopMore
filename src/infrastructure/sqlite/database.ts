@@ -389,6 +389,7 @@ export async function initDatabase() {
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
 
+
   await db.schema
     .createTable('product_types')
     .ifNotExists()
@@ -396,6 +397,30 @@ export async function initDatabase() {
     .addColumn('name', 'text', (col) => col.notNull().unique())
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  // ─────────────────────────────────────────────
+  // Wishlist Tables
+  // ─────────────────────────────────────────────
+
+  await db.schema
+    .createTable('wishlists')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('userId', 'text', (col) => col.notNull())
+    .addColumn('name', 'text', (col) => col.notNull())
+    .addColumn('isDefault', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('wishlist_items')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('wishlistId', 'text', (col) => col.notNull())
+    .addColumn('productId', 'text', (col) => col.notNull())
+    .addColumn('createdAt', 'text', (col) => col.notNull())
     .execute();
 
   // BroccoliQ Level 11: High-Velocity Performance Indices
@@ -546,11 +571,26 @@ export async function initDatabase() {
     .ifNotExists()
     .execute();
 
+
   await db.schema
     .createIndex('idx_product_types_name')
     .on('product_types')
     .column('name')
     .unique()
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_wishlists_userId')
+    .on('wishlists')
+    .column('userId')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_wishlist_items_wishlistId')
+    .on('wishlist_items')
+    .column('wishlistId')
     .ifNotExists()
     .execute();
 }

@@ -7,13 +7,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
-import type { Product, ProductCategory } from '@domain/models';
-import { Search, Filter, ShoppingBag, ChevronRight, PackageSearch, RefreshCcw } from 'lucide-react';
+import type { Product } from '@domain/models';
+import { Search, Filter, ShoppingBag, ChevronRight, PackageSearch, RefreshCcw, Heart } from 'lucide-react';
+import { useWishlist } from '../hooks/useWishlist';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export function ProductsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const services = useServices();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +26,7 @@ export function ProductsPage() {
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
 
-  const categories: Array<{ id: ProductCategory | 'all'; name: string }> = [
+  const categories: Array<{ id: string; name: string }> = [
     { id: 'all', name: 'All Products' },
     { id: 'booster', name: 'New Arrivals' },
     { id: 'single', name: 'Featured' },
@@ -224,8 +226,14 @@ export function ProductsPage() {
 }
 
 function ProductCard({ product }: { product: Product }) {
+  const { user } = useAuth();
+  const router = useRouter();
   const { addItem } = useCart();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const [adding, setAdding] = useState(false);
+  const [isFavoriting, setIsFavoriting] = useState(false);
+
+  const isFavorite = isInWishlist(product.id);
 
   const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -239,6 +247,27 @@ function ProductCard({ product }: { product: Product }) {
     }
   };
 
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    setIsFavoriting(true);
+    try {
+      if (isFavorite) {
+        await removeFromWishlist(product.id);
+      } else {
+        await addToWishlist(product.id);
+      }
+    } finally {
+      setIsFavoriting(false);
+    }
+  };
+
   return (
     <article className="group relative">
       <div className="aspect-square overflow-hidden rounded-3xl bg-gray-50 border shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
@@ -249,6 +278,19 @@ function ProductCard({ product }: { product: Product }) {
             className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
           />
         </Link>
+
+        {/* Favorite Button Overlay */}
+        <button
+          onClick={toggleFavorite}
+          disabled={isFavoriting}
+          className={`absolute top-4 right-4 z-10 p-3 rounded-2xl transition-all duration-300 transform ${
+            isFavorite 
+              ? 'bg-red-500 text-white shadow-lg shadow-red-200' 
+              : 'bg-white/80 backdrop-blur-md text-gray-400 hover:text-red-500 hover:scale-110'
+          } ${isFavoriting ? 'opacity-50' : 'opacity-100'}`}
+        >
+          <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+        </button>
         
         {/* Quick Add Overlay */}
         <div className="absolute inset-x-4 bottom-4 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">

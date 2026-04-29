@@ -217,5 +217,15 @@ export function createApiClientServices() {
             saveType: (type: Partial<ProductType>, _actor: { id: string; email: string }) => request<ProductType>('/api/admin/taxonomy/types', { method: 'POST', body: JSON.stringify(type) }),
             deleteType: (id: string, _actor: { id: string; email: string }) => request<void>(`/api/admin/taxonomy/types/${id}`, { method: 'DELETE' }),
         },
+        wishlistService: {
+            getWishlists: () => request<import('@domain/models').Wishlist[]>('/api/wishlists'),
+            getWishlist: (id: string) => request<import('@domain/models').Wishlist & { items: Product[] }>(`/api/wishlists/${id}`),
+            createWishlist: (name: string) => request<import('@domain/models').Wishlist>('/api/wishlists', { method: 'POST', body: JSON.stringify({ name }) }),
+            updateWishlist: (id: string, name: string) => request<import('@domain/models').Wishlist>(`/api/wishlists/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+            deleteWishlist: (id: string) => request<void>(`/api/wishlists/${id}`, { method: 'DELETE' }),
+            addItem: (wishlistId: string, productId: string) => request<void>(`/api/wishlists/${wishlistId}/items`, { method: 'POST', body: JSON.stringify({ productId }) }),
+            removeItem: (wishlistId: string, productId: string) => request<void>(`/api/wishlists/${wishlistId}/items?productId=${productId}`, { method: 'DELETE' }),
+            checkStatus: (productId: string) => request<{ isInWishlist: boolean }>(`/api/wishlists/status?productId=${productId}`),
+        },
     };
 }

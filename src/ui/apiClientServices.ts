@@ -1,6 +1,9 @@
+/**
+ * [LAYER: UI]
+ */
 'use client';
 
-import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductUpdate, User, OrderNote } from '@domain/models';
+import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductManagementOverview, ProductSavedView, ProductSavedViewResult, ProductUpdate, User, OrderNote, PurchaseOrder, InventoryLocation } from '@domain/models';
 
 const sessionScoped = (userId: string) => void userId;
 const DATE_FIELD_KEYS = new Set(['createdAt', 'updatedAt', 'joined', 'lastOrder', 'startsAt', 'endsAt', 'expectedAt', 'estimatedDeliveryDate', 'at']);
@@ -70,6 +73,14 @@ export function createApiClientServices() {
             },
             getProduct: (id: string) => request<Product>(`/api/products/${id}`),
             getInventoryOverview: () => request<InventoryOverview>('/api/admin/inventory'),
+            getProductManagementOverview: () => request<ProductManagementOverview>('/api/admin/products/overview'),
+            getProductSavedView: (view: ProductSavedView, options?: { query?: string; limit?: number; cursor?: string }) => {
+                const qs = new URLSearchParams();
+                if (options?.query) qs.set('query', options.query);
+                if (options?.limit) qs.set('limit', String(options.limit));
+                if (options?.cursor) qs.set('cursor', options.cursor);
+                return request<ProductSavedViewResult>(`/api/admin/products/views/${view}?${qs}`);
+            },
             createProduct: (data: ProductDraft, _actor: { id: string; email: string }) => request<Product>('/api/products', { method: 'POST', body: JSON.stringify(data) }),
             updateProduct: (id: string, data: ProductUpdate, _actor: { id: string; email: string }) => request<Product>(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
             deleteProduct: (id: string, _actor: { id: string; email: string }) => request<void>(`/api/products/${id}`, { method: 'DELETE' }),
@@ -134,6 +145,29 @@ export function createApiClientServices() {
         transferService: {
             getAllTransfers: () => request<import('@domain/models').Transfer[]>('/api/admin/inventory/transfers'),
             receiveTransfer: (id: string) => request<void>('/api/admin/inventory/transfers', { method: 'POST', body: JSON.stringify({ id, action: 'receive' }) }),
+        },
+        purchaseOrderService: {
+            getOverview: () => request<any>('/api/admin/purchase-orders?overview=true'),
+            getWorkspace: () => request<any>('/api/admin/purchase-orders?workspace=true'),
+            list: (options?: { status?: string; supplier?: string; limit?: number; offset?: number }) => {
+                const qs = new URLSearchParams();
+                if (options?.status) qs.set('status', options.status);
+                if (options?.supplier) qs.set('supplier', options.supplier);
+                if (options?.limit) qs.set('limit', String(options.limit));
+                if (options?.offset) qs.set('offset', String(options.offset));
+                return request<PurchaseOrder[]>(`/api/admin/purchase-orders?${qs}`);
+            },
+            getById: (id: string) => request<PurchaseOrder>(`/api/admin/purchase-orders/${id}`),
+            getGuided: (id: string) => request<any>(`/api/admin/purchase-orders/${id}?guided=true`),
+            create: (data: any) => request<PurchaseOrder>('/api/admin/purchase-orders', { method: 'POST', body: JSON.stringify(data) }),
+            submit: (id: string) => request<PurchaseOrder>(`/api/admin/purchase-orders/${id}`, { method: 'POST', body: JSON.stringify({ action: 'submit' }) }),
+            cancel: (id: string) => request<PurchaseOrder>(`/api/admin/purchase-orders/${id}`, { method: 'POST', body: JSON.stringify({ action: 'cancel' }) }),
+            close: (id: string, data: any) => request<PurchaseOrder>(`/api/admin/purchase-orders/${id}`, { method: 'POST', body: JSON.stringify({ action: 'close', ...data }) }),
+            receive: (id: string, data: any) => request<any>(`/api/admin/purchase-orders/${id}`, { method: 'POST', body: JSON.stringify({ action: 'receive', ...data }) }),
+        },
+        inventoryService: {
+            getLocations: () => request<InventoryLocation[]>('/api/admin/locations'),
+            createLocation: (data: any) => request<InventoryLocation>('/api/admin/locations', { method: 'POST', body: JSON.stringify(data) }),
         },
         auditService: {
             getRecentLogs: (options?: { query?: string; action?: string; targetId?: string; userId?: string }) => {

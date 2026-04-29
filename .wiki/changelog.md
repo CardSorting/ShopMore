@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026-04-29 — Product intake and receiving workspace modernization
+
+### Problem verified
+
+- The purchase-order page existed but still forced operators into technical intake patterns: product lines were entered by raw product id, unit costs were entered as integer cents, receiving was modal-only, and navigation did not strongly distinguish the daily receiving work queue from purchase-order records.
+- Receiving list views did not expose Shopify-style saved views such as Incoming, Partial, Exceptions, Ready to close, and Closed.
+- Purchase-order receiving line status and exception state were not available as reusable Domain/Core read-model semantics, causing UI logic to duplicate receiving rules.
+- The UI API client could list purchase orders and request a single guided PO, but there was no workspace endpoint for counts, next actions, workflow steps, and line summaries.
+
+### Remediation performed
+
+- Extended `src/domain/models.ts` with pure receiving/intake read-model types:
+  - `PurchaseOrderSavedView`
+  - `ReceivingVarianceType`
+  - `PurchaseOrderLineReceivingSummary`
+- Extended `src/domain/rules.ts` with pure purchase-order helpers for line receiving summaries, saved-view matching, and exception detection while keeping the Domain layer free of I/O and framework imports.
+- Extended `src/core/PurchaseOrderService.ts` with `getPurchaseOrderWorkspace()`, returning saved-view counts, workflow summaries, line summaries, attention flags, and recent receiving sessions from existing repository data.
+- Extended `src/app/api/admin/purchase-orders/route.ts` with `GET ?workspace=true`, delegating to Core workspace orchestration.
+- Extended `src/ui/apiClientServices.ts` with `purchaseOrderService.getWorkspace()` so admin UI can load the receiving workspace in one call.
+- Added stateless plumbing helpers in `src/utils/formatters.ts` for dollar-style cost entry: `centsToDecimalInput()` and `parseCurrencyToCents()`.
+- Rebuilt `src/ui/pages/admin/AdminPurchaseOrders.tsx` into a merchant-friendly receiving workspace with:
+  - saved-view tabs for All, Draft, Incoming, Partial, Exceptions, Ready to close, and Closed,
+  - receiving KPIs for drafts, needs receiving, exceptions, ready to close, and inbound value,
+  - searchable supplier/PO/SKU/product filtering,
+  - Shopify/Stripe-style next-action panels and progress bars,
+  - product search/picker for PO creation instead of raw product-id entry,
+  - dollar-based unit-cost input converted to cents at submission,
+  - guided receiving lines with remaining quantity, condition, damaged quantity, disposition, exception reason, and session notes,
+  - detail drawer with workflow steps, receiving progress, and line summaries.
+- Updated `src/ui/navigation/adminNavigation.ts` copy and aliases for Purchase orders and Receiving so non-technical operators can find stock intake, inbound shipments, count stock, supplier shipments, and exception review through familiar terms.
+
+### Verification evidence
+
+- TypeScript project check completed successfully: `./node_modules/.bin/tsc --noEmit --pretty false` returned with no diagnostics.
+- Targeted ESLint completed successfully for the changed receiving/intake files: `./node_modules/.bin/eslint src/domain/models.ts src/domain/rules.ts src/core/PurchaseOrderService.ts src/app/api/admin/purchase-orders/route.ts src/ui/apiClientServices.ts src/ui/pages/admin/AdminPurchaseOrders.tsx src/ui/navigation/adminNavigation.ts src/utils/formatters.ts` returned with no diagnostics.
+- `git status --short` confirmed this repository already contains other pre-existing modified/untracked files outside this focused pass; this changelog entry documents only the receiving/intake files listed below.
+
+### Files intentionally changed in this pass
+
+- `src/domain/models.ts`
+- `src/domain/rules.ts`
+- `src/core/PurchaseOrderService.ts`
+- `src/app/api/admin/purchase-orders/route.ts`
+- `src/ui/apiClientServices.ts`
+- `src/ui/pages/admin/AdminPurchaseOrders.tsx`
+- `src/ui/navigation/adminNavigation.ts`
+- `src/utils/formatters.ts`
+- `.wiki/changelog.md`
+- `.wiki/index.md`
+- `.wiki/architecture/admin-panel.md`
+
+### Architectural notes
+
+- Domain changes are pure types and rules only; no React, HTTP, SQLite, filesystem, or browser dependencies were added.
+- Core owns workspace orchestration and composes existing purchase-order repository data with Domain rules.
+- Infrastructure only exposes a protected workspace query parameter on the existing admin purchase-orders route.
+- UI renders the merchant workflow and dispatches service intentions; it no longer duplicates core receiving-view counts or asks operators to paste raw product ids during normal PO creation.
+- Plumbing helpers remain stateless formatting/parsing utilities with no app-specific imports.
+
 ## 2026-04-29 — Product intake metadata, SKU handling, and expanded category management
 
 ### Problem verified

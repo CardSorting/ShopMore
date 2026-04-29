@@ -12,7 +12,21 @@ export interface ProductTable {
   compareAtPrice: number | null;
   cost: number | null;
   category: string;
+  productType: string | null;
+  vendor: string | null;
+  tags: string | null;
+  collections: string | null;
+  handle: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  salesChannels: string | null;
   stock: number;
+  trackQuantity: number | null;
+  continueSellingWhenOutOfStock: number | null;
+  reorderPoint: number | null;
+  reorderQuantity: number | null;
+  physicalItem: number | null;
+  weightGrams: number | null;
   sku: string | null;
   manufacturer: string | null;
   supplier: string | null;
@@ -111,6 +125,87 @@ export interface TransferTable {
   createdAt: string;
 }
 
+// ─────────────────────────────────────────────
+// Purchase Order Tables
+// ─────────────────────────────────────────────
+
+export interface PurchaseOrderTable {
+  id: string;
+  supplier: string;
+  referenceNumber: string | null;
+  status: string; // 'draft' | 'ordered' | 'partially_received' | 'received' | 'cancelled'
+  notes: string | null;
+  totalCost: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseOrderItemTable {
+  id: string;
+  purchaseOrderId: string;
+  productId: string;
+  sku: string;
+  productName: string;
+  orderedQty: number;
+  receivedQty: number;
+  unitCost: number;
+  totalCost: number;
+  notes: string | null;
+}
+
+export interface ReceivingSessionTable {
+  id: string;
+  purchaseOrderId: string;
+  status: string; // 'in_progress' | 'completed' | 'cancelled'
+  notes: string | null;
+  idempotencyKey: string | null;
+  locationId: string | null;
+  receivedAt: string;
+  completedAt: string | null;
+  receivedBy: string;
+}
+
+export interface ReceivingItemTable {
+  id: string;
+  receivingSessionId: string;
+  purchaseOrderItemId: string;
+  productId: string;
+  sku: string;
+  expectedQty: number;
+  receivedQty: number;
+  damagedQty: number;
+  unitCost: number;
+  condition: string; // 'new' | 'damaged' | 'defective'
+  discrepancyReason: string | null;
+  disposition: string | null;
+  notes: string | null;
+}
+
+// ─────────────────────────────────────────────
+// Inventory Location Tables
+// ─────────────────────────────────────────────
+
+export interface InventoryLocationTable {
+  id: string;
+  name: string;
+  type: string; // 'warehouse' | 'retail' | 'virtual'
+  address: string | null;
+  isDefault: number; // 0 | 1
+  isActive: number; // 0 | 1
+  createdAt: string;
+}
+
+export interface InventoryLevelTable {
+  productId: string;
+  locationId: string;
+  availableQty: number;
+  reservedQty: number;
+  incomingQty: number;
+  reorderPoint: number;
+  reorderQty: number;
+  updatedAt: string;
+}
+
 export interface Database {
   products: ProductTable;
   users: UserTable;
@@ -121,4 +216,10 @@ export interface Database {
   discounts: DiscountTable;
   settings: SettingTable;
   transfers: TransferTable;
+  purchase_orders: PurchaseOrderTable;
+  purchase_order_items: PurchaseOrderItemTable;
+  receiving_sessions: ReceivingSessionTable;
+  receiving_items: ReceivingItemTable;
+  inventory_locations: InventoryLocationTable;
+  inventory_levels: InventoryLevelTable;
 }

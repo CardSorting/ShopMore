@@ -6,7 +6,7 @@ import { Kysely } from 'kysely';
 import { getSQLiteDB } from '../../sqlite/database';
 import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
-import type { Product, ProductCategory, ProductStatus, CardRarity, ProductDraft, ProductUpdate } from '@domain/models';
+import type { Product, ProductCategory, ProductStatus, CardRarity, ProductDraft, ProductUpdate, ProductSalesChannel } from '@domain/models';
 import { DomainError, InsufficientStockError, InvalidProductError, ProductNotFoundError } from '@domain/errors';
 import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
@@ -32,6 +32,53 @@ function parseProductCategory(value: string): ProductCategory {
 
 function nullableText(value: string | undefined): string | null {
   return value?.trim() || null;
+}
+
+function stringifyStringList(value: string[] | undefined): string | null {
+  if (!value || value.length === 0) return null;
+  return JSON.stringify(value.map((item) => item.trim()).filter(Boolean));
+}
+
+function parseStringList(value: string | null): string[] | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) {
+      return parsed;
+    }
+  } catch {
+    throw new DomainError('Stored product list metadata is invalid JSON.');
+  }
+  throw new DomainError('Stored product list metadata is invalid.');
+}
+
+function stringifySalesChannels(value: ProductSalesChannel[] | undefined): string | null {
+  if (!value || value.length === 0) return null;
+  return JSON.stringify(value);
+}
+
+function parseSalesChannels(value: string | null): ProductSalesChannel[] | undefined {
+  if (!value) return undefined;
+  const allowed: ProductSalesChannel[] = ['online_store', 'pos', 'draft_order'];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed) && parsed.every((item): item is ProductSalesChannel => allowed.includes(item as ProductSalesChannel))) {
+      return parsed;
+    }
+  } catch {
+    throw new DomainError('Stored product sales channels are invalid JSON.');
+  }
+  throw new DomainError('Stored product sales channels are invalid.');
+}
+
+function nullableBoolean(value: boolean | undefined): number | null {
+  if (value === undefined) return null;
+  return value ? 1 : 0;
+}
+
+function parseNullableBoolean(value: number | null | undefined): boolean | undefined {
+  if (value === null || value === undefined) return undefined;
+  return value === 1;
 }
 
 function isUniqueSkuConstraintError(error: unknown): boolean {
@@ -77,7 +124,21 @@ export class SQLiteProductRepository implements IProductRepository {
       compareAtPrice: row.compareAtPrice ?? undefined,
       cost: row.cost ?? undefined,
       category: parseProductCategory(row.category),
+      productType: row.productType || undefined,
+      vendor: row.vendor || undefined,
+      tags: parseStringList(row.tags),
+      collections: parseStringList(row.collections),
+      handle: row.handle || undefined,
+      seoTitle: row.seoTitle || undefined,
+      seoDescription: row.seoDescription || undefined,
+      salesChannels: parseSalesChannels(row.salesChannels),
       stock: row.stock,
+      trackQuantity: parseNullableBoolean(row.trackQuantity),
+      continueSellingWhenOutOfStock: parseNullableBoolean(row.continueSellingWhenOutOfStock),
+      reorderPoint: row.reorderPoint ?? undefined,
+      reorderQuantity: row.reorderQuantity ?? undefined,
+      physicalItem: parseNullableBoolean(row.physicalItem),
+      weightGrams: row.weightGrams ?? undefined,
       sku: row.sku || undefined,
       manufacturer: row.manufacturer || undefined,
       supplier: row.supplier || undefined,
@@ -150,6 +211,11 @@ export class SQLiteProductRepository implements IProductRepository {
         query = query.where((eb) => eb.or([
           eb('name', 'like', q),
           eb('description', 'like', q),
+          eb('productType', 'like', q),
+          eb('vendor', 'like', q),
+          eb('tags', 'like', q),
+          eb('collections', 'like', q),
+          eb('handle', 'like', q),
           eb('sku', 'like', q),
           eb('manufacturer', 'like', q),
           eb('supplier', 'like', q),
@@ -206,6 +272,11 @@ export class SQLiteProductRepository implements IProductRepository {
       allProducts = allProducts.filter(p => 
         p.name.toLowerCase().includes(q) || 
         p.description.toLowerCase().includes(q) ||
+        (p.productType?.toLowerCase().includes(q) ?? false) ||
+        (p.vendor?.toLowerCase().includes(q) ?? false) ||
+        (p.tags?.some((tag) => tag.toLowerCase().includes(q)) ?? false) ||
+        (p.collections?.some((collection) => collection.toLowerCase().includes(q)) ?? false) ||
+        (p.handle?.toLowerCase().includes(q) ?? false) ||
         (p.sku?.toLowerCase().includes(q) ?? false) ||
         (p.manufacturer?.toLowerCase().includes(q) ?? false) ||
         (p.supplier?.toLowerCase().includes(q) ?? false) ||
@@ -260,7 +331,21 @@ export class SQLiteProductRepository implements IProductRepository {
           compareAtPrice: product.compareAtPrice ?? null,
           cost: product.cost ?? null,
           category: product.category,
+          productType: nullableText(product.productType),
+          vendor: nullableText(product.vendor),
+          tags: stringifyStringList(product.tags),
+          collections: stringifyStringList(product.collections),
+          handle: nullableText(product.handle),
+          seoTitle: nullableText(product.seoTitle),
+          seoDescription: nullableText(product.seoDescription),
+          salesChannels: stringifySalesChannels(product.salesChannels),
           stock: product.stock,
+          trackQuantity: nullableBoolean(product.trackQuantity),
+          continueSellingWhenOutOfStock: nullableBoolean(product.continueSellingWhenOutOfStock),
+          reorderPoint: product.reorderPoint ?? null,
+          reorderQuantity: product.reorderQuantity ?? null,
+          physicalItem: nullableBoolean(product.physicalItem),
+          weightGrams: product.weightGrams ?? null,
           sku: nullableText(product.sku),
           manufacturer: nullableText(product.manufacturer),
           supplier: nullableText(product.supplier),
@@ -293,14 +378,20 @@ export class SQLiteProductRepository implements IProductRepository {
     
     // Whitelist updates to prevent SQL injection or accidental schema corruption
     const validFields: (keyof ProductUpdate)[] = [
-      'name', 'description', 'price', 'compareAtPrice', 'cost', 'category', 'stock', 'sku', 'manufacturer', 'supplier', 'manufacturerSku', 'barcode', 'imageUrl', 'set', 'rarity', 'status'
+      'name', 'description', 'price', 'compareAtPrice', 'cost', 'category', 'productType', 'vendor', 'tags', 'collections', 'handle', 'seoTitle', 'seoDescription', 'salesChannels', 'stock', 'trackQuantity', 'continueSellingWhenOutOfStock', 'reorderPoint', 'reorderQuantity', 'physicalItem', 'weightGrams', 'sku', 'manufacturer', 'supplier', 'manufacturerSku', 'barcode', 'imageUrl', 'set', 'rarity', 'status'
     ];
 
     const finalUpdates: Partial<ProductTable> = { updatedAt: now };
     for (const field of validFields) {
       if (updates[field] !== undefined) {
         const value = updates[field];
-        const finalValue = typeof value === 'string' ? nullableText(value) : value;
+        const finalValue = Array.isArray(value)
+          ? JSON.stringify(value)
+          : typeof value === 'boolean'
+            ? nullableBoolean(value)
+            : typeof value === 'string'
+              ? nullableText(value)
+              : value;
         Object.assign(finalUpdates, { [field]: finalValue ?? null });
       }
     }

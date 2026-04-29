@@ -126,3 +126,37 @@ export interface ISettingsRepository {
   set(key: string, value: JsonValue): Promise<void>;
   getAll(): Promise<Record<string, JsonValue>>;
 }
+
+export interface IPurchaseOrderRepository {
+  save(order: import('./models').PurchaseOrder): Promise<import('./models').PurchaseOrder>;
+  findById(id: string): Promise<import('./models').PurchaseOrder | null>;
+  findAll(options?: {
+    status?: import('./models').PurchaseOrderStatus;
+    supplier?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<import('./models').PurchaseOrder[]>;
+  count(options?: { status?: import('./models').PurchaseOrderStatus }): Promise<number>;
+  updateStatus(id: string, status: import('./models').PurchaseOrderStatus): Promise<import('./models').PurchaseOrder>;
+  saveReceivingSession?(session: import('./models').ReceivingSession): Promise<import('./models').ReceivingSession>;
+  findReceivingSessions?(purchaseOrderId: string): Promise<import('./models').ReceivingSession[]>;
+  findReceivingSessionByIdempotencyKey?(purchaseOrderId: string, idempotencyKey: string): Promise<import('./models').ReceivingSession | null>;
+}
+
+export interface IInventoryLocationRepository {
+  save(location: import('./models').InventoryLocation): Promise<import('./models').InventoryLocation>;
+  findById(id: string): Promise<import('./models').InventoryLocation | null>;
+  findAll(): Promise<import('./models').InventoryLocation[]>;
+  findDefault(): Promise<import('./models').InventoryLocation | null>;
+  findActive(): Promise<import('./models').InventoryLocation[]>;
+  update(id: string, location: Partial<import('./models').InventoryLocation>): Promise<import('./models').InventoryLocation>;
+}
+
+export interface IInventoryLevelRepository {
+  findByProduct(productId: string): Promise<import('./models').InventoryLevel[]>;
+  findByLocation(locationId: string): Promise<import('./models').InventoryLevel[]>;
+  findByProductAndLocation(productId: string, locationId: string): Promise<import('./models').InventoryLevel | null>;
+  save(level: import('./models').InventoryLevel): Promise<import('./models').InventoryLevel>;
+  adjustQuantity(productId: string, locationId: string, delta: number, reason: string): Promise<import('./models').InventoryLevel>;
+  updateReorderPoint(productId: string, locationId: string, reorderPoint: number, reorderQty: number): Promise<import('./models').InventoryLevel>;
+}

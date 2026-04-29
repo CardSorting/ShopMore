@@ -13,7 +13,19 @@ import type {
   Product,
   ProductCategory,
   ProductDraft,
+  ProductSalesChannel,
+  ProductSetupIssue,
   ProductUpdate,
+  MarginHealth,
+  PurchaseOrder,
+  PurchaseOrderItem,
+  PurchaseOrderLineReceivingSummary,
+  PurchaseOrderSavedView,
+  PurchaseOrderWorkflowStep,
+  ReceivedItem,
+  ReceivingDiscrepancyReason,
+  ReceivingVarianceType,
+  InventoryLevel,
 } from './models';
 import { InsufficientStockError, InvalidAddressError, InvalidOrderError, InvalidProductError } from './errors';
 
@@ -26,8 +38,18 @@ export const MAX_PRODUCT_SET_LENGTH = 120;
 export const MAX_PRODUCT_SKU_LENGTH = 80;
 export const MAX_PRODUCT_BARCODE_LENGTH = 64;
 export const MAX_PRODUCT_PARTNER_FIELD_LENGTH = 120;
+export const MAX_PRODUCT_TYPE_LENGTH = 120;
+export const MAX_PRODUCT_TAG_LENGTH = 60;
+export const MAX_PRODUCT_TAGS = 25;
+export const MAX_PRODUCT_COLLECTION_LENGTH = 80;
+export const MAX_PRODUCT_COLLECTIONS = 20;
+export const MAX_PRODUCT_HANDLE_LENGTH = 120;
+export const MAX_PRODUCT_SEO_TITLE_LENGTH = 70;
+export const MAX_PRODUCT_SEO_DESCRIPTION_LENGTH = 320;
 export const MAX_PRICE_CENTS = 1_000_000;
 export const MAX_STOCK_QUANTITY = 100_000;
+export const MAX_REORDER_QUANTITY = 100_000;
+export const MAX_WEIGHT_GRAMS = 100_000;
 export const MAX_ADDRESS_FIELD_LENGTH = 120;
 
 const PRODUCT_CATEGORIES: ProductCategory[] = [
@@ -43,6 +65,7 @@ const PRODUCT_CATEGORIES: ProductCategory[] = [
   'other',
 ];
 const CARD_RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
+const PRODUCT_SALES_CHANNELS: ProductSalesChannel[] = ['online_store', 'pos', 'draft_order'];
 const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   pending: ['confirmed', 'cancelled'],
   confirmed: ['shipped', 'cancelled'],
@@ -110,6 +133,65 @@ function assertOptionalMoneyCents(value: number | undefined, field: string): voi
   }
 }
 
+function assertOptionalNonNegativeInteger(value: number | undefined, field: string, max: number): void {
+  if (value === undefined) return;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new InvalidProductError(`${field} must be a non-negative whole number`);
+  }
+  if (value > max) {
+    throw new InvalidProductError(`${field} exceeds allowed maximum`);
+  }
+}
+
+function assertValidStringList(value: string[] | undefined, field: string, maxItems: number, maxLength: number): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    throw new InvalidProductError(`${field} must be a list`);
+  }
+  if (value.length > maxItems) {
+    throw new InvalidProductError(`${field} cannot contain more than ${maxItems} items`);
+  }
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string' || item.trim().length === 0) {
+      throw new InvalidProductError(`${field} cannot contain blank items`);
+    }
+    if (item.trim().length > maxLength) {
+      throw new InvalidProductError(`${field} items must be ${maxLength} characters or fewer`);
+    }
+    const normalized = item.trim().toLowerCase();
+    if (seen.has(normalized)) {
+      throw new InvalidProductError(`${field} cannot contain duplicate items`);
+    }
+    seen.add(normalized);
+  }
+}
+
+function assertValidHandle(value: string | undefined): void {
+  if (value === undefined) return;
+  assertOptionalStringLength(value, 'Handle', MAX_PRODUCT_HANDLE_LENGTH);
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.trim())) {
+    throw new InvalidProductError('Handle must contain lowercase letters, numbers, and single hyphens only');
+  }
+}
+
+function assertValidSalesChannels(value: ProductSalesChannel[] | undefined): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    throw new InvalidProductError('Sales channels must be a list');
+  }
+  const seen = new Set<ProductSalesChannel>();
+  for (const channel of value) {
+    if (!PRODUCT_SALES_CHANNELS.includes(channel)) {
+      throw new InvalidProductError('Sales channel is invalid');
+    }
+    if (seen.has(channel)) {
+      throw new InvalidProductError('Sales channels cannot contain duplicates');
+    }
+    seen.add(channel);
+  }
+}
+
 function assertValidProductIntakeFields(product: ProductDraft | ProductUpdate): void {
   assertOptionalStringLength(product.sku, 'SKU', MAX_PRODUCT_SKU_LENGTH);
   assertOptionalStringLength(product.manufacturer, 'Manufacturer', MAX_PRODUCT_PARTNER_FIELD_LENGTH);
@@ -118,6 +200,20 @@ function assertValidProductIntakeFields(product: ProductDraft | ProductUpdate): 
   assertOptionalStringLength(product.barcode, 'Barcode', MAX_PRODUCT_BARCODE_LENGTH);
   assertOptionalMoneyCents(product.cost, 'Cost');
   assertOptionalMoneyCents(product.compareAtPrice, 'Compare at price');
+}
+
+function assertValidProductOperationsFields(product: ProductDraft | ProductUpdate): void {
+  assertOptionalStringLength(product.productType, 'Product type', MAX_PRODUCT_TYPE_LENGTH);
+  assertOptionalStringLength(product.vendor, 'Vendor', MAX_PRODUCT_PARTNER_FIELD_LENGTH);
+  assertValidStringList(product.tags, 'Tags', MAX_PRODUCT_TAGS, MAX_PRODUCT_TAG_LENGTH);
+  assertValidStringList(product.collections, 'Collections', MAX_PRODUCT_COLLECTIONS, MAX_PRODUCT_COLLECTION_LENGTH);
+  assertValidHandle(product.handle);
+  assertOptionalStringLength(product.seoTitle, 'SEO title', MAX_PRODUCT_SEO_TITLE_LENGTH);
+  assertOptionalStringLength(product.seoDescription, 'SEO description', MAX_PRODUCT_SEO_DESCRIPTION_LENGTH);
+  assertValidSalesChannels(product.salesChannels);
+  assertOptionalNonNegativeInteger(product.reorderPoint, 'Reorder point', MAX_STOCK_QUANTITY);
+  assertOptionalNonNegativeInteger(product.reorderQuantity, 'Reorder quantity', MAX_REORDER_QUANTITY);
+  assertOptionalNonNegativeInteger(product.weightGrams, 'Weight', MAX_WEIGHT_GRAMS);
 }
 
 export function assertValidProductDraft(product: ProductDraft): void {
@@ -131,6 +227,7 @@ export function assertValidProductDraft(product: ProductDraft): void {
   assertValidCategory(product.category);
   assertValidRarity(product.rarity);
   assertValidProductIntakeFields(product);
+  assertValidProductOperationsFields(product);
 
   if (product.set && product.set.trim().length > MAX_PRODUCT_SET_LENGTH) {
     throw new InvalidProductError(`Set must be ${MAX_PRODUCT_SET_LENGTH} characters or fewer`);
@@ -151,9 +248,41 @@ export function assertValidProductUpdate(updates: ProductUpdate): void {
   if (updates.category !== undefined) assertValidCategory(updates.category);
   if ('rarity' in updates) assertValidRarity(updates.rarity);
   assertValidProductIntakeFields(updates);
+  assertValidProductOperationsFields(updates);
   if (updates.set && updates.set.trim().length > MAX_PRODUCT_SET_LENGTH) {
     throw new InvalidProductError(`Set must be ${MAX_PRODUCT_SET_LENGTH} characters or fewer`);
   }
+}
+
+export function calculateGrossMarginPercent(product: Product): number | null {
+  if (product.cost === undefined || product.cost <= 0 || product.price <= 0) return null;
+  return Math.round(((product.price - product.cost) / product.price) * 1000) / 10;
+}
+
+export function classifyMarginHealth(product: Product): MarginHealth {
+  const margin = calculateGrossMarginPercent(product);
+  if (margin === null) return 'unknown';
+  if (margin < 15) return 'at_risk';
+  if (margin < 40) return 'healthy';
+  return 'premium';
+}
+
+export function getProductSetupIssues(product: Product): ProductSetupIssue[] {
+  const issues: ProductSetupIssue[] = [];
+  if (!product.imageUrl.trim()) issues.push('missing_image');
+  if (!product.sku?.trim()) issues.push('missing_sku');
+  if (product.price <= 0) issues.push('missing_price');
+  if (product.cost === undefined) issues.push('missing_cost');
+  if ((product.trackQuantity ?? true) && product.stock <= 0) issues.push('missing_stock');
+  if (!product.category) issues.push('missing_category');
+  if (product.status !== 'active' || !(product.salesChannels ?? ['online_store']).includes('online_store')) {
+    issues.push('not_published');
+  }
+  return issues;
+}
+
+export function classifyProductSetupStatus(product: Product): 'ready' | 'needs_attention' {
+  return getProductSetupIssues(product).length === 0 ? 'ready' : 'needs_attention';
 }
 
 export function calculateCartTotal(items: CartItem[]): number {
@@ -405,6 +534,198 @@ export function addCartItem(
 export function removeCartItem(items: CartItem[], productId: string): CartItem[] {
   return items.filter((i) => i.productId !== productId);
 }
+
+// ─────────────────────────────────────────────
+// Purchase Order Rules
+// ─────────────────────────────────────────────
+
+const RECEIVING_DISCREPANCY_REASONS: ReceivingDiscrepancyReason[] = [
+  'missing_items',
+  'damaged_items',
+  'wrong_item',
+  'overage',
+  'cost_mismatch',
+  'other',
+];
+
+function orderedQty(items: PurchaseOrderItem[]): number {
+  return items.reduce((sum, item) => sum + item.orderedQty, 0);
+}
+
+function receivedQty(items: PurchaseOrderItem[]): number {
+  return items.reduce((sum, item) => sum + item.receivedQty, 0);
+}
+
+function receivingVarianceForLine(item: PurchaseOrderItem): ReceivingVarianceType {
+  if (item.receivedQty > item.orderedQty) return 'over';
+  if (item.receivedQty > 0 && item.receivedQty < item.orderedQty) return 'short';
+  return 'none';
+}
+
+function lineReceivingSummary(item: PurchaseOrderItem): PurchaseOrderLineReceivingSummary {
+  const openQty = Math.max(0, item.orderedQty - item.receivedQty);
+  const progressPercent = item.orderedQty === 0 ? 0 : Math.min(100, Math.round((item.receivedQty / item.orderedQty) * 100));
+  const varianceType = receivingVarianceForLine(item);
+  return {
+    purchaseOrderItemId: item.id,
+    productId: item.productId,
+    productName: item.productName,
+    sku: item.sku,
+    orderedQty: item.orderedQty,
+    receivedQty: item.receivedQty,
+    openQty,
+    progressPercent,
+    varianceType,
+    attentionRequired: varianceType !== 'none',
+    nextActionLabel: openQty > 0 ? `Receive ${openQty} remaining` : 'Line complete',
+  };
+}
+
+export const purchaseOrderRules = {
+  canReceive: (order: PurchaseOrder): boolean =>
+    ['ordered', 'partially_received'].includes(order.status),
+
+  canClose: (order: PurchaseOrder): boolean =>
+    ['received', 'partially_received'].includes(order.status),
+
+  canCancel: (order: PurchaseOrder): boolean =>
+    ['draft', 'ordered'].includes(order.status),
+
+  canSubmit: (order: PurchaseOrder): boolean =>
+    order.status === 'draft' && order.items.length > 0,
+
+  calculateReceivedStatus: (items: PurchaseOrderItem[]): PurchaseOrder['status'] => {
+    if (items.length === 0) return 'ordered';
+    const allReceived = items.every((i) => i.receivedQty >= i.orderedQty);
+    const anyReceived = items.some((i) => i.receivedQty > 0);
+    if (allReceived) return 'received';
+    if (anyReceived) return 'partially_received';
+    return 'ordered';
+  },
+
+  validateReceiveQty: (ordered: number, alreadyReceived: number, newReceived: number): boolean =>
+    Number.isInteger(newReceived) && alreadyReceived + newReceived <= ordered && newReceived >= 0,
+
+  calculateLineReceivingSummary: lineReceivingSummary,
+
+  calculateLineReceivingSummaries: (order: PurchaseOrder): PurchaseOrderLineReceivingSummary[] =>
+    order.items.map(lineReceivingSummary),
+
+  hasReceivingExceptions: (order: PurchaseOrder): boolean =>
+    order.items.some((item) => receivingVarianceForLine(item) !== 'none'),
+
+  matchesSavedView: (order: PurchaseOrder, view: PurchaseOrderSavedView): boolean => {
+    if (view === 'all') return true;
+    if (view === 'drafts') return order.status === 'draft';
+    if (view === 'incoming') return order.status === 'ordered';
+    if (view === 'partially_received') return order.status === 'partially_received';
+    if (view === 'ready_to_close') return order.status === 'received';
+    if (view === 'exceptions') return purchaseOrderRules.hasReceivingExceptions(order);
+    if (view === 'closed') return order.status === 'closed';
+    return false;
+  },
+
+  isValidDiscrepancyReason: (reason: string | undefined): reason is ReceivingDiscrepancyReason =>
+    reason !== undefined && RECEIVING_DISCREPANCY_REASONS.includes(reason as ReceivingDiscrepancyReason),
+
+  requiresDiscrepancyReason: (item: Pick<ReceivedItem, 'receivedQty' | 'expectedQty' | 'damagedQty' | 'condition'>): boolean =>
+    item.receivedQty !== item.expectedQty || (item.damagedQty ?? 0) > 0 || item.condition !== 'new',
+
+  calculateReceivingSummary: (order: PurchaseOrder) => {
+    const totalOrdered = orderedQty(order.items);
+    const totalReceived = receivedQty(order.items);
+    const openQty = Math.max(0, totalOrdered - totalReceived);
+    const progressPercent = totalOrdered === 0 ? 0 : Math.round((totalReceived / totalOrdered) * 100);
+    let nextActionLabel = 'Create purchase order';
+    let nextActionDescription = 'Add supplier details and products before sending this purchase order.';
+
+    if (order.status === 'draft') {
+      nextActionLabel = 'Send purchase order';
+      nextActionDescription = 'Review costs and quantities, then mark this order as sent to the supplier.';
+    } else if (order.status === 'ordered') {
+      nextActionLabel = 'Receive inventory';
+      nextActionDescription = 'Record what arrived, flag damaged or missing items, and update stock.';
+    } else if (order.status === 'partially_received') {
+      nextActionLabel = 'Continue receiving';
+      nextActionDescription = 'Receive the remaining items or close with a discrepancy note.';
+    } else if (order.status === 'received') {
+      nextActionLabel = 'Close purchase order';
+      nextActionDescription = 'Everything expected has been received. Close this PO to lock the workflow.';
+    } else if (order.status === 'closed') {
+      nextActionLabel = 'Closed';
+      nextActionDescription = 'This purchase order is complete and no longer accepts receiving changes.';
+    } else if (order.status === 'cancelled') {
+      nextActionLabel = 'Cancelled';
+      nextActionDescription = 'This purchase order was cancelled before completion.';
+    }
+
+    return {
+      orderedQty: totalOrdered,
+      receivedQty: totalReceived,
+      openQty,
+      damagedQty: 0,
+      discrepancyCount: 0,
+      stockableQty: totalReceived,
+      progressPercent,
+      nextActionLabel,
+      nextActionDescription,
+    };
+  },
+
+  buildWorkflowSteps: (order: PurchaseOrder): PurchaseOrderWorkflowStep[] => {
+    const status = order.status;
+    const summary = purchaseOrderRules.calculateReceivingSummary(order);
+    const stepStatus = (id: PurchaseOrderWorkflowStep['id']): PurchaseOrderWorkflowStep['status'] => {
+      if (status === 'cancelled') return id === 'create' ? 'complete' : 'blocked';
+      if (id === 'create') return 'complete';
+      if (id === 'order') return ['ordered', 'partially_received', 'received', 'closed'].includes(status) ? 'complete' : 'current';
+      if (id === 'receive') {
+        if (['received', 'closed'].includes(status)) return 'complete';
+        if (status === 'partially_received') return 'current';
+        return status === 'ordered' ? 'current' : 'upcoming';
+      }
+      if (id === 'reconcile') {
+        if (status === 'closed') return 'complete';
+        if (summary.openQty > 0 && status === 'partially_received') return 'current';
+        return status === 'received' ? 'complete' : 'upcoming';
+      }
+      if (id === 'close') return status === 'closed' ? 'complete' : status === 'received' ? 'current' : 'upcoming';
+      return 'upcoming';
+    };
+
+    return [
+      { id: 'create', label: 'Create', description: 'Supplier and products added', status: stepStatus('create') },
+      { id: 'order', label: 'Send', description: 'Mark as ordered from supplier', status: stepStatus('order') },
+      { id: 'receive', label: 'Receive', description: 'Count arriving stock', status: stepStatus('receive') },
+      { id: 'reconcile', label: 'Reconcile', description: 'Review missing, damaged, or extra items', status: stepStatus('reconcile') },
+      { id: 'close', label: 'Close', description: 'Lock completed receiving work', status: stepStatus('close') },
+    ];
+  },
+
+  calculateTotalCost: (items: PurchaseOrderItem[]): number =>
+    items.reduce((sum, item) => sum + item.orderedQty * item.unitCost, 0),
+};
+
+// ─────────────────────────────────────────────
+// Inventory Rules
+// ─────────────────────────────────────────────
+
+export const inventoryRules = {
+  isLowStock: (level: InventoryLevel): boolean =>
+    level.availableQty <= level.reorderPoint && level.reorderPoint > 0,
+
+  isOutOfStock: (level: InventoryLevel): boolean =>
+    level.availableQty <= 0,
+
+  canAdjust: (available: number, reserved: number, delta: number): boolean =>
+    available + reserved + delta >= 0,
+
+  totalOnHand: (level: InventoryLevel): number =>
+    level.availableQty + level.reservedQty,
+
+  projectedAvailable: (level: InventoryLevel): number =>
+    level.availableQty + level.incomingQty,
+};
 
 export function updateCartItemQuantity(
   items: CartItem[],

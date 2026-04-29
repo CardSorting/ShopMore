@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { Address, CardRarity, JsonValue, OrderStatus, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, User } from '@domain/models';
+import type { Address, CardRarity, JsonValue, OrderStatus, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, User, ProductSalesChannel } from '@domain/models';
 import { AuthError, DomainError, OrderNotFoundError, ProductNotFoundError, UnauthorizedError } from '@domain/errors';
 import { getSessionUser } from './session';
 import { logger } from '@utils/logger';
@@ -18,6 +18,7 @@ const PRODUCT_CATEGORIES = new Set<ProductCategory>([
     'other',
 ]);
 const PRODUCT_STATUSES = new Set<ProductStatus>(['active', 'draft', 'archived']);
+const PRODUCT_SALES_CHANNELS = new Set<ProductSalesChannel>(['online_store', 'pos', 'draft_order']);
 const CARD_RARITIES = new Set<CardRarity>(['common', 'uncommon', 'rare', 'holo', 'secret']);
 const MAX_JSON_BODY_BYTES = 32 * 1024;
 const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9:_-]{16,160}$/;
@@ -181,6 +182,20 @@ export function optionalInteger(value: unknown, field: string): number | undefin
     return requireInteger(value, field);
 }
 
+export function optionalBoolean(value: unknown, field: string): boolean | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value !== 'boolean') throw new DomainError(`${field} must be true or false.`);
+    return value;
+}
+
+export function optionalStringArray(value: unknown, field: string): string[] | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+        throw new DomainError(`${field} must be a list of strings.`);
+    }
+    return value.map((item) => item.trim()).filter(Boolean);
+}
+
 function isJsonValue(value: unknown): value is JsonValue {
     if (value === null) return true;
     const valueType = typeof value;
@@ -213,6 +228,17 @@ export function optionalCardRarity(value: unknown): CardRarity | undefined {
     if (value === undefined || value === null || value === '') return undefined;
     if (typeof value === 'string' && CARD_RARITIES.has(value as CardRarity)) return value as CardRarity;
     throw new DomainError('Card rarity is invalid.');
+}
+
+export function optionalSalesChannels(value: unknown): ProductSalesChannel[] | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (!Array.isArray(value)) throw new DomainError('salesChannels must be a list.');
+    return value.map((item) => {
+        if (typeof item === 'string' && PRODUCT_SALES_CHANNELS.has(item as ProductSalesChannel)) {
+            return item as ProductSalesChannel;
+        }
+        throw new DomainError('Sales channel is invalid.');
+    });
 }
 
 export function parseCartItemMutation(body: Record<string, unknown>): { productId: string; quantity: number } {
@@ -248,7 +274,21 @@ export function parseProductDraft(body: Record<string, unknown>): ProductDraft {
         compareAtPrice: optionalInteger(body.compareAtPrice, 'compareAtPrice'),
         cost: optionalInteger(body.cost, 'cost'),
         category: requireProductCategory(body.category),
+        productType: optionalString(body.productType, 'productType'),
+        vendor: optionalString(body.vendor, 'vendor'),
+        tags: optionalStringArray(body.tags, 'tags'),
+        collections: optionalStringArray(body.collections, 'collections'),
+        handle: optionalString(body.handle, 'handle'),
+        seoTitle: optionalString(body.seoTitle, 'seoTitle'),
+        seoDescription: optionalString(body.seoDescription, 'seoDescription'),
+        salesChannels: optionalSalesChannels(body.salesChannels),
         stock: requireInteger(body.stock, 'stock'),
+        trackQuantity: optionalBoolean(body.trackQuantity, 'trackQuantity'),
+        continueSellingWhenOutOfStock: optionalBoolean(body.continueSellingWhenOutOfStock, 'continueSellingWhenOutOfStock'),
+        reorderPoint: optionalInteger(body.reorderPoint, 'reorderPoint'),
+        reorderQuantity: optionalInteger(body.reorderQuantity, 'reorderQuantity'),
+        physicalItem: optionalBoolean(body.physicalItem, 'physicalItem'),
+        weightGrams: optionalInteger(body.weightGrams, 'weightGrams'),
         sku: optionalString(body.sku, 'sku'),
         manufacturer: optionalString(body.manufacturer, 'manufacturer'),
         supplier: optionalString(body.supplier, 'supplier'),
@@ -269,7 +309,21 @@ export function parseProductUpdate(body: Record<string, unknown>): ProductUpdate
     if ('compareAtPrice' in body) update.compareAtPrice = optionalInteger(body.compareAtPrice, 'compareAtPrice');
     if ('cost' in body) update.cost = optionalInteger(body.cost, 'cost');
     if ('category' in body) update.category = requireProductCategory(body.category);
+    if ('productType' in body) update.productType = optionalString(body.productType, 'productType');
+    if ('vendor' in body) update.vendor = optionalString(body.vendor, 'vendor');
+    if ('tags' in body) update.tags = optionalStringArray(body.tags, 'tags');
+    if ('collections' in body) update.collections = optionalStringArray(body.collections, 'collections');
+    if ('handle' in body) update.handle = optionalString(body.handle, 'handle');
+    if ('seoTitle' in body) update.seoTitle = optionalString(body.seoTitle, 'seoTitle');
+    if ('seoDescription' in body) update.seoDescription = optionalString(body.seoDescription, 'seoDescription');
+    if ('salesChannels' in body) update.salesChannels = optionalSalesChannels(body.salesChannels);
     if ('stock' in body) update.stock = requireInteger(body.stock, 'stock');
+    if ('trackQuantity' in body) update.trackQuantity = optionalBoolean(body.trackQuantity, 'trackQuantity');
+    if ('continueSellingWhenOutOfStock' in body) update.continueSellingWhenOutOfStock = optionalBoolean(body.continueSellingWhenOutOfStock, 'continueSellingWhenOutOfStock');
+    if ('reorderPoint' in body) update.reorderPoint = optionalInteger(body.reorderPoint, 'reorderPoint');
+    if ('reorderQuantity' in body) update.reorderQuantity = optionalInteger(body.reorderQuantity, 'reorderQuantity');
+    if ('physicalItem' in body) update.physicalItem = optionalBoolean(body.physicalItem, 'physicalItem');
+    if ('weightGrams' in body) update.weightGrams = optionalInteger(body.weightGrams, 'weightGrams');
     if ('sku' in body) update.sku = optionalString(body.sku, 'sku');
     if ('manufacturer' in body) update.manufacturer = optionalString(body.manufacturer, 'manufacturer');
     if ('supplier' in body) update.supplier = optionalString(body.supplier, 'supplier');

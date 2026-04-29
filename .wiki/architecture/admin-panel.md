@@ -25,6 +25,15 @@ Advanced tools for catalog maintenance.
 - **SKU & Supplier Search**: Product list/search flows now include SKU, supplier, manufacturer, manufacturer SKU, and barcode values for faster manufacturer/wholesaler intake handling.
 - **Expanded Categories**: Catalog category tabs and Domain validation now include booster, single, deck, accessory, box, elite trainer box, sealed case, graded card, supplies, and other.
 
+### 3.1 Purchase Orders & Receiving
+Inbound stock work is presented as a dedicated Receiving workspace rather than a technical purchase-order table.
+- **Saved Views**: Operators can switch between All, Draft, Incoming, Partial, Exceptions, Ready to close, and Closed views.
+- **Guided Intake**: Purchase-order creation uses product search/selection by product name, SKU, and product metadata instead of raw product-id entry.
+- **Dollar Cost Entry**: Unit costs are entered as familiar dollar values and converted to cents before crossing into Core/API contracts.
+- **Receiving Count Flow**: Receiving lines show ordered, already received, remaining, receive-now quantity, condition, damaged quantity, disposition, exception reason, and session notes.
+- **Exception Review**: Domain-derived line summaries and saved-view matching identify receiving exceptions for missing/partial/attention-required lines.
+- **Workspace Endpoint**: `GET /api/admin/purchase-orders?workspace=true` returns saved-view counts, workflow steps, line summaries, and attention flags through Core `PurchaseOrderService.getPurchaseOrderWorkspace()`.
+
 ### 4. Customer Management (CRM)
 Insights into customer behavior and lifetime value (LTV).
 - **Segmentation**: Automated customer buckets (Big Spenders, New, Inactive, Active).

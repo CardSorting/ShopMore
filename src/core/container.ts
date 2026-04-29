@@ -2,56 +2,6 @@
  * [LAYER: CORE]
  * 
  * Service Container with STRICT Lazy Initialization
- * 
- * ARCHITECTURAL COMPLIANCE:
- * - ZERO eager exports - all services lazy-initialized
- * - Eliminates infinite loop risk from circular dependencies
- * - Prevents database init timing issues
- * - Singleton pattern enforced via module-level caching
- * - JoyZoning compliant: UI imports Domain ONLY via hooks
- * 
- * INITIALIZATION PATTERNS (Documented for Clarity):
- * 
- * PATTERN 1: getServiceContainer() - Factory Pattern
- * - Purpose: Create isolated, fresh service instances for testing or state isolation
- * - Use Case: Unit testing, debugging, or scenarios requiring fresh state
- * - Behavior: Creates NEW repository instances each call, no caching
- * - Note: Not recommended for production use (conflicts with PATTERN 2)
- * 
- * PATTERN 2: getInitialServices() - Singleton Pattern (Production)
- * - Purpose: Global singleton services for consistent app-wide state
- * - Use Case: Production app, Cart persistence, user state management
- * - Behavior: Returns CACHED container (repositories persist across calls)
- * - Default: Used by useServices() hook for production app behavior
- * 
- * SINGLETON STATE MANAGEMENT:
- * - authServiceInstance: AuthService (shared across app)
- * - authProviderInstance: SQLiteAuthAdapter (cached)
- * - productsRepo: SQLiteProductRepository (cached singleton - shared)
- * - cartRepo: SQLiteCartRepository (cached singleton - shared)
- * - ordersRepo: SQLiteOrderRepository (cached singleton - shared)
- * 
- * NOISE IMPORTS ELIMINATED:
- * - Core is the composition root and intentionally wires infrastructure adapters
- * - No core polluting infrastructure layer
- * - No UI polluting any layer
- * 
- * INITIALIZATION ORDER:
- * 1. SQLite initialized server-side before first service using it
- * 2. Repository instances cached on first creation (singleton)
- * 3. Services created on-demand via getInitialServices() hook
- * 4. UI components use useServices() hook only
- * 
- * REPOSITORY SCOPE (IMPORTANT):
- * - ProductRepository: Singleton - shared across ProductService
- * - CartRepository: Singleton - shared across CartService AND preserved in memory
- * - OrderRepository: Singleton - shared across OrderService
- * 
- * DESIGN RATIONALE:
- * - CartRepository singleton allows seamless cart persistence
- *   without complex state management or page navigation
- * - Other repositories as singletons improve performance (cached queries)
- * - Factory pattern preserved for testing scenarios
  */
 
 import { SQLiteProductRepository } from '@infrastructure/repositories/sqlite/SQLiteProductRepository';
@@ -64,6 +14,9 @@ import { TrustedCheckoutGateway } from '@infrastructure/services/TrustedCheckout
 import { SovereignLocker } from '@infrastructure/sqlite/SovereignLocker';
 import { SQLiteSettingsRepository } from '@infrastructure/repositories/sqlite/SQLiteSettingsRepository';
 import { SQLiteTransferRepository } from '@infrastructure/repositories/sqlite/SQLiteTransferRepository';
+import { SQLitePurchaseOrderRepository } from '@infrastructure/repositories/sqlite/SQLitePurchaseOrderRepository';
+import { SQLiteInventoryLocationRepository } from '@infrastructure/repositories/sqlite/SQLiteInventoryLocationRepository';
+import { SQLiteInventoryLevelRepository } from '@infrastructure/repositories/sqlite/SQLiteInventoryLevelRepository';
 import { ProductService } from './ProductService';
 import { CartService } from './CartService';
 import { OrderService } from './OrderService';
@@ -71,6 +24,7 @@ import { AuthService } from './AuthService';
 import { DiscountService } from './DiscountService';
 import { SettingsService } from './SettingsService';
 import { TransferService } from './TransferService';
+import { PurchaseOrderService } from './PurchaseOrderService';
 import { AuditService } from './AuditService';
 import type {
   IProductRepository,
@@ -79,6 +33,9 @@ import type {
   IDiscountRepository,
   ISettingsRepository,
   ITransferRepository,
+  IPurchaseOrderRepository,
+  IInventoryLocationRepository,
+  IInventoryLevelRepository,
   IAuthProvider,
   IPaymentProcessor,
   ILockProvider,
@@ -101,14 +58,15 @@ let settingsRepoInstance: ISettingsRepository | null = null;
 let transferRepoInstance: ITransferRepository | null = null;
 let transferServiceInstance: TransferService | null = null;
 let auditServiceInstance: AuditService | null = null;
+let purchaseOrderRepoInstance: IPurchaseOrderRepository | null = null;
+let inventoryLocationRepoInstance: IInventoryLocationRepository | null = null;
+let inventoryLevelRepoInstance: IInventoryLevelRepository | null = null;
+let purchaseOrderServiceInstance: PurchaseOrderService | null = null;
 
 function createCheckoutGateway(): ICheckoutGateway | undefined {
   return process.env.CHECKOUT_ENDPOINT ? new TrustedCheckoutGateway() : undefined;
 }
 
-/**
- * Helper to create the correct repository based on provider
- */
 function createRepositories() {
   return {
     productRepo: new SQLiteProductRepository(),
@@ -117,19 +75,27 @@ function createRepositories() {
     discountRepo: new SQLiteDiscountRepository(),
     settingsRepo: new SQLiteSettingsRepository(),
     transferRepo: new SQLiteTransferRepository(),
+    purchaseOrderRepo: new SQLitePurchaseOrderRepository(),
+    inventoryLocationRepo: new SQLiteInventoryLocationRepository(),
+    inventoryLevelRepo: new SQLiteInventoryLevelRepository(),
   };
 }
 
 /**
  * FACTORY PATTERN: Creates fresh service instances
- * 
- * Use this for testing when you need isolated state.
- * Not recommended for production use.
- * 
- * @returns Container with fresh repository instances
  */
 export function getServiceContainer() {
-  const { productRepo, cartRepo, orderRepo, discountRepo, settingsRepo, transferRepo } = createRepositories();
+  const {
+    productRepo,
+    cartRepo,
+    orderRepo,
+    discountRepo,
+    settingsRepo,
+    transferRepo,
+    purchaseOrderRepo,
+    inventoryLocationRepo,
+    inventoryLevelRepo,
+  } = createRepositories();
   const authProvider = new SQLiteAuthAdapter();
   const authService = new AuthService(authProvider);
 
@@ -150,17 +116,13 @@ export function getServiceContainer() {
     discountService: new DiscountService(discountRepo, new AuditService()),
     settingsService: new SettingsService(settingsRepo, productRepo, discountRepo, new AuditService()),
     transferService: new TransferService(transferRepo, productRepo),
+    purchaseOrderService: new PurchaseOrderService(purchaseOrderRepo, productRepo, inventoryLevelRepo),
     auditService: new AuditService(),
   };
 }
 
 /**
  * SINGLETON PATTERN: Gets global cached services (Production Default)
- * 
- * This is the pattern used by useServices() hook for production apps.
- * Repositories are cached and retained across function calls.
- * 
- * @returns Container with cached singleton instances
  */
 export function getInitialServices() {
   if (!productRepoInstance || !cartRepoInstance || !orderRepoInstance || !discountRepoInstance || !settingsRepoInstance || !transferRepoInstance) {
@@ -171,9 +133,11 @@ export function getInitialServices() {
     discountRepoInstance = repos.discountRepo;
     settingsRepoInstance = repos.settingsRepo;
     transferRepoInstance = repos.transferRepo;
+    purchaseOrderRepoInstance = repos.purchaseOrderRepo;
+    inventoryLocationRepoInstance = repos.inventoryLocationRepo;
+    inventoryLevelRepoInstance = repos.inventoryLevelRepo;
   }
 
-  // Auth selection
   if (!authProviderInstance) {
     authProviderInstance = new SQLiteAuthAdapter();
   }
@@ -194,41 +158,43 @@ export function getInitialServices() {
     checkoutGatewayInstance = new TrustedCheckoutGateway();
   }
 
+  const getAuditService = () => {
+    if (!auditServiceInstance) auditServiceInstance = new AuditService();
+    return auditServiceInstance;
+  };
+
   return {
     authProvider: authProviderInstance!,
     authService: authServiceInstance,
-    productService: new ProductService(productRepoInstance!, (function() {
-      if (!auditServiceInstance) auditServiceInstance = new AuditService();
-      return auditServiceInstance;
-    })()),
+    productService: new ProductService(productRepoInstance!, getAuditService()),
     cartService: new CartService(cartRepoInstance!, productRepoInstance!),
     orderService: new OrderService(
       orderRepoInstance!,
       productRepoInstance!,
       cartRepoInstance!,
       paymentProcessorInstance,
-      (function() {
-        if (!auditServiceInstance) auditServiceInstance = new AuditService();
-        return auditServiceInstance;
-      })(),
+      getAuditService(),
       lockProviderInstance,
       checkoutGatewayInstance ?? undefined
     ),
-    discountService: new DiscountService(discountRepoInstance!, (function() {
-      if (!auditServiceInstance) auditServiceInstance = new AuditService();
-      return auditServiceInstance;
-    })()),
-    settingsService: new SettingsService(settingsRepoInstance!, productRepoInstance!, discountRepoInstance!, (function() {
-      if (!auditServiceInstance) auditServiceInstance = new AuditService();
-      return auditServiceInstance;
-    })()),
-    transferService: (function() {
+    discountService: new DiscountService(discountRepoInstance!, getAuditService()),
+    settingsService: new SettingsService(settingsRepoInstance!, productRepoInstance!, discountRepoInstance!, getAuditService()),
+    transferService: (() => {
       if (!transferServiceInstance) transferServiceInstance = new TransferService(transferRepoInstance!, productRepoInstance!);
       return transferServiceInstance;
     })(),
-    auditService: (function() {
-      if (!auditServiceInstance) auditServiceInstance = new AuditService();
-      return auditServiceInstance;
+    purchaseOrderService: (() => {
+      if (!purchaseOrderServiceInstance) {
+        purchaseOrderServiceInstance = new PurchaseOrderService(
+          purchaseOrderRepoInstance!,
+          productRepoInstance!,
+          inventoryLevelRepoInstance!
+        );
+      }
+      return purchaseOrderServiceInstance;
     })(),
+    inventoryLocationRepo: inventoryLocationRepoInstance!,
+    inventoryLevelRepo: inventoryLevelRepoInstance!,
+    auditService: getAuditService(),
   };
 }

@@ -93,3 +93,52 @@ export class InvalidOrderError extends DomainError {
     this.name = 'InvalidOrderError';
   }
 }
+
+export class PurchaseOrderNotFoundError extends DomainError {
+  constructor(orderId: string) {
+    super(`Purchase order not found: ${orderId}`);
+    this.name = 'PurchaseOrderNotFoundError';
+  }
+}
+
+export class InvalidPurchaseOrderError extends DomainError {
+  constructor(message: string = 'Purchase order data is incomplete or invalid') {
+    super(message);
+    this.name = 'InvalidPurchaseOrderError';
+  }
+}
+
+export class CannotCancelPurchaseOrderError extends DomainError {
+  constructor(status: string) {
+    super(`Cannot cancel purchase order in ${status} status`);
+    this.name = 'CannotCancelPurchaseOrderError';
+  }
+}
+
+export class CannotReceivePurchaseOrderError extends DomainError {
+  constructor(status: string) {
+    super(`Cannot receive items from purchase order in ${status} status`);
+    this.name = 'CannotReceivePurchaseOrderError';
+  }
+}
+
+export class ReceivingSessionNotFoundError extends DomainError {
+  constructor(sessionId: string) {
+    super(`Receiving session not found: ${sessionId}`);
+    this.name = 'ReceivingSessionNotFoundError';
+  }
+}
+
+export class InvalidReceivingSessionError extends DomainError {
+  constructor(message: string = 'Receiving session data is invalid') {
+    super(message);
+    this.name = 'InvalidReceivingSessionError';
+  }
+}
+
+export class InventoryLocationNotFoundError extends DomainError {
+  constructor(locationId: string) {
+    super(`Inventory location not found: ${locationId}`);
+    this.name = 'InventoryLocationNotFoundError';
+  }
+}

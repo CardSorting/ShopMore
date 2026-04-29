@@ -15,6 +15,19 @@ export function formatMoney(cents: number): string {
   }).format(cents / 100);
 }
 
+export function centsToDecimalInput(cents: number | null | undefined): string {
+  if (!Number.isFinite(cents ?? NaN)) return '';
+  return ((cents ?? 0) / 100).toFixed(2);
+}
+
+export function parseCurrencyToCents(value: string): number {
+  const normalized = value.replace(/[$,\s]/g, '');
+  if (!normalized) return 0;
+  const dollars = Number(normalized);
+  if (!Number.isFinite(dollars) || dollars < 0) return 0;
+  return Math.round(dollars * 100);
+}
+
 export function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });

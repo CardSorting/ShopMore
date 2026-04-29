@@ -45,7 +45,21 @@ export async function initDatabase() {
     .addColumn('compareAtPrice', 'integer')
     .addColumn('cost', 'integer')
     .addColumn('category', 'text', (col) => col.notNull())
+    .addColumn('productType', 'text')
+    .addColumn('vendor', 'text')
+    .addColumn('tags', 'text')
+    .addColumn('collections', 'text')
+    .addColumn('handle', 'text')
+    .addColumn('seoTitle', 'text')
+    .addColumn('seoDescription', 'text')
+    .addColumn('salesChannels', 'text')
     .addColumn('stock', 'integer', (col) => col.notNull())
+    .addColumn('trackQuantity', 'integer')
+    .addColumn('continueSellingWhenOutOfStock', 'integer')
+    .addColumn('reorderPoint', 'integer')
+    .addColumn('reorderQuantity', 'integer')
+    .addColumn('physicalItem', 'integer')
+    .addColumn('weightGrams', 'integer')
     .addColumn('sku', 'text')
     .addColumn('manufacturer', 'text')
     .addColumn('supplier', 'text')
@@ -69,6 +83,20 @@ export async function initDatabase() {
   // Product intake metadata migrations for existing catalogs.
   try { await db.schema.alterTable('products').addColumn('compareAtPrice', 'integer').execute(); } catch {}
   try { await db.schema.alterTable('products').addColumn('cost', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('productType', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('vendor', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('tags', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('collections', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('handle', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('seoTitle', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('seoDescription', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('salesChannels', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('trackQuantity', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('continueSellingWhenOutOfStock', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('reorderPoint', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('reorderQuantity', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('physicalItem', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('weightGrams', 'integer').execute(); } catch {}
   try { await db.schema.alterTable('products').addColumn('sku', 'text').execute(); } catch {}
   try { await db.schema.alterTable('products').addColumn('manufacturer', 'text').execute(); } catch {}
   try { await db.schema.alterTable('products').addColumn('supplier', 'text').execute(); } catch {}
@@ -221,6 +249,106 @@ export async function initDatabase() {
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .execute();
 
+  // ─────────────────────────────────────────────
+  // Purchase Order & Receiving Tables
+  // ─────────────────────────────────────────────
+
+  await db.schema
+    .createTable('purchase_orders')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('supplier', 'text', (col) => col.notNull())
+    .addColumn('referenceNumber', 'text')
+    .addColumn('status', 'text', (col) => col.notNull().defaultTo('draft'))
+    .addColumn('notes', 'text')
+    .addColumn('totalCost', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('purchase_order_items')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('purchaseOrderId', 'text', (col) => col.notNull())
+    .addColumn('productId', 'text', (col) => col.notNull())
+    .addColumn('sku', 'text', (col) => col.notNull())
+    .addColumn('productName', 'text', (col) => col.notNull())
+    .addColumn('orderedQty', 'integer', (col) => col.notNull())
+    .addColumn('receivedQty', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('unitCost', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('totalCost', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('notes', 'text')
+    .execute();
+
+  await db.schema
+    .createTable('receiving_sessions')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('purchaseOrderId', 'text', (col) => col.notNull())
+    .addColumn('status', 'text', (col) => col.notNull().defaultTo('in_progress'))
+    .addColumn('notes', 'text')
+    .addColumn('idempotencyKey', 'text')
+    .addColumn('locationId', 'text')
+    .addColumn('receivedAt', 'text', (col) => col.notNull())
+    .addColumn('completedAt', 'text')
+    .addColumn('receivedBy', 'text', (col) => col.notNull())
+    .execute();
+
+  try { await db.schema.alterTable('receiving_sessions').addColumn('idempotencyKey', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('receiving_sessions').addColumn('locationId', 'text').execute(); } catch {}
+
+  await db.schema
+    .createTable('receiving_items')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('receivingSessionId', 'text', (col) => col.notNull())
+    .addColumn('purchaseOrderItemId', 'text', (col) => col.notNull())
+    .addColumn('productId', 'text', (col) => col.notNull())
+    .addColumn('sku', 'text', (col) => col.notNull())
+    .addColumn('expectedQty', 'integer', (col) => col.notNull())
+    .addColumn('receivedQty', 'integer', (col) => col.notNull())
+    .addColumn('damagedQty', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('unitCost', 'integer', (col) => col.notNull())
+    .addColumn('condition', 'text', (col) => col.notNull().defaultTo('new'))
+    .addColumn('discrepancyReason', 'text')
+    .addColumn('disposition', 'text')
+    .addColumn('notes', 'text')
+    .execute();
+
+  try { await db.schema.alterTable('receiving_items').addColumn('damagedQty', 'integer', (col) => col.notNull().defaultTo(0)).execute(); } catch {}
+  try { await db.schema.alterTable('receiving_items').addColumn('discrepancyReason', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('receiving_items').addColumn('disposition', 'text').execute(); } catch {}
+
+  // ─────────────────────────────────────────────
+  // Inventory Location Tables
+  // ─────────────────────────────────────────────
+
+  await db.schema
+    .createTable('inventory_locations')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('name', 'text', (col) => col.notNull())
+    .addColumn('type', 'text', (col) => col.notNull().defaultTo('warehouse'))
+    .addColumn('address', 'text')
+    .addColumn('isDefault', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('isActive', 'integer', (col) => col.notNull().defaultTo(1))
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('inventory_levels')
+    .ifNotExists()
+    .addColumn('productId', 'text', (col) => col.notNull())
+    .addColumn('locationId', 'text', (col) => col.notNull())
+    .addColumn('availableQty', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('reservedQty', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('incomingQty', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('reorderPoint', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('reorderQty', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
   // BroccoliQ Level 11: High-Velocity Performance Indices
   await db.schema
     .createIndex('idx_products_category')
@@ -259,6 +387,21 @@ export async function initDatabase() {
     .execute();
 
   await db.schema
+    .createIndex('idx_products_vendor')
+    .on('products')
+    .column('vendor')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_products_handle_unique')
+    .on('products')
+    .column('handle')
+    .unique()
+    .ifNotExists()
+    .execute();
+
+  await db.schema
     .createIndex('idx_orders_userId')
     .on('orders')
     .column('userId')
@@ -276,6 +419,59 @@ export async function initDatabase() {
     .createIndex('idx_orders_createdAt')
     .on('orders')
     .column('createdAt')
+    .ifNotExists()
+    .execute();
+
+  // ─────────────────────────────────────────────
+  // Indexes for new tables
+  // ─────────────────────────────────────────────
+
+  await db.schema
+    .createIndex('idx_purchase_orders_status')
+    .on('purchase_orders')
+    .column('status')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_purchase_orders_supplier')
+    .on('purchase_orders')
+    .column('supplier')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_purchase_order_items_poId')
+    .on('purchase_order_items')
+    .column('purchaseOrderId')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_receiving_sessions_poId')
+    .on('receiving_sessions')
+    .column('purchaseOrderId')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_receiving_sessions_idempotency')
+    .on('receiving_sessions')
+    .columns(['purchaseOrderId', 'idempotencyKey'])
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_inventory_levels_productId')
+    .on('inventory_levels')
+    .column('productId')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_inventory_levels_locationId')
+    .on('inventory_levels')
+    .column('locationId')
     .ifNotExists()
     .execute();
 }

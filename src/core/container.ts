@@ -19,6 +19,7 @@ import { SQLiteInventoryLocationRepository } from '@infrastructure/repositories/
 import { SQLiteInventoryLevelRepository } from '@infrastructure/repositories/sqlite/SQLiteInventoryLevelRepository';
 import { SQLiteSupplierRepository } from '@infrastructure/repositories/sqlite/SQLiteSupplierRepository';
 import { SQLiteCollectionRepository } from '@infrastructure/repositories/sqlite/SQLiteCollectionRepository';
+import { SQLiteTaxonomyRepository } from '@infrastructure/repositories/sqlite/SQLiteTaxonomyRepository';
 import { ProductService } from './ProductService';
 import { CartService } from './CartService';
 import { OrderService } from './OrderService';
@@ -29,6 +30,7 @@ import { TransferService } from './TransferService';
 import { PurchaseOrderService } from './PurchaseOrderService';
 import { SupplierService } from './SupplierService';
 import { CollectionService } from './CollectionService';
+import { TaxonomyService } from './TaxonomyService';
 import { AuditService } from './AuditService';
 import type {
   IProductRepository,
@@ -42,6 +44,7 @@ import type {
   ICollectionRepository,
   IInventoryLocationRepository,
   IInventoryLevelRepository,
+  ITaxonomyRepository,
   IAuthProvider,
   IPaymentProcessor,
   ILockProvider,
@@ -70,6 +73,8 @@ let inventoryLevelRepoInstance: IInventoryLevelRepository | null = null;
 let purchaseOrderServiceInstance: PurchaseOrderService | null = null;
 let supplierServiceInstance: SupplierService | null = null;
 let collectionServiceInstance: CollectionService | null = null;
+let taxonomyRepoInstance: ITaxonomyRepository | null = null;
+let taxonomyServiceInstance: TaxonomyService | null = null;
 
 function createCheckoutGateway(): ICheckoutGateway | undefined {
   return process.env.CHECKOUT_ENDPOINT ? new TrustedCheckoutGateway() : undefined;
@@ -88,6 +93,7 @@ function createRepositories() {
     inventoryLevelRepo: new SQLiteInventoryLevelRepository(),
     supplierRepo: new SQLiteSupplierRepository(),
     collectionRepo: new SQLiteCollectionRepository(),
+    taxonomyRepo: new SQLiteTaxonomyRepository(),
   };
 }
 
@@ -130,6 +136,7 @@ export function getServiceContainer() {
     purchaseOrderService: new PurchaseOrderService(purchaseOrderRepo, productRepo, inventoryLevelRepo, new AuditService()),
     supplierService: new SupplierService(new SQLiteSupplierRepository(), new AuditService()),
     collectionService: new CollectionService(new SQLiteCollectionRepository(), new AuditService()),
+    taxonomyService: new TaxonomyService(new SQLiteTaxonomyRepository(), new AuditService()),
     auditService: new AuditService(),
   };
 }
@@ -215,6 +222,10 @@ export function getInitialServices() {
     collectionService: (() => {
       if (!collectionServiceInstance) collectionServiceInstance = new CollectionService(new SQLiteCollectionRepository(), getAuditService());
       return collectionServiceInstance;
+    })(),
+    taxonomyService: (() => {
+      if (!taxonomyServiceInstance) taxonomyServiceInstance = new TaxonomyService(new SQLiteTaxonomyRepository(), getAuditService());
+      return taxonomyServiceInstance;
     })(),
     inventoryLocationRepo: inventoryLocationRepoInstance!,
     inventoryLevelRepo: inventoryLevelRepoInstance!,

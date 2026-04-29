@@ -231,6 +231,22 @@ export interface CollectionTable {
   updatedAt: string;
 }
 
+export interface ProductCategoryTable {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductTypeTable {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Database {
   products: ProductTable;
   users: UserTable;
@@ -249,5 +265,7 @@ export interface Database {
   inventory_levels: InventoryLevelTable;
   suppliers: SupplierTable;
   collections: CollectionTable;
+  product_categories: ProductCategoryTable;
+  product_types: ProductTypeTable;
 }
 

@@ -498,7 +498,7 @@ export function AdminConfirmDialog({
    TOAST SYSTEM — Global notification context
    ═══════════════════════════════════════════════════════ */
 
-type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info';
 
 interface Toast {
   id: string;
@@ -506,11 +506,11 @@ interface Toast {
   message: string;
 }
 
-interface ToastContextValue {
+export interface ToastContextValue {
   toast: (type: ToastType, message: string) => void;
 }
 
-const ToastContext = createContext<ToastContextValue>({ toast: () => {} });
+const ToastContext = createContext<ToastContextValue>({ toast: (_type, _message) => {} });
 
 export function useToast() {
   return useContext(ToastContext);

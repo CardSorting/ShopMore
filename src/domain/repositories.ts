@@ -178,3 +178,18 @@ export interface ICollectionRepository {
   updateProductCount(id: string, delta: number): Promise<void>;
 }
 
+export interface ITaxonomyRepository {
+  // Categories
+  getAllCategories(): Promise<import('./models').ProductCategory[]>;
+  getCategoryById(id: string): Promise<import('./models').ProductCategory | null>;
+  getCategoryBySlug(slug: string): Promise<import('./models').ProductCategory | null>;
+  saveCategory(category: import('./models').ProductCategory): Promise<import('./models').ProductCategory>;
+  deleteCategory(id: string): Promise<void>;
+
+  // Types
+  getAllTypes(): Promise<import('./models').ProductType[]>;
+  getTypeById(id: string): Promise<import('./models').ProductType | null>;
+  saveType(type: import('./models').ProductType): Promise<import('./models').ProductType>;
+  deleteType(id: string): Promise<void>;
+}
+

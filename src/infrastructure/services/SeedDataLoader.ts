@@ -129,6 +129,22 @@ const INITIAL_CUSTOMERS = [
   { email: 'gary.oak@oak.lab', password: 'Smell-ya-later123', displayName: 'Gary Oak' },
 ];
 
+const INITIAL_TAXONOMY = {
+  categories: [
+    { name: 'Apparel', slug: 'apparel', description: 'Clothing and wearable items' },
+    { name: 'Electronics', slug: 'electronics', description: 'Tech and gadgets' },
+    { name: 'Digital Goods', slug: 'digital-goods', description: 'Downloadable content and keys' },
+    { name: 'Collectibles', slug: 'collectibles', description: 'Trading cards, figurines, and rare items' },
+    { name: 'Accessories', slug: 'accessories', description: 'Cases, sleeves, and maintenance' },
+  ],
+  types: [
+    { name: 'Standard' },
+    { name: 'Limited Edition' },
+    { name: 'Refurbished' },
+    { name: 'Digital Key' },
+  ]
+};
+
 function assertSeedingAllowed(): void {
   const allowInProduction = process.env.ALLOW_PRODUCTION_SEEDING === 'true';
   if (process.env.NODE_ENV === 'production' && !allowInProduction) {
@@ -154,6 +170,41 @@ export async function seedProducts(): Promise<number> {
   }
 
   logger.info(`Seeded ${created} products.`);
+  return created;
+}
+
+export async function seedTaxonomy(): Promise<number> {
+  assertSeedingAllowed();
+  const services = getInitialServices();
+  let created = 0;
+
+  const actor = { id: 'system', email: 'system@shopmore.io' };
+
+  for (const cat of INITIAL_TAXONOMY.categories) {
+    try {
+      const existing = await services.taxonomyService.getAllCategories();
+      if (!existing.some(c => c.slug === cat.slug)) {
+        await services.taxonomyService.saveCategory(cat, actor);
+        created++;
+      }
+    } catch (err) {
+      logger.error(`Failed to seed category ${cat.name}.`, err);
+    }
+  }
+
+  for (const type of INITIAL_TAXONOMY.types) {
+    try {
+      const existing = await services.taxonomyService.getAllTypes();
+      if (!existing.some(t => t.name === type.name)) {
+        await services.taxonomyService.saveType(type, actor);
+        created++;
+      }
+    } catch (err) {
+      logger.error(`Failed to seed product type ${type.name}.`, err);
+    }
+  }
+
+  logger.info(`Seeded ${created} taxonomy items.`);
   return created;
 }
 

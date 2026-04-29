@@ -8,7 +8,7 @@ export interface Product {
   price: number; // cents
   compareAtPrice?: number; // cents
   cost?: number; // cents paid to manufacturer/wholesaler
-  category: ProductCategory;
+  category: string;
   productType?: string;
   vendor?: string;
   tags?: string[];
@@ -42,7 +42,7 @@ export type ProductDraft = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
 
 export type ProductUpdate = Partial<ProductDraft>;
 
-export type ProductCategory = string;
+
 
 export interface Supplier {
   id: string;
@@ -122,7 +122,21 @@ export interface ProductManagementOverview {
   productsNeedingAttention: ProductManagementProduct[];
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
+export interface ProductType {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface User {
   id: string;

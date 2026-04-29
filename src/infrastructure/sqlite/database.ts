@@ -378,6 +378,26 @@ export async function initDatabase() {
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
 
+  await db.schema
+    .createTable('product_categories')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('name', 'text', (col) => col.notNull())
+    .addColumn('slug', 'text', (col) => col.notNull().unique())
+    .addColumn('description', 'text')
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('product_types')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('name', 'text', (col) => col.notNull().unique())
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
   // BroccoliQ Level 11: High-Velocity Performance Indices
   await db.schema
     .createIndex('idx_products_category')
@@ -515,6 +535,22 @@ export async function initDatabase() {
     .createIndex('idx_collections_status')
     .on('collections')
     .column('status')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_product_categories_slug')
+    .on('product_categories')
+    .column('slug')
+    .unique()
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_product_types_name')
+    .on('product_types')
+    .column('name')
+    .unique()
     .ifNotExists()
     .execute();
 }

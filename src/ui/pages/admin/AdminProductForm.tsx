@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
-import type { Product, ProductCategory, ProductSalesChannel } from '@domain/models';
+import type { Product, ProductCategory as ProductCategoryModel, ProductSalesChannel, ProductType } from '@domain/models';
 import {
   ArrowLeft,
   BarChart3,
@@ -27,15 +27,7 @@ import { SkeletonPage, useToast } from '../../components/admin/AdminComponents';
 import { CategorySelect, TagInput } from '../../components/admin/AdminInputs';
 
 
-const CATEGORIES: ProductCategory[] = [
-  'apparel',
-  'electronics',
-  'digital_goods',
-  'collectibles',
-  'home_goods',
-  'accessories',
-  'other',
-];
+
 const CLASSIFICATIONS = ['New', 'Refurbished', 'Vintage', 'Limited Edition', 'Standard'];
 const SALES_CHANNELS: Array<{ value: ProductSalesChannel; label: string }> = [
   { value: 'online_store', label: 'Online store' },
@@ -97,7 +89,7 @@ export function AdminProductForm() {
     weightGrams: '',
     status: 'active' as 'active' | 'draft' | 'archived',
     salesChannels: ['online_store'] as ProductSalesChannel[],
-    category: 'general' as ProductCategory,
+    category: 'general',
     productType: '',
     vendor: '',
     collections: '',
@@ -112,6 +104,12 @@ export function AdminProductForm() {
     rarity: '',
     adminNotes: '',
   });
+  const [categories, setCategories] = useState<ProductCategoryModel[]>([]);
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newTypeName, setNewTypeName] = useState('');
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showAddType, setShowAddType] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(!!id);
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +120,23 @@ export function AdminProductForm() {
     document.title = title;
     return () => { document.title = 'ShopMore'; };
   }, [isEdit, form.name]);
+
+  const loadTaxonomy = useCallback(async () => {
+    try {
+      const [cats, types] = await Promise.all([
+        services.taxonomyService.getCategories(),
+        services.taxonomyService.getTypes(),
+      ]);
+      setCategories(cats);
+      setProductTypes(types);
+    } catch (err) {
+      console.error('Failed to load taxonomy:', err);
+    }
+  }, [services.taxonomyService]);
+
+  useEffect(() => {
+    void loadTaxonomy();
+  }, [loadTaxonomy]);
 
   const loadProduct = useCallback(async () => {
     if (!id) return;
@@ -146,7 +161,7 @@ export function AdminProductForm() {
         weightGrams: product.weightGrams !== undefined ? String(product.weightGrams) : '',
         status: product.status,
         salesChannels: product.salesChannels ?? ['online_store'],
-        category: product.category,
+        category: product.category as any,
         productType: product.productType ?? '',
         vendor: product.vendor ?? '',
         collections: listToCsv(product.collections),
@@ -277,6 +292,38 @@ export function AdminProductForm() {
       setError(err instanceof Error ? err.message : 'Failed to save product');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleAddCategory() {
+    if (!newCategoryName.trim()) return;
+    try {
+      const user = await services.authService.getCurrentUser();
+      const actor = { id: user?.id || 'unknown', email: user?.email || 'system' };
+      const newCat = await services.taxonomyService.saveCategory({ name: newCategoryName }, actor);
+      setCategories(prev => [...prev, newCat]);
+      setForm(f => ({ ...f, category: newCat.slug as any }));
+      setNewCategoryName('');
+      setShowAddCategory(false);
+      toast('success', 'Category added');
+    } catch (err) {
+      toast('error', 'Failed to add category');
+    }
+  }
+
+  async function handleAddType() {
+    if (!newTypeName.trim()) return;
+    try {
+      const user = await services.authService.getCurrentUser();
+      const actor = { id: user?.id || 'unknown', email: user?.email || 'system' };
+      const newType = await services.taxonomyService.saveType({ name: newTypeName }, actor);
+      setProductTypes(prev => [...prev, newType]);
+      setForm(f => ({ ...f, productType: newType.name }));
+      setNewTypeName('');
+      setShowAddType(false);
+      toast('success', 'Product type added');
+    } catch (err) {
+      toast('error', 'Failed to add product type');
     }
   }
 
@@ -411,13 +458,65 @@ export function AdminProductForm() {
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400"><Settings className="h-4 w-4" /> Product organization</h2>
             <div className="space-y-4">
-              <CategorySelect 
-                label="Category" 
-                value={form.category} 
-                onChange={(val) => { setForm(f => ({ ...f, category: val })); setUnsaved(true); }}
-                categories={CATEGORIES}
-              />
-              <TextInput label="Product type" name="productType" value={form.productType} onChange={handleChange} placeholder="Sealed booster box" />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Category</label>
+                  <button type="button" onClick={() => setShowAddCategory(!showAddCategory)} className="text-[10px] font-bold text-primary-600 hover:underline">
+                    {showAddCategory ? 'Cancel' : '+ Add new'}
+                  </button>
+                </div>
+                {showAddCategory ? (
+                  <div className="flex gap-2">
+                    <input 
+                      value={newCategoryName} 
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="New category name"
+                      className="flex-1 rounded-lg border bg-white px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                    <button type="button" onClick={handleAddCategory} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white">Add</button>
+                  </div>
+                ) : (
+                  <select 
+                    name="category" 
+                    value={form.category} 
+                    onChange={handleChange}
+                    className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="general">General</option>
+                    {categories.map(cat => <option key={cat.id} value={cat.slug}>{cat.name}</option>)}
+                  </select>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Product type</label>
+                  <button type="button" onClick={() => setShowAddType(!showAddType)} className="text-[10px] font-bold text-primary-600 hover:underline">
+                    {showAddType ? 'Cancel' : '+ Add new'}
+                  </button>
+                </div>
+                {showAddType ? (
+                  <div className="flex gap-2">
+                    <input 
+                      value={newTypeName} 
+                      onChange={(e) => setNewTypeName(e.target.value)}
+                      placeholder="New type name"
+                      className="flex-1 rounded-lg border bg-white px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                    <button type="button" onClick={handleAddType} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white">Add</button>
+                  </div>
+                ) : (
+                  <select 
+                    name="productType" 
+                    value={form.productType} 
+                    onChange={handleChange}
+                    className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">None</option>
+                    {productTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  </select>
+                )}
+              </div>
               <TextInput label="Vendor / brand" name="vendor" value={form.vendor} onChange={handleChange} placeholder="Pokémon" />
               <TagInput 
                 label="Collections" 

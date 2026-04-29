@@ -3,7 +3,7 @@
  */
 'use client';
 
-import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductManagementOverview, ProductSavedView, ProductSavedViewResult, ProductUpdate, User, OrderNote, PurchaseOrder, InventoryLocation, Supplier, Collection } from '@domain/models';
+import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductManagementOverview, ProductSavedView, ProductSavedViewResult, ProductUpdate, User, OrderNote, PurchaseOrder, InventoryLocation, Supplier, Collection, ProductCategory, ProductType } from '@domain/models';
 
 const sessionScoped = (userId: string) => void userId;
 const DATE_FIELD_KEYS = new Set(['createdAt', 'updatedAt', 'joined', 'lastOrder', 'startsAt', 'endsAt', 'expectedAt', 'estimatedDeliveryDate', 'at']);
@@ -208,6 +208,14 @@ export function createApiClientServices() {
             getLocations: () => request<InventoryLocation[]>('/api/admin/locations'),
             createLocation: (data: any) => request<InventoryLocation>('/api/admin/locations', { method: 'POST', body: JSON.stringify(data) }),
             updateLocation: (id: string, updates: any) => request<InventoryLocation>(`/api/admin/locations/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
+        },
+        taxonomyService: {
+            getCategories: () => request<ProductCategory[]>('/api/admin/taxonomy/categories'),
+            saveCategory: (category: Partial<ProductCategory>, _actor: { id: string; email: string }) => request<ProductCategory>('/api/admin/taxonomy/categories', { method: 'POST', body: JSON.stringify(category) }),
+            deleteCategory: (id: string, _actor: { id: string; email: string }) => request<void>(`/api/admin/taxonomy/categories/${id}`, { method: 'DELETE' }),
+            getTypes: () => request<ProductType[]>('/api/admin/taxonomy/types'),
+            saveType: (type: Partial<ProductType>, _actor: { id: string; email: string }) => request<ProductType>('/api/admin/taxonomy/types', { method: 'POST', body: JSON.stringify(type) }),
+            deleteType: (id: string, _actor: { id: string; email: string }) => request<void>(`/api/admin/taxonomy/types/${id}`, { method: 'DELETE' }),
         },
     };
 }

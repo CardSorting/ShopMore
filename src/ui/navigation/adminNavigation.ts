@@ -13,6 +13,7 @@ import {
   ClipboardList,
   ExternalLink,
   LayoutDashboard,
+  ListTree,
   MapPin,
   Megaphone,
 
@@ -121,6 +122,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Track quantity across all locations',
         icon: Boxes,
         aliases: ['stock', 'quantity', 'warehouse', 'restock', 'availability'],
+      },
+      {
+        id: 'taxonomy',
+        href: '/admin/taxonomy',
+        label: 'Organization',
+        description: 'Manage categories and product types',
+        icon: ListTree,
+        aliases: ['taxonomy', 'categories', 'types', 'structure', 'classification'],
       },
     ],
   },

@@ -18,7 +18,9 @@ export type AuditAction =
   | 'checkout_reconciliation_required'
   | 'purchase_order.created' | 'purchase_order.submitted' | 'purchase_order.cancelled' | 'purchase_order.closed' | 'purchase_order.items_received'
   | 'supplier.created' | 'supplier.updated' | 'supplier.deleted'
-  | 'collection.created' | 'collection.updated' | 'collection.deleted';
+  | 'collection.created' | 'collection.updated' | 'collection.deleted'
+  | 'category_created' | 'category_updated' | 'category_deleted'
+  | 'product_type_created' | 'product_type_updated' | 'product_type_deleted';
 
 export interface AuditEntry {
   id: string;

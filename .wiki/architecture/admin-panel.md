@@ -21,7 +21,9 @@ Full lifecycle control over customer purchases.
 Advanced tools for catalog maintenance.
 - **Inventory Health**: Automated classification of products (Healthy, Low Stock, Out of Stock).
 - **Bulk Product Editor**: Spreadsheet-style interface for rapid price and stock adjustments across multiple items.
-- **Product Forms**: Sectioned layouts with merchant-guided copy and customer preview cards.
+- **Product Forms**: Sectioned layouts with merchant-guided copy, customer preview cards, and product intake metadata fields for SKU, barcode, unit cost, compare-at price, manufacturer, wholesaler/supplier, and manufacturer SKU.
+- **SKU & Supplier Search**: Product list/search flows now include SKU, supplier, manufacturer, manufacturer SKU, and barcode values for faster manufacturer/wholesaler intake handling.
+- **Expanded Categories**: Catalog category tabs and Domain validation now include booster, single, deck, accessory, box, elite trainer box, sealed case, graded card, supplies, and other.
 
 ### 4. Customer Management (CRM)
 Insights into customer behavior and lifetime value (LTV).

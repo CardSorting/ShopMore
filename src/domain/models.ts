@@ -6,8 +6,15 @@ export interface Product {
   name: string;
   description: string;
   price: number; // cents
+  compareAtPrice?: number; // cents
+  cost?: number; // cents paid to manufacturer/wholesaler
   category: ProductCategory;
   stock: number;
+  sku?: string;
+  manufacturer?: string;
+  supplier?: string;
+  manufacturerSku?: string;
+  barcode?: string;
   imageUrl: string;
   status: ProductStatus;
   set?: string;
@@ -25,7 +32,12 @@ export type ProductCategory =
   | 'single'
   | 'deck'
   | 'accessory'
-  | 'box';
+  | 'box'
+  | 'elite_trainer_box'
+  | 'sealed_case'
+  | 'graded_card'
+  | 'supplies'
+  | 'other';
 
 export type ProductStatus = 'active' | 'draft' | 'archived';
 

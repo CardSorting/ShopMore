@@ -1,5 +1,62 @@
 # Changelog
 
+## 2026-04-29 — Product intake metadata, SKU handling, and expanded category management
+
+### Problem verified
+
+- The admin product form displayed a SKU input, but the input was not bound to React form state, was not loaded during edits, and was not included in product create/update payloads.
+- The backend `Product` model and SQLite `products` table did not store SKU, manufacturer, supplier/wholesaler, manufacturer SKU, barcode, unit cost, or compare-at price metadata used when intaking products from manufacturers or wholesalers.
+- Product create/update API parsing accepted only the older product fields, so intake metadata could not safely cross the HTTP boundary into Core product orchestration.
+- Product search did not include SKU, manufacturer, supplier, manufacturer SKU, or barcode values.
+- Product category handling was limited to the original five categories and did not include common operational categories such as sealed cases, graded cards, supplies, or other uncategorized intake.
+
+### Remediation performed
+
+- Extended `src/domain/models.ts` product contracts with optional intake fields: `sku`, `manufacturer`, `supplier`, `manufacturerSku`, `barcode`, `cost`, and `compareAtPrice`.
+- Expanded the Domain `ProductCategory` union in `src/domain/models.ts` to include `elite_trainer_box`, `sealed_case`, `graded_card`, `supplies`, and `other` while preserving existing category ids.
+- Added pure Domain product validation in `src/domain/rules.ts` for optional SKU/vendor/barcode text lengths and optional non-negative cent-based `cost` / `compareAtPrice` values.
+- Updated `src/infrastructure/sqlite/schema.ts` and `src/infrastructure/sqlite/database.ts` so new SQLite product tables and existing product tables support nullable intake metadata columns.
+- Added product-management indexes in `src/infrastructure/sqlite/database.ts`: unique SKU index plus supplier and manufacturer indexes.
+- Updated `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts` to map, create, update, and search intake metadata fields, and to translate duplicate SKU constraint failures into `InvalidProductError('SKU must be unique')`.
+- Updated `src/infrastructure/server/apiGuards.ts` product parsers so create/update payloads accept intake metadata with optional string and optional integer-cent parsing.
+- Updated `src/app/api/products/route.ts` so `GET /api/products` forwards the `query` parameter into Core product retrieval.
+- Updated `src/core/ProductService.ts` product-created audit details to include `sku`, `manufacturer`, and `supplier` values when available.
+- Updated `src/ui/pages/admin/AdminProductForm.tsx` to bind, load, validate, and submit SKU, barcode, unit cost, compare-at price, manufacturer, wholesaler/supplier, and manufacturer SKU fields.
+- Updated `src/ui/pages/admin/AdminProducts.tsx` with expanded category tabs, backend query forwarding, intake metadata search, and SKU/supplier display in list/grid catalog cards.
+- Updated `src/utils/formatters.ts::humanizeCategory()` so underscore-delimited category ids render as readable labels such as `Elite Trainer Box`.
+- Added `.wiki/architecture/product-management.md` documenting the verified product-intake data flow.
+
+### Verification evidence
+
+- `CI=1 npm run lint && CI=1 npm run build` completed successfully after the final product-management changes.
+- The successful production build completed compilation, TypeScript validation, page-data collection, static generation, and retained product management routes including `/api/products`, `/api/products/[id]`, `/admin/products`, `/admin/products/new`, and `/admin/products/[id]/edit`.
+- The unrelated build-generated `next-env.d.ts` route-types import change was reverted; it is not part of this product-management implementation.
+
+### Files intentionally changed in this pass
+
+- `src/domain/models.ts`
+- `src/domain/rules.ts`
+- `src/core/ProductService.ts`
+- `src/infrastructure/sqlite/schema.ts`
+- `src/infrastructure/sqlite/database.ts`
+- `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts`
+- `src/infrastructure/server/apiGuards.ts`
+- `src/app/api/products/route.ts`
+- `src/ui/pages/admin/AdminProductForm.tsx`
+- `src/ui/pages/admin/AdminProducts.tsx`
+- `src/utils/formatters.ts`
+- `.wiki/architecture/product-management.md`
+- `.wiki/architecture/admin-panel.md`
+- `.wiki/index.md`
+- `.wiki/changelog.md`
+
+### Architectural notes
+
+- Domain changes remain pure model and validation updates with no framework, database, filesystem, HTTP, or UI imports.
+- Core continues to orchestrate validation, repository persistence, and audit logging without raw SQLite access.
+- Infrastructure owns SQLite schema/migration/index behavior, persisted-row mapping, duplicate SKU constraint translation, and HTTP transport parsing.
+- UI renders and submits admin product-management intent; backend validation remains authoritative.
+
 ## 2026-04-29 — Navigation clarity and Shopify/Stripe-style merchant taxonomy
 
 ### Problem verified

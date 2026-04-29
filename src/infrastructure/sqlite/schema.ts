@@ -9,8 +9,15 @@ export interface ProductTable {
   name: string;
   description: string;
   price: number;
+  compareAtPrice: number | null;
+  cost: number | null;
   category: string;
   stock: number;
+  sku: string | null;
+  manufacturer: string | null;
+  supplier: string | null;
+  manufacturerSku: string | null;
+  barcode: string | null;
   imageUrl: string;
   set: string | null;
   rarity: string | null;

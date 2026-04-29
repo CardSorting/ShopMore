@@ -5,7 +5,18 @@ import { getSessionUser } from './session';
 import { logger } from '@utils/logger';
 
 const ORDER_STATUSES = new Set<OrderStatus>(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']);
-const PRODUCT_CATEGORIES = new Set<ProductCategory>(['booster', 'single', 'deck', 'accessory', 'box']);
+const PRODUCT_CATEGORIES = new Set<ProductCategory>([
+    'booster',
+    'single',
+    'deck',
+    'accessory',
+    'box',
+    'elite_trainer_box',
+    'sealed_case',
+    'graded_card',
+    'supplies',
+    'other',
+]);
 const PRODUCT_STATUSES = new Set<ProductStatus>(['active', 'draft', 'archived']);
 const CARD_RARITIES = new Set<CardRarity>(['common', 'uncommon', 'rare', 'holo', 'secret']);
 const MAX_JSON_BODY_BYTES = 32 * 1024;
@@ -165,6 +176,11 @@ export function requireInteger(value: unknown, field: string): number {
     return value;
 }
 
+export function optionalInteger(value: unknown, field: string): number | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    return requireInteger(value, field);
+}
+
 function isJsonValue(value: unknown): value is JsonValue {
     if (value === null) return true;
     const valueType = typeof value;
@@ -229,8 +245,15 @@ export function parseProductDraft(body: Record<string, unknown>): ProductDraft {
         name: requireString(body.name, 'name'),
         description: requireString(body.description, 'description'),
         price: requireInteger(body.price, 'price'),
+        compareAtPrice: optionalInteger(body.compareAtPrice, 'compareAtPrice'),
+        cost: optionalInteger(body.cost, 'cost'),
         category: requireProductCategory(body.category),
         stock: requireInteger(body.stock, 'stock'),
+        sku: optionalString(body.sku, 'sku'),
+        manufacturer: optionalString(body.manufacturer, 'manufacturer'),
+        supplier: optionalString(body.supplier, 'supplier'),
+        manufacturerSku: optionalString(body.manufacturerSku, 'manufacturerSku'),
+        barcode: optionalString(body.barcode, 'barcode'),
         imageUrl: requireString(body.imageUrl, 'imageUrl'),
         status: requireProductStatus(body.status ?? 'active'),
         set: optionalString(body.set, 'set'),
@@ -243,8 +266,15 @@ export function parseProductUpdate(body: Record<string, unknown>): ProductUpdate
     if ('name' in body) update.name = requireString(body.name, 'name');
     if ('description' in body) update.description = requireString(body.description, 'description');
     if ('price' in body) update.price = requireInteger(body.price, 'price');
+    if ('compareAtPrice' in body) update.compareAtPrice = optionalInteger(body.compareAtPrice, 'compareAtPrice');
+    if ('cost' in body) update.cost = optionalInteger(body.cost, 'cost');
     if ('category' in body) update.category = requireProductCategory(body.category);
     if ('stock' in body) update.stock = requireInteger(body.stock, 'stock');
+    if ('sku' in body) update.sku = optionalString(body.sku, 'sku');
+    if ('manufacturer' in body) update.manufacturer = optionalString(body.manufacturer, 'manufacturer');
+    if ('supplier' in body) update.supplier = optionalString(body.supplier, 'supplier');
+    if ('manufacturerSku' in body) update.manufacturerSku = optionalString(body.manufacturerSku, 'manufacturerSku');
+    if ('barcode' in body) update.barcode = optionalString(body.barcode, 'barcode');
     if ('imageUrl' in body) update.imageUrl = requireString(body.imageUrl, 'imageUrl');
     if ('status' in body) update.status = requireProductStatus(body.status);
     if ('set' in body) update.set = optionalString(body.set, 'set');

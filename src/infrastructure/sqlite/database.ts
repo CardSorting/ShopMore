@@ -42,8 +42,15 @@ export async function initDatabase() {
     .addColumn('name', 'text', (col) => col.notNull())
     .addColumn('description', 'text', (col) => col.notNull())
     .addColumn('price', 'integer', (col) => col.notNull())
+    .addColumn('compareAtPrice', 'integer')
+    .addColumn('cost', 'integer')
     .addColumn('category', 'text', (col) => col.notNull())
     .addColumn('stock', 'integer', (col) => col.notNull())
+    .addColumn('sku', 'text')
+    .addColumn('manufacturer', 'text')
+    .addColumn('supplier', 'text')
+    .addColumn('manufacturerSku', 'text')
+    .addColumn('barcode', 'text')
     .addColumn('imageUrl', 'text', (col) => col.notNull())
     .addColumn('set', 'text')
     .addColumn('rarity', 'text')
@@ -58,6 +65,15 @@ export async function initDatabase() {
   } catch {
     // Column likely already exists
   }
+
+  // Product intake metadata migrations for existing catalogs.
+  try { await db.schema.alterTable('products').addColumn('compareAtPrice', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('cost', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('sku', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('manufacturer', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('supplier', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('manufacturerSku', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('barcode', 'text').execute(); } catch {}
 
   await db.schema
     .createTable('users')
@@ -217,6 +233,28 @@ export async function initDatabase() {
     .createIndex('idx_products_status')
     .on('products')
     .column('status')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_products_sku_unique')
+    .on('products')
+    .column('sku')
+    .unique()
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_products_supplier')
+    .on('products')
+    .column('supplier')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createIndex('idx_products_manufacturer')
+    .on('products')
+    .column('manufacturer')
     .ifNotExists()
     .execute();
 

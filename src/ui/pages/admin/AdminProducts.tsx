@@ -55,6 +55,11 @@ const CATEGORY_TABS = [
   { label: 'Decks', value: 'deck', icon: Boxes },
   { label: 'Accessories', value: 'accessory', icon: Boxes },
   { label: 'Boxes', value: 'box', icon: Package },
+  { label: 'ETBs', value: 'elite_trainer_box', icon: Package },
+  { label: 'Cases', value: 'sealed_case', icon: Boxes },
+  { label: 'Graded', value: 'graded_card', icon: Tag },
+  { label: 'Supplies', value: 'supplies', icon: Boxes },
+  { label: 'Other', value: 'other', icon: Package },
 ];
 
 type StockFilter = 'all' | 'low' | 'healthy';
@@ -100,6 +105,7 @@ export function AdminProducts() {
       const result = await services.productService.getProducts({
         limit: 100,
         category: category === 'all' ? undefined : category,
+        query: query.trim() || undefined,
       });
       setProducts(result.products);
       setSelectedIds(new Set());
@@ -108,7 +114,7 @@ export function AdminProducts() {
     } finally {
       setLoading(false);
     }
-  }, [category, services.productService]);
+  }, [category, query, services.productService]);
 
   useEffect(() => {
     void loadProducts();
@@ -173,7 +179,17 @@ export function AdminProducts() {
   const filteredProducts = useMemo(() => {
     const needle = normalizeSearch(query);
     let result = products.filter((product) => {
-      const matchesSearch = !needle || [product.name, product.description, product.set ?? '', product.rarity ?? '']
+      const matchesSearch = !needle || [
+        product.name,
+        product.description,
+        product.set ?? '',
+        product.rarity ?? '',
+        product.sku ?? '',
+        product.manufacturer ?? '',
+        product.supplier ?? '',
+        product.manufacturerSku ?? '',
+        product.barcode ?? '',
+      ]
         .some((value) => normalizeSearch(value).includes(needle));
       const matchesStock = stockFilter === 'all'
         || (stockFilter === 'low' && product.stock < 5)
@@ -195,7 +211,7 @@ export function AdminProducts() {
     });
 
     return result;
-  }, [products, query, stockFilter, sortBy, sortAsc]);
+  }, [products, query, stockFilter, statusFilter, sortBy, sortAsc]);
 
   const toggleSelect = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -309,7 +325,7 @@ export function AdminProducts() {
             <input 
               value={query} 
               onChange={(e) => setQuery(e.target.value)} 
-              placeholder="Search by name, set, or rarity…" 
+              placeholder="Search by name, SKU, supplier, set, or barcode…"
               className="w-full rounded-lg border bg-gray-50 py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition" 
             />
           </div>
@@ -391,7 +407,10 @@ export function AdminProducts() {
                             <Link href={`/admin/products/${p.id}/edit`} className="block font-bold text-gray-900 truncate hover:text-primary-600 transition-colors">
                               {p.name}
                             </Link>
-                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{p.set || 'No Set'}</p>
+                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                              {p.sku ? `SKU ${p.sku}` : p.set || 'No Set'}
+                              {p.supplier ? ` · ${p.supplier}` : ''}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -431,8 +450,11 @@ export function AdminProducts() {
                     <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.category}</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{humanizeCategory(p.category)}</p>
                     <h3 className="text-sm font-bold text-gray-900 truncate">{p.name}</h3>
+                    <p className="text-[10px] font-medium text-gray-500 truncate">
+                      {p.sku ? `SKU ${p.sku}` : p.supplier || p.manufacturer || 'No intake data'}
+                    </p>
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-sm font-bold text-primary-600">{formatCurrency(p.price)}</span>
                       <span className={`text-[10px] font-bold ${p.stock < 5 ? 'text-amber-600' : 'text-gray-400'}`}>{p.stock} units</span>

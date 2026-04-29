@@ -16,6 +16,7 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 - [Decisions](./architecture/decisions.md) — ADRs protecting architectural intent.
 - [Risk Map](./architecture/risk-map.md) — fragile surfaces, blast radius, and mandatory tests.
 - [Admin Panel](./architecture/admin-panel.md) — features, merchant operations, and technical implementation.
+- [Product Management & Intake Metadata](./architecture/product-management.md) — SKU, supplier/manufacturer metadata, product category handling, and SQLite/API/admin form behavior.
 - [Admin Access](./admin-access.md) — credentials and instructions for local access.
 
 ### Agent
@@ -26,6 +27,16 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 - [Changelog](./changelog.md) — granular forensic citations for verified structural changes.
 
 ## Current verified state
+
+- Product management now supports manufacturer/wholesaler intake metadata across Domain, Core, Infrastructure, API, and admin UI layers. `src/domain/models.ts` adds optional `sku`, `manufacturer`, `supplier`, `manufacturerSku`, `barcode`, `cost`, and `compareAtPrice` fields to `Product` / product draft/update flows.
+- Product category handling remains a controlled Domain union and now includes the original `booster`, `single`, `deck`, `accessory`, and `box` categories plus `elite_trainer_box`, `sealed_case`, `graded_card`, `supplies`, and `other`.
+- Product validation in `src/domain/rules.ts` now validates optional SKU/vendor/barcode lengths and optional cent-based cost/compare-at price fields while remaining pure Domain logic.
+- SQLite product persistence now includes nullable intake columns and additive migrations in `src/infrastructure/sqlite/schema.ts` and `src/infrastructure/sqlite/database.ts`, including SKU uniqueness and supplier/manufacturer indexes.
+- `src/infrastructure/repositories/sqlite/SQLiteProductRepository.ts` now maps, creates, updates, searches, and duplicate-SKU guards the product intake fields.
+- Product API parsing in `src/infrastructure/server/apiGuards.ts` now accepts product intake metadata in create/update payloads, and `src/app/api/products/route.ts` forwards product-list query strings into Core product search.
+- `src/core/ProductService.ts` still performs Domain product validation before writes and now includes SKU/manufacturer/supplier in product-created audit details.
+- Admin product management now binds intake fields in `src/ui/pages/admin/AdminProductForm.tsx` and displays/searches SKU/supplier/manufacturer intake metadata in `src/ui/pages/admin/AdminProducts.tsx`.
+- Product intake implementation verification: `CI=1 npm run lint && CI=1 npm run build` completed successfully after the final changes.
 
 - Navigation clarity pass verified: `src/ui/navigation/adminNavigation.ts` now centralizes admin merchant-console taxonomy, `AdminLayout` and `CommandPalette` consume that shared metadata, `/admin/analytics` and `/admin/discounts` have App Router page wrappers, and storefront navigation exposes familiar Shop all / Singles / Sealed / Accessories / Orders links backed by Domain-aligned product category query params.
 
@@ -162,6 +173,7 @@ graph TD
 ## Modified documentation files in this synchronization
 
 - [Admin Panel](./architecture/admin-panel.md)
+- [Product Management & Intake Metadata](./architecture/product-management.md)
 - [Admin Access](./admin-access.md)
 - `.wiki/index.md`
 - `.wiki/changelog.md`

@@ -63,7 +63,10 @@ export function orderStatusSubtitle(status: string): string {
 }
 
 export function humanizeCategory(category: string): string {
-  return category.charAt(0).toUpperCase() + category.slice(1);
+  return category
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 export function normalizeSearch(value: string): string {

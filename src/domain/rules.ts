@@ -23,11 +23,25 @@ export const MAX_PRODUCT_NAME_LENGTH = 120;
 export const MAX_PRODUCT_DESCRIPTION_LENGTH = 2_000;
 export const MAX_PRODUCT_IMAGE_URL_LENGTH = 2_000;
 export const MAX_PRODUCT_SET_LENGTH = 120;
+export const MAX_PRODUCT_SKU_LENGTH = 80;
+export const MAX_PRODUCT_BARCODE_LENGTH = 64;
+export const MAX_PRODUCT_PARTNER_FIELD_LENGTH = 120;
 export const MAX_PRICE_CENTS = 1_000_000;
 export const MAX_STOCK_QUANTITY = 100_000;
 export const MAX_ADDRESS_FIELD_LENGTH = 120;
 
-const PRODUCT_CATEGORIES: ProductCategory[] = ['booster', 'single', 'deck', 'accessory', 'box'];
+const PRODUCT_CATEGORIES: ProductCategory[] = [
+  'booster',
+  'single',
+  'deck',
+  'accessory',
+  'box',
+  'elite_trainer_box',
+  'sealed_case',
+  'graded_card',
+  'supplies',
+  'other',
+];
 const CARD_RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
 const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   pending: ['confirmed', 'cancelled'],
@@ -76,14 +90,47 @@ function assertValidRarity(rarity: CardRarity | undefined): void {
   }
 }
 
+function assertOptionalStringLength(value: string | undefined, field: string, maxLength: number): void {
+  if (value === undefined) return;
+  if (value.trim().length === 0) {
+    throw new InvalidProductError(`${field} cannot be blank`);
+  }
+  if (value.trim().length > maxLength) {
+    throw new InvalidProductError(`${field} must be ${maxLength} characters or fewer`);
+  }
+}
+
+function assertOptionalMoneyCents(value: number | undefined, field: string): void {
+  if (value === undefined) return;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new InvalidProductError(`${field} must be a non-negative whole number of cents`);
+  }
+  if (value > MAX_PRICE_CENTS) {
+    throw new InvalidProductError(`${field} exceeds allowed maximum`);
+  }
+}
+
+function assertValidProductIntakeFields(product: ProductDraft | ProductUpdate): void {
+  assertOptionalStringLength(product.sku, 'SKU', MAX_PRODUCT_SKU_LENGTH);
+  assertOptionalStringLength(product.manufacturer, 'Manufacturer', MAX_PRODUCT_PARTNER_FIELD_LENGTH);
+  assertOptionalStringLength(product.supplier, 'Supplier', MAX_PRODUCT_PARTNER_FIELD_LENGTH);
+  assertOptionalStringLength(product.manufacturerSku, 'Manufacturer SKU', MAX_PRODUCT_SKU_LENGTH);
+  assertOptionalStringLength(product.barcode, 'Barcode', MAX_PRODUCT_BARCODE_LENGTH);
+  assertOptionalMoneyCents(product.cost, 'Cost');
+  assertOptionalMoneyCents(product.compareAtPrice, 'Compare at price');
+}
+
 export function assertValidProductDraft(product: ProductDraft): void {
   assertNonEmptyString(product.name, 'Name', MAX_PRODUCT_NAME_LENGTH);
   assertNonEmptyString(product.description, 'Description', MAX_PRODUCT_DESCRIPTION_LENGTH);
   assertNonEmptyString(product.imageUrl, 'Image URL', MAX_PRODUCT_IMAGE_URL_LENGTH);
   assertValidPrice(product.price);
+  assertOptionalMoneyCents(product.compareAtPrice, 'Compare at price');
+  assertOptionalMoneyCents(product.cost, 'Cost');
   assertValidStock(product.stock);
   assertValidCategory(product.category);
   assertValidRarity(product.rarity);
+  assertValidProductIntakeFields(product);
 
   if (product.set && product.set.trim().length > MAX_PRODUCT_SET_LENGTH) {
     throw new InvalidProductError(`Set must be ${MAX_PRODUCT_SET_LENGTH} characters or fewer`);
@@ -98,9 +145,12 @@ export function assertValidProductUpdate(updates: ProductUpdate): void {
   if ('description' in updates) assertNonEmptyString(updates.description, 'Description', MAX_PRODUCT_DESCRIPTION_LENGTH);
   if ('imageUrl' in updates) assertNonEmptyString(updates.imageUrl, 'Image URL', MAX_PRODUCT_IMAGE_URL_LENGTH);
   if (updates.price !== undefined) assertValidPrice(updates.price);
+  if (updates.compareAtPrice !== undefined) assertOptionalMoneyCents(updates.compareAtPrice, 'Compare at price');
+  if (updates.cost !== undefined) assertOptionalMoneyCents(updates.cost, 'Cost');
   if (updates.stock !== undefined) assertValidStock(updates.stock);
   if (updates.category !== undefined) assertValidCategory(updates.category);
   if ('rarity' in updates) assertValidRarity(updates.rarity);
+  assertValidProductIntakeFields(updates);
   if (updates.set && updates.set.trim().length > MAX_PRODUCT_SET_LENGTH) {
     throw new InvalidProductError(`Set must be ${MAX_PRODUCT_SET_LENGTH} characters or fewer`);
   }

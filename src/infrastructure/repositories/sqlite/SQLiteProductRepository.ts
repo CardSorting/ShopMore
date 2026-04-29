@@ -7,16 +7,36 @@ import { getSQLiteDB } from '../../sqlite/database';
 import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
 import type { Product, ProductCategory, ProductStatus, CardRarity, ProductDraft, ProductUpdate } from '@domain/models';
-import { DomainError, InsufficientStockError, ProductNotFoundError } from '@domain/errors';
+import { DomainError, InsufficientStockError, InvalidProductError, ProductNotFoundError } from '@domain/errors';
 import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
 import { sql } from 'kysely';
 
 function parseProductCategory(value: string): ProductCategory {
-  if (value === 'booster' || value === 'single' || value === 'deck' || value === 'accessory' || value === 'box') {
+  if (
+    value === 'booster'
+    || value === 'single'
+    || value === 'deck'
+    || value === 'accessory'
+    || value === 'box'
+    || value === 'elite_trainer_box'
+    || value === 'sealed_case'
+    || value === 'graded_card'
+    || value === 'supplies'
+    || value === 'other'
+  ) {
     return value;
   }
   throw new DomainError('Stored product category is invalid.');
+}
+
+function nullableText(value: string | undefined): string | null {
+  return value?.trim() || null;
+}
+
+function isUniqueSkuConstraintError(error: unknown): boolean {
+  return error instanceof Error
+    && (error.message.includes('idx_products_sku_unique') || error.message.includes('products.sku'));
 }
 
 function parseCardRarity(value: string | null): CardRarity | undefined {
@@ -54,8 +74,15 @@ export class SQLiteProductRepository implements IProductRepository {
       name: row.name,
       description: row.description,
       price: row.price,
+      compareAtPrice: row.compareAtPrice ?? undefined,
+      cost: row.cost ?? undefined,
       category: parseProductCategory(row.category),
       stock: row.stock,
+      sku: row.sku || undefined,
+      manufacturer: row.manufacturer || undefined,
+      supplier: row.supplier || undefined,
+      manufacturerSku: row.manufacturerSku || undefined,
+      barcode: row.barcode || undefined,
       imageUrl: row.imageUrl,
       status: parseProductStatus(row.status),
       set: row.set || undefined,
@@ -123,6 +150,11 @@ export class SQLiteProductRepository implements IProductRepository {
         query = query.where((eb) => eb.or([
           eb('name', 'like', q),
           eb('description', 'like', q),
+          eb('sku', 'like', q),
+          eb('manufacturer', 'like', q),
+          eb('supplier', 'like', q),
+          eb('manufacturerSku', 'like', q),
+          eb('barcode', 'like', q),
         ]));
       }
 
@@ -173,7 +205,12 @@ export class SQLiteProductRepository implements IProductRepository {
       const q = options.query.toLowerCase();
       allProducts = allProducts.filter(p => 
         p.name.toLowerCase().includes(q) || 
-        p.description.toLowerCase().includes(q)
+        p.description.toLowerCase().includes(q) ||
+        (p.sku?.toLowerCase().includes(q) ?? false) ||
+        (p.manufacturer?.toLowerCase().includes(q) ?? false) ||
+        (p.supplier?.toLowerCase().includes(q) ?? false) ||
+        (p.manufacturerSku?.toLowerCase().includes(q) ?? false) ||
+        (p.barcode?.toLowerCase().includes(q) ?? false)
       );
     }
 
@@ -212,23 +249,37 @@ export class SQLiteProductRepository implements IProductRepository {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    await this.db
-      .insertInto('products')
-      .values({
-        id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        category: product.category,
-        stock: product.stock,
-        imageUrl: product.imageUrl,
-        status: product.status || 'active',
-        set: product.set || null,
-        rarity: product.rarity || null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .execute();
+    try {
+      await this.db
+        .insertInto('products')
+        .values({
+          id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          compareAtPrice: product.compareAtPrice ?? null,
+          cost: product.cost ?? null,
+          category: product.category,
+          stock: product.stock,
+          sku: nullableText(product.sku),
+          manufacturer: nullableText(product.manufacturer),
+          supplier: nullableText(product.supplier),
+          manufacturerSku: nullableText(product.manufacturerSku),
+          barcode: nullableText(product.barcode),
+          imageUrl: product.imageUrl,
+          status: product.status || 'active',
+          set: product.set || null,
+          rarity: product.rarity || null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .execute();
+    } catch (error) {
+      if (isUniqueSkuConstraintError(error)) {
+        throw new InvalidProductError('SKU must be unique');
+      }
+      throw error;
+    }
 
     this.invalidateIndex(); // Level 7: Flush the buffer so it reconstructs
 
@@ -242,21 +293,30 @@ export class SQLiteProductRepository implements IProductRepository {
     
     // Whitelist updates to prevent SQL injection or accidental schema corruption
     const validFields: (keyof ProductUpdate)[] = [
-      'name', 'description', 'price', 'category', 'stock', 'imageUrl', 'set', 'rarity', 'status'
+      'name', 'description', 'price', 'compareAtPrice', 'cost', 'category', 'stock', 'sku', 'manufacturer', 'supplier', 'manufacturerSku', 'barcode', 'imageUrl', 'set', 'rarity', 'status'
     ];
 
     const finalUpdates: Partial<ProductTable> = { updatedAt: now };
     for (const field of validFields) {
       if (updates[field] !== undefined) {
-        Object.assign(finalUpdates, { [field]: updates[field] ?? null });
+        const value = updates[field];
+        const finalValue = typeof value === 'string' ? nullableText(value) : value;
+        Object.assign(finalUpdates, { [field]: finalValue ?? null });
       }
     }
 
-    await this.db
-      .updateTable('products')
-      .set(finalUpdates)
-      .where('id', '=', id)
-      .execute();
+    try {
+      await this.db
+        .updateTable('products')
+        .set(finalUpdates)
+        .where('id', '=', id)
+        .execute();
+    } catch (error) {
+      if (isUniqueSkuConstraintError(error)) {
+        throw new InvalidProductError('SKU must be unique');
+      }
+      throw error;
+    }
 
     this.invalidateIndex(); // Level 7: Buffer flush
 

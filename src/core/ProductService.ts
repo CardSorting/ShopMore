@@ -59,7 +59,12 @@ export class ProductService {
       userEmail: actor.email,
       action: 'product_created',
       targetId: product.id,
-      details: { name: product.name }
+      details: {
+        name: product.name,
+        sku: product.sku ?? null,
+        manufacturer: product.manufacturer ?? null,
+        supplier: product.supplier ?? null,
+      }
     });
     return product;
   }

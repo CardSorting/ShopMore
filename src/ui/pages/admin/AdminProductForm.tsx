@@ -28,7 +28,18 @@ import { validatePriceCents, validateStock } from '@utils/validators';
 import { formatCurrency, humanizeCategory } from '@utils/formatters';
 import { SkeletonPage, useToast } from '../../components/admin/AdminComponents';
 
-const CATEGORIES: ProductCategory[] = ['booster', 'single', 'deck', 'accessory', 'box'];
+const CATEGORIES: ProductCategory[] = [
+  'booster',
+  'single',
+  'deck',
+  'accessory',
+  'box',
+  'elite_trainer_box',
+  'sealed_case',
+  'graded_card',
+  'supplies',
+  'other',
+];
 const RARITIES: CardRarity[] = ['common', 'uncommon', 'rare', 'holo', 'secret'];
 
 export function AdminProductForm() {
@@ -42,8 +53,15 @@ export function AdminProductForm() {
     name: '',
     description: '',
     price: '',
+    compareAtPrice: '',
+    cost: '',
     category: 'booster' as ProductCategory,
     stock: '',
+    sku: '',
+    manufacturer: '',
+    supplier: '',
+    manufacturerSku: '',
+    barcode: '',
     imageUrl: '',
     set: '',
     rarity: '' as CardRarity | '',
@@ -73,8 +91,15 @@ export function AdminProductForm() {
         name: p.name,
         description: p.description,
         price: (p.price / 100).toFixed(2),
+        compareAtPrice: p.compareAtPrice !== undefined ? (p.compareAtPrice / 100).toFixed(2) : '',
+        cost: p.cost !== undefined ? (p.cost / 100).toFixed(2) : '',
         category: p.category,
         stock: String(p.stock),
+        sku: p.sku ?? '',
+        manufacturer: p.manufacturer ?? '',
+        supplier: p.supplier ?? '',
+        manufacturerSku: p.manufacturerSku ?? '',
+        barcode: p.barcode ?? '',
         imageUrl: p.imageUrl,
         set: p.set ?? '',
         rarity: p.rarity ?? '',
@@ -107,12 +132,22 @@ export function AdminProductForm() {
 
     const parsedPrice = Number(form.price);
     const price = Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) : NaN;
+    const parsedCompareAtPrice = form.compareAtPrice ? Number(form.compareAtPrice) : undefined;
+    const compareAtPrice = parsedCompareAtPrice !== undefined && Number.isFinite(parsedCompareAtPrice)
+      ? Math.round(parsedCompareAtPrice * 100)
+      : undefined;
+    const parsedCost = form.cost ? Number(form.cost) : undefined;
+    const cost = parsedCost !== undefined && Number.isFinite(parsedCost)
+      ? Math.round(parsedCost * 100)
+      : undefined;
     const stock = Number(form.stock);
     const priceValidation = validatePriceCents(price);
+    const compareAtPriceValidation = compareAtPrice !== undefined ? validatePriceCents(compareAtPrice) : { valid: true };
+    const costValidation = cost !== undefined ? validatePriceCents(cost) : { valid: true };
     const stockValidation = validateStock(stock);
 
-    if (!priceValidation.valid || !stockValidation.valid) {
-      setError(priceValidation.message ?? stockValidation.message ?? 'Product values are invalid');
+    if (!priceValidation.valid || !compareAtPriceValidation.valid || !costValidation.valid || !stockValidation.valid) {
+      setError(priceValidation.message ?? compareAtPriceValidation.message ?? costValidation.message ?? stockValidation.message ?? 'Product values are invalid');
       setSaving(false);
       return;
     }
@@ -121,8 +156,15 @@ export function AdminProductForm() {
       name: form.name,
       description: form.description,
       price,
+      compareAtPrice,
+      cost,
       category: form.category,
       stock,
+      sku: form.sku || undefined,
+      manufacturer: form.manufacturer || undefined,
+      supplier: form.supplier || undefined,
+      manufacturerSku: form.manufacturerSku || undefined,
+      barcode: form.barcode || undefined,
       imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400',
       status: form.status,
       set: form.set || undefined,
@@ -289,10 +331,13 @@ export function AdminProductForm() {
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">$</span>
                   <input
+                    name="compareAtPrice"
                     type="number"
-                    disabled
+                    step="0.01"
+                    value={form.compareAtPrice}
+                    onChange={handleChange}
                     placeholder="0.00"
-                    className="w-full rounded-lg border bg-gray-100 pl-8 pr-4 py-2.5 text-sm font-bold text-gray-400 outline-none"
+                    className="w-full rounded-lg border bg-gray-50 pl-8 pr-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
                   />
                 </div>
               </div>
@@ -318,9 +363,38 @@ export function AdminProductForm() {
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">SKU (Stock Keeping Unit)</label>
                 <input
                   name="sku"
+                  value={form.sku}
+                  onChange={handleChange}
                   placeholder="PM-1024-BS"
                   className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
                 />
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Barcode / UPC</label>
+                <input
+                  name="barcode"
+                  value={form.barcode}
+                  onChange={handleChange}
+                  placeholder="Optional scan code"
+                  className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Unit Cost</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">$</span>
+                  <input
+                    name="cost"
+                    type="number"
+                    step="0.01"
+                    value={form.cost}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    className="w-full rounded-lg border bg-gray-50 pl-8 pr-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                  />
+                </div>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t">
@@ -328,6 +402,43 @@ export function AdminProductForm() {
                  <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
                  <span className="text-xs font-bold text-gray-700">Track quantity</span>
                </label>
+            </div>
+          </section>
+
+          {/* Variants */}
+          <section className="rounded-xl border bg-white p-5 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Supplier & Intake</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Manufacturer</label>
+                <input
+                  name="manufacturer"
+                  value={form.manufacturer}
+                  onChange={handleChange}
+                  placeholder="Pokémon, Ultra PRO..."
+                  className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Wholesaler / Supplier</label>
+                <input
+                  name="supplier"
+                  value={form.supplier}
+                  onChange={handleChange}
+                  placeholder="Distributor or intake source"
+                  className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Manufacturer SKU</label>
+                <input
+                  name="manufacturerSku"
+                  value={form.manufacturerSku}
+                  onChange={handleChange}
+                  placeholder="Vendor catalog number"
+                  className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary-500 outline-none transition"
+                />
+              </div>
             </div>
           </section>
 

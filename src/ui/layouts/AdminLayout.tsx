@@ -172,11 +172,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                       </h4>
                     )}
                     <div className="space-y-0.5">
-                      {group.items.map(({ href, label, description, icon: Icon }) => {
+                      {group.items.map(({ id, href, label, description, icon: Icon }) => {
                         const active = isActive(href);
                           return (
                             <Link
-                              key={href}
+                              key={id}
                               href={href}
                               title={collapsed ? `${label} — ${description}` : description}
                               className={`
@@ -222,9 +222,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
             {/* Sidebar Footer */}
             <div className="border-t border-gray-300/50 p-2 space-y-0.5">
-              {ADMIN_UTILITY_NAV.map(({ href, label, description, icon: Icon }) => (
+              {ADMIN_UTILITY_NAV.map(({ id, href, label, description, icon: Icon }) => (
                 <Link
-                  key={href}
+                  key={id}
                   href={href}
                   title={collapsed ? `${label} — ${description}` : description}
                   className={`

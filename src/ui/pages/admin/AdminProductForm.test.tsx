@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AdminProductForm } from './AdminProductForm';
+import { AdminProductForm } from './product-form';
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({

@@ -8,13 +8,14 @@ import { jsonError, requireAdminSession } from '@infrastructure/server/apiGuards
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await requireAdminSession();
     const services = await getServerServices();
     
-    await services.taxonomyService.deleteType(params.id, {
+    await services.taxonomyService.deleteType(id, {
       id: session.id,
       email: session.email
     });

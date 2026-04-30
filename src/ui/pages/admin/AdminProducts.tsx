@@ -9,7 +9,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useServices } from '../../hooks/useServices';
 import type {
-  ProductCategory,
   ProductManagementOverview,
   ProductManagementProduct,
   ProductSavedView,
@@ -49,7 +48,7 @@ import {
   AdminTab,
 } from '../../components/admin/AdminComponents';
 
-const PRODUCT_CATEGORIES: Array<ProductCategory | 'all'> = [
+const PRODUCT_CATEGORIES: Array<string | 'all'> = [
   'all',
   'booster',
   'single',
@@ -80,7 +79,7 @@ type SetupFilter = 'all' | 'ready' | 'needs_attention' | 'missing_sku' | 'missin
 
 type BulkPatch = {
   status?: ProductStatus | 'none';
-  category?: ProductCategory | 'none';
+  category?: string | 'none';
   productType?: string;
   vendor?: string;
   supplier?: string;
@@ -126,7 +125,7 @@ export function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<ProductCategory | 'all'>('all');
+  const [category, setCategory] = useState<string | 'all'>('all');
   const [vendorFilter, setVendorFilter] = useState('all');
   const [inventoryFilter, setInventoryFilter] = useState<InventoryFilter>('all');
   const [setupFilter, setSetupFilter] = useState<SetupFilter>('all');
@@ -356,7 +355,7 @@ export function AdminProducts() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <select value={category} onChange={(event) => setCategory(event.target.value as ProductCategory | 'all')} className="rounded-lg border bg-white px-3 py-2 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500">
+              <select value={category} onChange={(event) => setCategory(event.target.value)} className="rounded-lg border bg-white px-3 py-2 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500">
                 {PRODUCT_CATEGORIES.map((item) => <option key={item} value={item}>{item === 'all' ? 'All categories' : humanizeCategory(item)} ({categoryCounts[item] ?? 0})</option>)}
               </select>
               <select value={vendorFilter} onChange={(event) => setVendorFilter(event.target.value)} className="rounded-lg border bg-white px-3 py-2 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500">

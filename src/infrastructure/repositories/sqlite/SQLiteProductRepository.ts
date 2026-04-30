@@ -6,13 +6,13 @@ import { Kysely } from 'kysely';
 import { getSQLiteDB } from '../../sqlite/database';
 import type { Database, ProductTable } from '../../sqlite/schema';
 import type { IProductRepository } from '@domain/repositories';
-import type { Product, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, ProductSalesChannel } from '@domain/models';
+import type { Product, ProductStatus, ProductDraft, ProductUpdate, ProductSalesChannel } from '@domain/models';
 import { DomainError, InsufficientStockError, InvalidProductError, ProductNotFoundError } from '@domain/errors';
 import { coalesceStockUpdates } from '@domain/rules';
 import { logger } from '@utils/logger';
 import { sql } from 'kysely';
 
-function parseProductCategory(value: string): ProductCategory {
+function parseProductCategory(value: string): string {
   return value || 'other';
 }
 

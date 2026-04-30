@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { Address, JsonValue, OrderStatus, ProductCategory, ProductStatus, ProductDraft, ProductUpdate, User, ProductSalesChannel } from '@domain/models';
+import type { Address, JsonValue, OrderStatus, ProductStatus, ProductDraft, ProductUpdate, User, ProductSalesChannel } from '@domain/models';
 import { AuthError, DomainError, OrderNotFoundError, ProductNotFoundError, UnauthorizedError } from '@domain/errors';
 import { getSessionUser } from './session';
 import { logger } from '@utils/logger';
@@ -203,7 +203,7 @@ export function requireJsonValue(value: unknown, field: string): JsonValue {
     return value;
 }
 
-export function requireProductCategory(value: unknown): ProductCategory {
+export function requireProductCategory(value: unknown): string {
     const str = optionalString(value, 'category');
     if (!str) throw new DomainError('Product category is required.');
     return str;

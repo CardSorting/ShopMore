@@ -10,7 +10,6 @@ import type {
   OrderFulfillmentEvent,
   OrderStatus,
   Product,
-  ProductCategory,
   ProductDraft,
   ProductSalesChannel,
   ProductSetupIssue,
@@ -88,7 +87,7 @@ function assertValidStock(stock: number): void {
   }
 }
 
-function assertValidCategory(category: ProductCategory): void {
+function assertValidCategory(category: string | undefined): void {
   if (!category || category.trim().length === 0) {
     throw new InvalidProductError('Product category is required');
   }

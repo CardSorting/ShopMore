@@ -348,7 +348,7 @@ export function AdminProductForm() {
         <div className="flex items-center gap-2">
           {unsaved && <span className="hidden rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-600 sm:inline-flex">Unsaved</span>}
           <button onClick={() => router.push('/admin/products')} className="rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50">Cancel</button>
-          <button form="product-form" type="submit" disabled={saving} className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-50">
+          <button form="product-form" data-testid="save-product" type="submit" disabled={saving} className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-50">
             <Save className="h-4 w-4" /> {saving ? 'Saving…' : 'Save product'}
           </button>
           {isEdit && form.status === 'active' && (
@@ -371,23 +371,23 @@ export function AdminProductForm() {
               </span>
             </div>
             <div className="space-y-4">
-              <input name="name" value={form.name} onChange={handleChange} required placeholder="Product title" className="w-full rounded-lg border bg-gray-50 px-4 py-3 text-lg font-bold outline-none transition focus:ring-2 focus:ring-primary-500" />
-              <textarea name="description" value={form.description} onChange={handleChange} required rows={6} placeholder="Describe condition, edition, contents, and sales details." className="w-full rounded-lg border bg-gray-50 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-primary-500" />
+              <input name="name" data-testid="product-name" value={form.name} onChange={handleChange} required placeholder="Product title" className="w-full rounded-lg border bg-gray-50 px-4 py-3 text-lg font-bold outline-none transition focus:ring-2 focus:ring-primary-500" />
+              <textarea name="description" data-testid="product-description" value={form.description} onChange={handleChange} required rows={6} placeholder="Describe condition, edition, contents, and sales details." className="w-full rounded-lg border bg-gray-50 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-primary-500" />
             </div>
           </section>
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400"><ImageIcon className="h-4 w-4" /> Media gallery</h2>
-            <input name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="Image URL" className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-primary-500" />
+            <input name="imageUrl" id="product-image-url" data-testid="product-image-url" value={form.imageUrl} onChange={handleChange} placeholder="Image URL" className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-primary-500" />
             <p className="mt-2 text-xs text-gray-500">Phase 1 stores the primary image; full media arrays can land in the media/variants phase.</p>
           </section>
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Pricing</h2>
             <div className="grid gap-4 md:grid-cols-3">
-              <MoneyInput label="Price" name="price" value={form.price} onChange={handleChange} required />
-              <MoneyInput label="Compare-at price" name="compareAtPrice" value={form.compareAtPrice} onChange={handleChange} />
-              <MoneyInput label="Unit cost" name="cost" value={form.cost} onChange={handleChange} />
+              <MoneyInput label="Price" id="product-price" name="price" value={form.price} onChange={handleChange} required />
+              <MoneyInput label="Compare-at price" id="product-compare-price" name="compareAtPrice" value={form.compareAtPrice} onChange={handleChange} />
+              <MoneyInput label="Unit cost" id="product-cost" name="cost" value={form.cost} onChange={handleChange} />
             </div>
             <div className="mt-4 rounded-lg bg-gray-50 p-4 text-sm">
               <span className="font-bold text-gray-900">Margin preview: </span>
@@ -398,11 +398,11 @@ export function AdminProductForm() {
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Inventory</h2>
             <div className="grid gap-4 md:grid-cols-3">
-              <TextInput label="SKU" name="sku" value={form.sku} onChange={handleChange} placeholder="SKU-12345" />
-              <TextInput label="Barcode / UPC" name="barcode" value={form.barcode} onChange={handleChange} />
-              <TextInput label="Quantity available" name="stock" value={form.stock} onChange={handleChange} type="number" required />
-              <TextInput label="Reorder point" name="reorderPoint" value={form.reorderPoint} onChange={handleChange} type="number" />
-              <TextInput label="Reorder quantity" name="reorderQuantity" value={form.reorderQuantity} onChange={handleChange} type="number" />
+              <TextInput label="SKU" id="product-sku" name="sku" value={form.sku} onChange={handleChange} placeholder="SKU-12345" />
+              <TextInput label="Barcode / UPC" id="product-barcode" name="barcode" value={form.barcode} onChange={handleChange} />
+              <TextInput label="Quantity available" id="product-stock" name="stock" value={form.stock} onChange={handleChange} type="number" required />
+              <TextInput label="Reorder point" id="product-reorder-point" name="reorderPoint" value={form.reorderPoint} onChange={handleChange} type="number" />
+              <TextInput label="Reorder quantity" id="product-reorder-qty" name="reorderQuantity" value={form.reorderQuantity} onChange={handleChange} type="number" />
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <Checkbox label="Track quantity" checked={form.trackQuantity} onChange={(checked) => handleCheckbox('trackQuantity', checked)} />
@@ -503,6 +503,8 @@ export function AdminProductForm() {
                 ) : (
                   <select 
                     name="category" 
+                    id="product-category"
+                    data-testid="product-category"
                     value={form.category} 
                     onChange={handleChange}
                     className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500"
@@ -533,6 +535,8 @@ export function AdminProductForm() {
                 ) : (
                   <select 
                     name="productType" 
+                    id="product-type"
+                    data-testid="product-type"
                     value={form.productType} 
                     onChange={handleChange}
                     className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500"
@@ -591,16 +595,37 @@ export function AdminProductForm() {
   );
 }
 
-function TextInput({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  return <div><label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label><input {...props} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none transition focus:ring-2 focus:ring-primary-500" /></div>;
+function TextInput({ label, id, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; id?: string }) {
+  const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
+  return (
+    <div>
+      <label htmlFor={inputId} className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label>
+      <input id={inputId} data-testid={inputId} {...props} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm font-bold outline-none transition focus:ring-2 focus:ring-primary-500" />
+    </div>
+  );
 }
 
-function MoneyInput({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  return <div><label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label><div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">$</span><input {...props} type="number" step="0.01" className="w-full rounded-lg border bg-gray-50 py-2.5 pl-8 pr-4 text-sm font-bold outline-none transition focus:ring-2 focus:ring-primary-500" /></div></div>;
+function MoneyInput({ label, id, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; id?: string }) {
+  const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
+  return (
+    <div>
+      <label htmlFor={inputId} className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label>
+      <div className="relative">
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">$</span>
+        <input id={inputId} data-testid={inputId} {...props} type="number" step="0.01" className="w-full rounded-lg border bg-gray-50 py-2.5 pl-8 pr-4 text-sm font-bold outline-none transition focus:ring-2 focus:ring-primary-500" />
+      </div>
+    </div>
+  );
 }
 
-function TextArea({ label, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
-  return <div><label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label><textarea {...props} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-primary-500" /></div>;
+function TextArea({ label, id, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; id?: string }) {
+  const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
+  return (
+    <div>
+      <label htmlFor={inputId} className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label>
+      <textarea id={inputId} data-testid={inputId} {...props} className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-primary-500" />
+    </div>
+  );
 }
 
 function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {

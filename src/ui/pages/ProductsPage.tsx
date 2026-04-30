@@ -269,7 +269,7 @@ function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <article className="group relative">
+    <article className="group relative" data-testid="product-card">
       <div className="aspect-square overflow-hidden rounded-3xl bg-gray-50 border shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
         <Link href={`/products/${product.id}`} className="block h-full w-full">
           <img

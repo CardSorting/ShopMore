@@ -39,13 +39,14 @@ export function HomePage() {
     <div>
       {/* Hero */}
       <section className="bg-primary-700 text-white py-16 px-4">
-        <div className="max-w-7xl mx-auto text-center">
+        <div className="max-w-7xl mx-auto text-center relative z-10">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Your TCG Destination</h1>
           <p className="text-primary-100 text-lg mb-8 max-w-2xl mx-auto">
             Discover booster boxes, rare singles, and accessories for Pokemon, MTG, and more.
           </p>
           <Link
             href="/products"
+            data-testid="shop-now-button"
             className="inline-flex items-center gap-2 bg-white text-primary-700 px-6 py-3 rounded-lg font-medium hover:bg-primary-50 transition"
           >
             Shop Now

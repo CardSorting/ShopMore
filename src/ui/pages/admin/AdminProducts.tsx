@@ -310,7 +310,7 @@ export function AdminProducts() {
             <Link href="/admin/products/bulk-edit" className="hidden rounded-lg border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:inline-flex">
               Bulk editor
             </Link>
-            <Link href="/admin/products/new" className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700">
+            <Link href="/admin/products/new" data-testid="add-product-button" className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700">
               <Plus className="h-4 w-4" /> Add product
             </Link>
           </div>

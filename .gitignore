@@ -41,3 +41,7 @@ lerna-debug.log*
 
 # Testing
 /coverage
+
+# Storage
+public/storage/**/*
+!public/storage/**/.gitkeep

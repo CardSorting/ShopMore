@@ -22,6 +22,7 @@ import {
 } from '../../components/admin/AdminComponents';
 import { useServices } from '../../hooks/useServices';
 import { SeoSettings } from '../../components/admin/SeoSettings';
+import { ImageUpload } from '../../components/admin/ImageUpload';
 
 export function AdminCollectionCreate() {
   useAdminPageTitle('Create Collection');
@@ -156,37 +157,12 @@ export function AdminCollectionCreate() {
             </div>
           </div>
 
-          {/* Media */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                <ImageIcon className="h-5 w-5" />
-              </div>
-              <h3 className="text-sm font-bold text-gray-900">Featured Image</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <input 
-                name="imageUrl" 
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-primary-500 focus:bg-white" 
-                placeholder="https://images.unsplash.com/..." 
-              />
-              {imageUrl && (
-                <div className="relative aspect-video w-full overflow-hidden rounded-2xl border bg-gray-50">
-                  <img src={imageUrl} alt="Preview" className="h-full w-full object-cover" />
-                  <button 
-                    type="button" 
-                    onClick={() => setImageUrl('')}
-                    className="absolute right-3 top-3 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-md transition hover:bg-black/70"
-                  >
-                    <ArrowLeft className="h-4 w-4 rotate-45" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <ImageUpload
+            value={imageUrl}
+            onChange={(url) => setImageUrl(url)}
+            folder="collections"
+            label="Featured Image"
+          />
 
           <SeoSettings 
             name={formData.name}

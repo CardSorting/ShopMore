@@ -21,6 +21,7 @@ import { formatCurrency } from '@utils/formatters';
 import { SkeletonPage, AdminConfirmDialog } from '../../../components/admin/AdminComponents';
 import { CategorySelect, TagInput } from '../../../components/admin/AdminInputs';
 import { SeoSettings } from '../../../components/admin/SeoSettings';
+import { AdminMediaManager } from '../../../components/admin/AdminMediaManager';
 
 import { useProductForm } from './hooks/useProductForm';
 import { TextInput, MoneyInput, Checkbox } from './components/FormInputs';
@@ -146,22 +147,18 @@ export function AdminProductForm() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
-            <h2 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400"><ImageIcon className="h-4 w-4" /> Media gallery</h2>
-            <div className="grid gap-4 md:grid-cols-[1fr_120px]">
-              <div>
-                <input name="imageUrl" id="product-image-url" data-testid="product-image-url" value={form.imageUrl} onChange={handleChange} placeholder="Image URL" className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-primary-500" />
-                <p className="mt-2 text-xs text-gray-500">Phase 1 stores the primary image; full media arrays can land in the media/variants phase.</p>
-              </div>
-              <div className="flex aspect-square items-center justify-center rounded-lg border bg-gray-50 p-2 overflow-hidden shadow-inner">
-                {form.imageUrl.trim() ? (
-                  <img src={form.imageUrl} alt="Preview" className="h-full w-full object-contain rounded-md" />
-                ) : (
-                  <ImageIcon className="h-8 w-8 text-gray-300" />
-                )}
-              </div>
-            </div>
-          </section>
+          <AdminMediaManager
+            media={form.media}
+            onChange={(media) => {
+              setFieldValue('media', media);
+              if (media.length > 0) {
+                setFieldValue('imageUrl', media[0].url);
+              } else {
+                setFieldValue('imageUrl', '');
+              }
+            }}
+            folder="products"
+          />
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Pricing</h2>

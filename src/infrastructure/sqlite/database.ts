@@ -421,6 +421,27 @@ export async function initDatabase() {
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
 
+  await db.schema
+    .createTable('product_media')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('productId', 'text', (col) => col.notNull())
+    .addColumn('url', 'text', (col) => col.notNull())
+    .addColumn('altText', 'text')
+    .addColumn('position', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('width', 'integer')
+    .addColumn('height', 'integer')
+    .addColumn('size', 'integer')
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createIndex('idx_product_media_productId')
+    .on('product_media')
+    .column('productId')
+    .ifNotExists()
+    .execute();
+
   // ─────────────────────────────────────────────
   // Wishlist Tables
   // ─────────────────────────────────────────────

@@ -272,8 +272,21 @@ export interface WishlistItemTable {
   createdAt: string;
 }
 
+export interface ProductMediaTable {
+  id: string;
+  productId: string;
+  url: string;
+  altText: string | null;
+  position: number;
+  width: number | null;
+  height: number | null;
+  size: number | null;
+  createdAt: string;
+}
+
 export interface Database {
   products: ProductTable;
+  product_media: ProductMediaTable;
   users: UserTable;
   carts: CartTable;
   orders: OrderTable;

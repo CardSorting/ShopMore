@@ -8,7 +8,7 @@ const scriptSrc = [
 ];
 
 const nextConfig: NextConfig = {
-    serverExternalPackages: ['better-sqlite3'],
+    serverExternalPackages: ['better-sqlite3', 'sharp'],
     async headers() {
         const securityHeaders = [
             { key: 'X-Content-Type-Options', value: 'nosniff' },

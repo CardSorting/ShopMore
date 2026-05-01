@@ -97,7 +97,7 @@ export class SQLiteProductRepository implements IProductRepository {
     this.db = getSQLiteDB();
   }
 
-  private mapTableToProduct(row: any): Product {
+  private mapTableToProduct(row: any, media: any[] = []): Product {
     return {
       id: row.id,
       name: row.name,
@@ -127,6 +127,16 @@ export class SQLiteProductRepository implements IProductRepository {
       manufacturerSku: row.manufacturerSku || undefined,
       barcode: row.barcode || undefined,
       imageUrl: row.imageUrl,
+      media: media.map(m => ({
+        id: m.id,
+        url: m.url,
+        altText: m.altText || undefined,
+        position: m.position,
+        width: m.width || undefined,
+        height: m.height || undefined,
+        size: m.size || undefined,
+        createdAt: new Date(m.createdAt)
+      })).sort((a, b) => a.position - b.position),
       status: parseProductStatus(row.status),
       set: row.set || undefined,
       rarity: parseClassification(row.rarity),
@@ -160,9 +170,18 @@ export class SQLiteProductRepository implements IProductRepository {
     }
 
     const results = await this.db.selectFrom('products').selectAll().execute();
+    const mediaResults = await this.db.selectFrom('product_media').selectAll().execute();
+    
+    // Group media by productId
+    const mediaMap = new Map<string, any[]>();
+    for (const m of mediaResults) {
+      if (!mediaMap.has(m.productId)) mediaMap.set(m.productId, []);
+      mediaMap.get(m.productId)!.push(m);
+    }
+
     this.authIndex = new Map();
     for (const row of results) {
-      this.authIndex.set(row.id, this.mapTableToProduct(row));
+      this.authIndex.set(row.id, this.mapTableToProduct(row, mediaMap.get(row.id) || []));
     }
   }
 
@@ -232,6 +251,35 @@ export class SQLiteProductRepository implements IProductRepository {
         .execute();
 
       const products = results.map((row) => this.mapTableToProduct(row));
+      
+      // Level 11: Hydrate media for the visible page
+      if (products.length > 0) {
+        const productIds = products.map(p => p.id);
+        const media = await this.db.selectFrom('product_media')
+          .selectAll()
+          .where('productId', 'in', productIds)
+          .execute();
+        
+        const mediaMap = new Map<string, any[]>();
+        for (const m of media) {
+          if (!mediaMap.has(m.productId)) mediaMap.set(m.productId, []);
+          mediaMap.get(m.productId)!.push(m);
+        }
+
+        for (const p of products) {
+          p.media = (mediaMap.get(p.id) || []).map(m => ({
+            id: m.id,
+            url: m.url,
+            altText: m.altText || undefined,
+            position: m.position,
+            width: m.width || undefined,
+            height: m.height || undefined,
+            size: m.size || undefined,
+            createdAt: new Date(m.createdAt)
+          })).sort((a, b) => a.position - b.position);
+        }
+      }
+
       const nextCursor = products.length === limitCount ? products[products.length - 1].id : undefined;
       return { products, nextCursor };
     }
@@ -292,7 +340,16 @@ export class SQLiteProductRepository implements IProductRepository {
         .selectAll()
         .where('id', '=', id)
         .executeTakeFirst();
-      return result ? this.mapTableToProduct(result) : null;
+      
+      if (!result) return null;
+
+      const media = await this.db
+        .selectFrom('product_media')
+        .selectAll()
+        .where('productId', '=', id)
+        .execute();
+
+      return this.mapTableToProduct(result, media);
     }
     
     return this.authIndex.get(id) || null;
@@ -341,6 +398,22 @@ export class SQLiteProductRepository implements IProductRepository {
           updatedAt: now,
         })
         .execute();
+
+      if (product.media && product.media.length > 0) {
+        for (const m of product.media) {
+          await this.db.insertInto('product_media').values({
+            id: m.id || crypto.randomUUID(),
+            productId: id,
+            url: m.url,
+            altText: m.altText || null,
+            position: m.position,
+            width: m.width || null,
+            height: m.height || null,
+            size: m.size || null,
+            createdAt: m.createdAt ? m.createdAt.toISOString() : now
+          }).execute();
+        }
+      }
     } catch (error) {
       if (isUniqueSkuConstraintError(error)) {
         throw new InvalidProductError('SKU must be unique');
@@ -348,7 +421,7 @@ export class SQLiteProductRepository implements IProductRepository {
       throw error;
     }
 
-    this.invalidateIndex(); // Level 7: Flush the buffer so it reconstructs
+    this.invalidateIndex(); 
 
     const created = await this.getById(id);
     if (!created) throw new Error('Failed to create product');
@@ -358,7 +431,6 @@ export class SQLiteProductRepository implements IProductRepository {
   async update(id: string, updates: ProductUpdate): Promise<Product> {
     const now = new Date().toISOString();
     
-    // Whitelist updates to prevent SQL injection or accidental schema corruption
     const validFields: (keyof ProductUpdate)[] = [
       'name', 'description', 'price', 'compareAtPrice', 'cost', 'category', 'productType', 'vendor', 'tags', 'collections', 'handle', 'seoTitle', 'seoDescription', 'salesChannels', 'stock', 'trackQuantity', 'continueSellingWhenOutOfStock', 'reorderPoint', 'reorderQuantity', 'physicalItem', 'weightGrams', 'sku', 'manufacturer', 'supplier', 'manufacturerSku', 'barcode', 'imageUrl', 'set', 'rarity', 'status'
     ];
@@ -379,11 +451,34 @@ export class SQLiteProductRepository implements IProductRepository {
     }
 
     try {
-      await this.db
-        .updateTable('products')
-        .set(finalUpdates)
-        .where('id', '=', id)
-        .execute();
+      await this.db.transaction().execute(async (trx) => {
+        if (Object.keys(finalUpdates).length > 1) { // more than just updatedAt
+          await trx
+            .updateTable('products')
+            .set(finalUpdates)
+            .where('id', '=', id)
+            .execute();
+        }
+
+        if (updates.media !== undefined) {
+          await trx.deleteFrom('product_media').where('productId', '=', id).execute();
+          if (updates.media && updates.media.length > 0) {
+            for (const m of updates.media) {
+              await trx.insertInto('product_media').values({
+                id: m.id || crypto.randomUUID(),
+                productId: id,
+                url: m.url,
+                altText: m.altText || null,
+                position: m.position,
+                width: m.width || null,
+                height: m.height || null,
+                size: m.size || null,
+                createdAt: m.createdAt ? m.createdAt.toISOString() : now
+              }).execute();
+            }
+          }
+        }
+      });
     } catch (error) {
       if (isUniqueSkuConstraintError(error)) {
         throw new InvalidProductError('SKU must be unique');
@@ -391,7 +486,7 @@ export class SQLiteProductRepository implements IProductRepository {
       throw error;
     }
 
-    this.invalidateIndex(); // Level 7: Buffer flush
+    this.invalidateIndex(); 
 
     const updated = await this.getById(id);
     if (!updated) throw new ProductNotFoundError(id);

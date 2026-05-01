@@ -30,12 +30,24 @@ export interface Product {
   manufacturerSku?: string;
   barcode?: string;
   imageUrl: string;
+  media: ProductMedia[];
   status: ProductStatus;
   set?: string;
   rarity?: string;
   metafields?: Record<string, string | number | boolean | null>;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ProductMedia {
+  id: string;
+  url: string;
+  altText?: string;
+  position: number;
+  width?: number;
+  height?: number;
+  size?: number;
+  createdAt: Date;
 }
 
 export type ProductDraft = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;

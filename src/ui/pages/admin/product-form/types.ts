@@ -1,9 +1,10 @@
-import type { ProductSalesChannel } from '@domain/models';
+import type { ProductSalesChannel, ProductMedia } from '@domain/models';
 
 export interface ProductFormState {
   name: string;
   description: string;
   imageUrl: string;
+  media: ProductMedia[];
   price: string;
   compareAtPrice: string;
   cost: string;
@@ -38,6 +39,7 @@ export const INITIAL_FORM_STATE: ProductFormState = {
   name: '',
   description: '',
   imageUrl: '',
+  media: [],
   price: '',
   compareAtPrice: '',
   cost: '',

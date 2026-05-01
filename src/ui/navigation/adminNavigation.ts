@@ -148,15 +148,15 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   },
   {
     id: 'procurement',
-    label: 'Supply Chain',
+    label: 'Inventory intake',
     items: [
       {
         id: 'purchase-orders',
         href: '/admin/purchase-orders',
-        label: 'Purchase Orders',
-        description: 'Order and receive stock from suppliers',
+        label: 'Receiving',
+        description: 'Order stock, receive shipments, and resolve exceptions',
         icon: Truck,
-        aliases: ['po', 'incoming stock', 'receiving', 'vendor orders', 'procurement'],
+        aliases: ['purchase orders', 'po', 'incoming stock', 'receiving', 'vendor orders', 'procurement', 'order stock', 'receive shipment'],
       },
       {
         id: 'suppliers',
@@ -291,11 +291,11 @@ export const ADMIN_QUICK_ACTIONS: AdminQuickAction[] = [
   },
   {
     id: 'create-purchase-order',
-    href: '/admin/purchase-orders',
-    label: 'Create purchase order',
-    description: 'Order stock from a supplier',
+    href: '/admin/purchase-orders/new',
+    label: 'Order stock',
+    description: 'Create a supplier purchase order',
     icon: Truck,
-    aliases: ['new transfer', 'inbound shipment', 'supplier order', 'po', 'order stock'],
+    aliases: ['create purchase order', 'new transfer', 'inbound shipment', 'supplier order', 'po', 'order stock'],
     group: 'Create',
   },
   {

@@ -17,6 +17,7 @@ import {
   XCircle,
   AlertTriangle,
   Barcode,
+  ClipboardList,
   Truck,
   Building2
 } from 'lucide-react';
@@ -70,6 +71,13 @@ export function AdminPurchaseOrderReceive() {
   const [scanInput, setScanInput] = useState('');
   const [scanFlash, setScanFlash] = useState<'success' | 'error' | null>(null);
   const [lastScanned, setLastScanned] = useState<string | null>(null);
+
+  const receivingNow = items.reduce((sum, item) => sum + item.toReceive, 0);
+  const exceptionLines = items.filter((item) => item.toReceive > 0 && (item.condition !== 'new' || item.damagedQty > 0 || item.disposition !== 'add_to_stock'));
+  const stockableNow = items.reduce((sum, item) => {
+    if (item.disposition !== 'add_to_stock') return sum;
+    return sum + Math.max(0, item.toReceive - item.damagedQty);
+  }, 0);
 
   const loadOrder = useCallback(async () => {
     try {
@@ -175,7 +183,8 @@ export function AdminPurchaseOrderReceive() {
               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Inventory Intake Session</p>
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest text-emerald-700 ring-1 ring-emerald-100">Live Workspace</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Receive PO #{id.slice(0, 8).toUpperCase()}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Receive shipment #{id.slice(0, 8).toUpperCase()}</h1>
+            <p className="mt-1 text-xs text-gray-500">Count what arrived, flag exceptions, then review the stock update before completing.</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -237,7 +246,20 @@ export function AdminPurchaseOrderReceive() {
                 </div>
                 <div className="rounded-2xl border bg-white p-5 shadow-sm">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Receiving Now</p>
-                  <p className="mt-1 text-2xl font-bold text-emerald-600">{items.reduce((sum, i) => sum + i.toReceive, 0)}</p>
+                  <p className="mt-1 text-2xl font-bold text-emerald-600">{receivingNow}</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-white p-5 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+                    <ClipboardList className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Session review</p>
+                    <h2 className="mt-1 text-sm font-bold text-gray-900">{receivingNow} units counted · {stockableNow} will be added to stock</h2>
+                    <p className="mt-1 text-xs text-gray-500">{exceptionLines.length > 0 ? `${exceptionLines.length} line${exceptionLines.length === 1 ? '' : 's'} need exception reasons before completion.` : 'No exceptions flagged. This shipment can be completed when counts look right.'}</p>
+                  </div>
                 </div>
               </div>
 
@@ -342,8 +364,12 @@ export function AdminPurchaseOrderReceive() {
                             className="mt-1.5 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500"
                           >
                             <option value="damaged_items">Damaged items</option>
+                            <option value="missing_items">Missing items</option>
                             <option value="wrong_item">Wrong item</option>
+                            <option value="supplier_substitution">Supplier substitution</option>
+                            <option value="duplicate_shipment">Duplicate shipment</option>
                             <option value="overage">Extra quantity</option>
+                            <option value="cost_mismatch">Cost mismatch</option>
                             <option value="other">Other</option>
                           </select>
                         </div>

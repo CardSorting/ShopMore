@@ -87,13 +87,13 @@ export function AdminPurchaseOrderCreate() {
 
   const totalCost = items.reduce((sum, item) => sum + item.orderedQty * parseCurrencyToCents(item.unitCostInput), 0);
 
-  const handleSave = async () => {
+  const handleSave = async (markOrdered = false) => {
     if (!supplier.trim()) { toast('error', 'Supplier is required'); return; }
     if (items.length === 0) { toast('error', 'Add items to this order'); return; }
     
     setIsSubmitting(true);
     try {
-      await services.purchaseOrderService.create({
+      const created = await services.purchaseOrderService.create({
         supplier,
         referenceNumber: reference || undefined,
         shippingCarrier: carrier || undefined,
@@ -107,7 +107,10 @@ export function AdminPurchaseOrderCreate() {
           notes: item.notes || undefined,
         })),
       });
-      toast('success', 'Purchase order created successfully');
+      if (markOrdered) {
+        await services.purchaseOrderService.submit(created.id);
+      }
+      toast('success', markOrdered ? 'Stock order created and marked as ordered' : 'Purchase order draft created');
       router.push('/admin/purchase-orders');
       router.refresh();
     } catch (err) {
@@ -130,8 +133,9 @@ export function AdminPurchaseOrderCreate() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Inventory Procurement</p>
-            <h1 className="text-2xl font-bold text-gray-900">Create Purchase Order</h1>
+            <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Inventory intake</p>
+            <h1 className="text-2xl font-bold text-gray-900">Order stock</h1>
+            <p className="mt-1 text-xs text-gray-500">Create a Shopify-style supplier order before receiving inventory.</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -149,14 +153,39 @@ export function AdminPurchaseOrderCreate() {
             Discard
           </button>
           <button 
-            onClick={handleSave}
+            onClick={() => handleSave(false)}
             disabled={isSubmitting}
             className="flex items-center gap-2 rounded-xl bg-primary-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-primary-500/20 transition hover:bg-primary-700 active:scale-95 disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {isSubmitting ? 'Saving...' : 'Save Draft'}
           </button>
+          <button 
+            onClick={() => handleSave(true)}
+            disabled={isSubmitting}
+            className="hidden items-center gap-2 rounded-xl bg-gray-900 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-gray-900/10 transition hover:bg-black active:scale-95 disabled:opacity-50 sm:flex"
+          >
+            <Truck className="h-4 w-4" />
+            Save & mark ordered
+          </button>
         </div>
+      </div>
+
+      <div className="grid gap-3 rounded-2xl border bg-white p-4 shadow-sm sm:grid-cols-4">
+        {[
+          ['1', 'Supplier', supplier ? 'Selected' : 'Choose vendor'],
+          ['2', 'Products', `${items.length} line${items.length === 1 ? '' : 's'}`],
+          ['3', 'Costs', formatCurrency(totalCost)],
+          ['4', 'Arrival', expectedAt || 'Optional'],
+        ].map(([step, label, value]) => (
+          <div key={step} className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-black text-primary-600 shadow-sm ring-1 ring-gray-100">{step}</span>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{label}</p>
+              <p className="text-xs font-bold text-gray-900">{value}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
@@ -179,6 +208,7 @@ export function AdminPurchaseOrderCreate() {
                   className="mt-1.5 w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-primary-500 focus:bg-white" 
                   placeholder="Select or enter supplier name..." 
                 />
+                <p className="mt-2 text-[10px] font-medium text-gray-400">Tip: use the same supplier names you manage under Suppliers so staff can recognize inbound shipments quickly.</p>
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Reference #</label>

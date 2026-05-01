@@ -136,6 +136,9 @@ export interface PurchaseOrderTable {
   id: string;
   supplier: string;
   referenceNumber: string | null;
+  shippingCarrier: string | null;
+  trackingNumber: string | null;
+  expectedAt: string | null;
   status: string; // 'draft' | 'ordered' | 'partially_received' | 'received' | 'cancelled'
   notes: string | null;
   totalCost: number;

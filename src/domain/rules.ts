@@ -529,10 +529,25 @@ const RECEIVING_DISCREPANCY_REASONS: ReceivingDiscrepancyReason[] = [
   'missing_items',
   'damaged_items',
   'wrong_item',
+  'duplicate_shipment',
+  'supplier_substitution',
   'overage',
   'cost_mismatch',
   'other',
 ];
+
+function calculateDueState(
+  order: PurchaseOrder
+): 'not_scheduled' | 'on_track' | 'arriving_soon' | 'overdue' | 'complete' {
+  if (['received', 'closed', 'cancelled'].includes(order.status)) return 'complete';
+  if (!order.expectedAt) return 'not_scheduled';
+  const now = Date.now();
+  const dueAt = new Date(order.expectedAt).getTime();
+  if (Number.isNaN(dueAt)) return 'not_scheduled';
+  if (dueAt < now) return 'overdue';
+  const daysUntilDue = Math.ceil((dueAt - now) / (24 * 60 * 60 * 1000));
+  return daysUntilDue <= 3 ? 'arriving_soon' : 'on_track';
+}
 
 function orderedQty(items: PurchaseOrderItem[]): number {
   return items.reduce((sum, item) => sum + item.orderedQty, 0);
@@ -600,6 +615,8 @@ export const purchaseOrderRules = {
   hasReceivingExceptions: (order: PurchaseOrder): boolean =>
     order.items.some((item) => receivingVarianceForLine(item) !== 'none'),
 
+  calculateDueState,
+
   matchesSavedView: (order: PurchaseOrder, view: PurchaseOrderSavedView): boolean => {
     if (view === 'all') return true;
     if (view === 'drafts') return order.status === 'draft';
@@ -622,6 +639,7 @@ export const purchaseOrderRules = {
     const totalReceived = receivedQty(order.items);
     const openQty = Math.max(0, totalOrdered - totalReceived);
     const progressPercent = totalOrdered === 0 ? 0 : Math.round((totalReceived / totalOrdered) * 100);
+    const dueState = calculateDueState(order);
     let nextActionLabel = 'Create purchase order';
     let nextActionDescription = 'Add supplier details and products before sending this purchase order.';
 
@@ -653,6 +671,7 @@ export const purchaseOrderRules = {
       discrepancyCount: 0,
       stockableQty: totalReceived,
       progressPercent,
+      dueState,
       nextActionLabel,
       nextActionDescription,
     };

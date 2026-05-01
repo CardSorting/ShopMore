@@ -35,6 +35,9 @@ import { AuditService } from './AuditService';
 export interface CreatePurchaseOrderInput {
   supplier: string;
   referenceNumber?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  expectedAt?: Date | string;
   items: Array<{
     productId: string;
     orderedQty: number;
@@ -85,6 +88,13 @@ export interface PurchaseOrderWorkspaceOrder {
 
 export interface PurchaseOrderWorkspace {
   countsByView: Record<PurchaseOrderSavedView, number>;
+  metrics: {
+    incomingUnits: number;
+    openShipments: number;
+    exceptionCount: number;
+    overdueCount: number;
+    receivingValue: number;
+  };
   orders: PurchaseOrderWorkspaceOrder[];
   recentReceivingSessions: ReceivingSession[];
 }
@@ -139,6 +149,9 @@ export class PurchaseOrderService {
       id: '', // Will be set by repository
       supplier: input.supplier,
       referenceNumber: input.referenceNumber,
+      shippingCarrier: input.shippingCarrier,
+      trackingNumber: input.trackingNumber,
+      expectedAt: input.expectedAt ? new Date(input.expectedAt) : undefined,
       status: 'draft',
       items,
       notes: input.notes,
@@ -222,6 +235,24 @@ export class PurchaseOrderService {
       };
     });
 
+    const metrics = workspaceOrders.reduce((acc, workspaceOrder) => {
+      const { order, summary, attentionRequired } = workspaceOrder;
+      if (purchaseOrderRules.canReceive(order)) {
+        acc.openShipments += 1;
+        acc.incomingUnits += summary.openQty;
+        acc.receivingValue += order.items.reduce((sum, item) => sum + Math.max(0, item.orderedQty - item.receivedQty) * item.unitCost, 0);
+      }
+      if (attentionRequired) acc.exceptionCount += 1;
+      if (summary.dueState === 'overdue') acc.overdueCount += 1;
+      return acc;
+    }, {
+      incomingUnits: 0,
+      openShipments: 0,
+      exceptionCount: 0,
+      overdueCount: 0,
+      receivingValue: 0,
+    });
+
     const recentReceivingSessions: ReceivingSession[] = [];
     if (this.purchaseOrderRepo.findReceivingSessions) {
       for (const order of orders.slice(0, 20)) {
@@ -232,6 +263,7 @@ export class PurchaseOrderService {
 
     return {
       countsByView,
+      metrics,
       orders: workspaceOrders,
       recentReceivingSessions: recentReceivingSessions.slice(0, 10),
     };

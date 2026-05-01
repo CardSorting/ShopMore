@@ -362,6 +362,8 @@ export type ReceivingDiscrepancyReason =
   | 'missing_items'
   | 'damaged_items'
   | 'wrong_item'
+  | 'duplicate_shipment'
+  | 'supplier_substitution'
   | 'overage'
   | 'cost_mismatch'
   | 'other';
@@ -394,6 +396,7 @@ export interface PurchaseOrderReceivingSummary {
   discrepancyCount: number;
   stockableQty: number;
   progressPercent: number;
+  dueState: 'not_scheduled' | 'on_track' | 'arriving_soon' | 'overdue' | 'complete';
   nextActionLabel: string;
   nextActionDescription: string;
 }

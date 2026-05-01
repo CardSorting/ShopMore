@@ -274,12 +274,19 @@ export async function initDatabase() {
     .addColumn('id', 'text', (col) => col.primaryKey())
     .addColumn('supplier', 'text', (col) => col.notNull())
     .addColumn('referenceNumber', 'text')
+    .addColumn('shippingCarrier', 'text')
+    .addColumn('trackingNumber', 'text')
+    .addColumn('expectedAt', 'text')
     .addColumn('status', 'text', (col) => col.notNull().defaultTo('draft'))
     .addColumn('notes', 'text')
     .addColumn('totalCost', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
+
+  try { await db.schema.alterTable('purchase_orders').addColumn('shippingCarrier', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('purchase_orders').addColumn('trackingNumber', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('purchase_orders').addColumn('expectedAt', 'text').execute(); } catch {}
 
   await db.schema
     .createTable('purchase_order_items')

@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Boxes,
   CheckCircle2,
   ClipboardCheck,
   ClipboardList,
@@ -70,6 +71,13 @@ interface WorkspaceOrder {
 
 interface PurchaseOrderWorkspace {
   countsByView: Record<PurchaseOrderSavedView, number>;
+  metrics?: {
+    incomingUnits: number;
+    openShipments: number;
+    exceptionCount: number;
+    overdueCount: number;
+    receivingValue: number;
+  };
   orders: WorkspaceOrder[];
 }
 
@@ -110,7 +118,17 @@ function buildWorkspaceFromOrders(orders: PurchaseOrder[]): PurchaseOrderWorkspa
     acc[view.value] = orders.filter((order) => purchaseOrderRules.matchesSavedView(order, view.value)).length;
     return acc;
   }, emptyCounts());
-  return { countsByView, orders: workspaceOrders };
+  const metrics = workspaceOrders.reduce((acc, workspaceOrder) => {
+    if (purchaseOrderRules.canReceive(workspaceOrder.order)) {
+      acc.openShipments += 1;
+      acc.incomingUnits += workspaceOrder.summary.openQty;
+      acc.receivingValue += workspaceOrder.order.items.reduce((sum, item) => sum + Math.max(0, item.orderedQty - item.receivedQty) * item.unitCost, 0);
+    }
+    if (workspaceOrder.attentionRequired) acc.exceptionCount += 1;
+    if (workspaceOrder.summary.dueState === 'overdue') acc.overdueCount += 1;
+    return acc;
+  }, { incomingUnits: 0, openShipments: 0, exceptionCount: 0, overdueCount: 0, receivingValue: 0 });
+  return { countsByView, metrics, orders: workspaceOrders };
 }
 
 export function AdminPurchaseOrders() {
@@ -174,17 +192,72 @@ export function AdminPurchaseOrders() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <AdminPageHeader
-        title="Receiving & Procurement"
-        subtitle="Track inbound stock, identify discrepancies, and onboard inventory."
+        category="Inventory intake"
+        title="Receiving"
+        subtitle="Order stock, receive shipments, and resolve supplier exceptions with a guided merchant workflow."
         actions={
-          <Link 
-            href="/admin/purchase-orders/new"
-            className="flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-primary-500/20 transition hover:bg-primary-700 active:scale-95"
-          >
-            <Plus className="h-4 w-4" /> Add purchase order
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/products/new"
+              className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
+            >
+              <Package className="h-4 w-4" /> Add product first
+            </Link>
+            <Link 
+              href="/admin/purchase-orders/new"
+              className="flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-primary-500/20 transition hover:bg-primary-700 active:scale-95"
+            >
+              <Plus className="h-4 w-4" /> Order stock
+            </Link>
+          </div>
         }
       />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminMetricCard
+          label="Open shipments"
+          value={workspace?.metrics?.openShipments ?? 0}
+          description="Supplier orders waiting to be received."
+          icon={Truck}
+          color="primary"
+        />
+        <AdminMetricCard
+          label="Incoming units"
+          value={workspace?.metrics?.incomingUnits ?? 0}
+          description="Units still expected from active POs."
+          icon={Boxes}
+          color="info"
+        />
+        <AdminMetricCard
+          label="Exceptions"
+          value={workspace?.metrics?.exceptionCount ?? 0}
+          description="Short, over, or damaged lines that need review."
+          icon={AlertTriangle}
+          color={(workspace?.metrics?.exceptionCount ?? 0) > 0 ? 'danger' : 'success'}
+        />
+        <AdminMetricCard
+          label="Open value"
+          value={formatCurrency(workspace?.metrics?.receivingValue ?? 0)}
+          description={`${workspace?.metrics?.overdueCount ?? 0} overdue shipment${(workspace?.metrics?.overdueCount ?? 0) === 1 ? '' : 's'}.`}
+          icon={DollarSign}
+          color={(workspace?.metrics?.overdueCount ?? 0) > 0 ? 'warning' : 'success'}
+        />
+      </div>
+
+      <div className="rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Recommended intake path</p>
+            <h2 className="mt-1 text-sm font-bold text-gray-900">Add product → Order stock → Receive shipment → Resolve exceptions → Sell</h2>
+            <p className="mt-1 text-xs text-gray-500">This mirrors the Shopify merchant pattern: products and suppliers first, then purchase orders and receiving sessions.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/suppliers" className="rounded-xl border px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:bg-gray-50">Suppliers</Link>
+            <Link href="/admin/inventory" className="rounded-xl border px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:bg-gray-50">Inventory</Link>
+            <Link href="/admin/products" className="rounded-xl border px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:bg-gray-50">Products</Link>
+          </div>
+        </div>
+      </div>
 
       {/* Tabs / Filters */}
       <div className="flex flex-wrap items-center gap-2">
@@ -247,13 +320,13 @@ export function AdminPurchaseOrders() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setDetail(wsOrder)} className="rounded-lg border bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:bg-gray-50 shadow-sm transition">Manage</button>
+                  <button onClick={() => setDetail(wsOrder)} className="rounded-lg border bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:bg-gray-50 shadow-sm transition">Review</button>
                   {purchaseOrderRules.canReceive(wsOrder.order) && (
                     <button 
                       onClick={() => handleReceive(wsOrder)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700 active:scale-95"
+                      className="flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700 active:scale-95"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Truck className="h-4 w-4" /> Receive
                     </button>
                   )}
                 </div>

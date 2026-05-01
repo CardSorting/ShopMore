@@ -20,13 +20,6 @@ export function WishlistPage() {
 
   const selectedList = wishlists.find(w => w.id === selectedListId) || wishlists.find(w => w.isDefault);
 
-  useEffect(() => {
-    if (selectedList) {
-      setSelectedListId(selectedList.id);
-      loadItems(selectedList.id);
-    }
-  }, [selectedList?.id]);
-
   async function loadItems(id: string) {
     setLoadingItems(true);
     try {
@@ -38,6 +31,13 @@ export function WishlistPage() {
       setLoadingItems(false);
     }
   }
+
+  useEffect(() => {
+    if (selectedList) {
+      setSelectedListId(selectedList.id);
+      loadItems(selectedList.id);
+    }
+  }, [selectedList?.id]);
 
   async function handleCreateList() {
     if (!newListName.trim()) return;

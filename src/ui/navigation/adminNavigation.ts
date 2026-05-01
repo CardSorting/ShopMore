@@ -69,19 +69,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       },
     ],
   },
-  {
-    id: 'pos',
-    items: [
-      {
-        id: 'pos',
-        href: '/admin/pos',
-        label: 'Point of Sale',
-        description: 'Open the register and sell to in-store customers',
-        icon: Zap,
-        aliases: ['pos', 'register', 'checkout', 'counter', 'sell', 'terminal'],
-      },
-    ],
-  },
+
   {
     id: 'orders',
     items: [
@@ -253,15 +241,7 @@ export const ADMIN_UTILITY_NAV: AdminNavItem[] = [
 ];
 
 export const ADMIN_QUICK_ACTIONS: AdminQuickAction[] = [
-  {
-    id: 'open-pos',
-    href: '/admin/pos',
-    label: 'Open POS',
-    description: 'Start a new in-store transaction',
-    icon: Zap,
-    aliases: ['checkout', 'sell now', 'counter'],
-    group: 'Create',
-  },
+
   {
     id: 'new-product',
     href: '/admin/products/new',

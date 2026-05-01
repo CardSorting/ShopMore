@@ -76,7 +76,7 @@ let inventoryLevelRepoInstance: IInventoryLevelRepository | null = null;
 let purchaseOrderServiceInstance: PurchaseOrderService | null = null;
 let supplierServiceInstance: SupplierService | null = null;
 let collectionServiceInstance: CollectionService | null = null;
-let taxonomyRepoInstance: ITaxonomyRepository | null = null;
+
 let taxonomyServiceInstance: TaxonomyService | null = null;
 let wishlistRepoInstance: IWishlistRepository | null = null;
 let wishlistServiceInstance: WishlistService | null = null;

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Dedicated workspace for configuring inventory nodes.

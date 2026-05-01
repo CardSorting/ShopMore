@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Purchase Orders — merchant-friendly inbound inventory and receiving workspace

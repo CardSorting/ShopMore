@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Collections — Catalog organization and merchandising

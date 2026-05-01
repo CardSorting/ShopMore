@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Locations — Inventory nodes and fulfillment centers

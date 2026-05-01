@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Focused logistics workspace for inventory intake sessions.

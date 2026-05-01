@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Dedicated full-width workspace for creating purchase orders.

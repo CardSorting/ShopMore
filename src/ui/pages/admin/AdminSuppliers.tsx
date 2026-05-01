@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Suppliers — focused wholesaler and distributor management workspace

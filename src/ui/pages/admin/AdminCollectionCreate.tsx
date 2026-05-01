@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Focused workspace for creating product collections and sets.

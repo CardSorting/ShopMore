@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * [LAYER: UI]
  * Admin Taxonomy Manager — Managing categories and product types.

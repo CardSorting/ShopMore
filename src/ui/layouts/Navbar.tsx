@@ -21,7 +21,7 @@ import { SearchCommandPalette } from '../components/SearchCommandPalette';
 
 import { useWishlist } from '../hooks/useWishlist';
 
-import { usePathname } from 'next/navigation';
+import type { NavigationMenu } from '@domain/models';
 
 export function Navbar() {
   const { user, signOut } = useAuth();
@@ -35,6 +35,17 @@ export function Navbar() {
   const [showRecent, setShowRecent] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const recentRef = useRef<HTMLDivElement>(null);
+
+  const [navMenu, setNavMenu] = useState<NavigationMenu | null>(null);
+
+  useEffect(() => {
+    fetch('/api/navigation?id=main-nav')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) setNavMenu(data);
+      })
+      .catch(console.error);
+  }, []);
 
   // Close menu on route change
   useEffect(() => {
@@ -114,47 +125,50 @@ export function Navbar() {
                 </button>
                 
                 {/* Mega-menu style dropdown - Shopify style */}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[600px] bg-white rounded-2xl shadow-xl border border-gray-100 p-8 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
-                  <div className="grid grid-cols-3 gap-8">
-                    <div className="col-span-2">
-                       <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                         <div>
-                            <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Categories</h4>
-                            <ul className="space-y-3">
-                              <li><Link href="/products?category=Singles" className="text-sm text-gray-500 hover:text-primary-600 transition-colors font-medium">Rare Singles</Link></li>
-                              <li><Link href="/products?category=sealed" className="text-sm text-gray-500 hover:text-primary-600 transition-colors font-medium">Sealed Boxes</Link></li>
-                              <li><Link href="/products?category=accessories" className="text-sm text-gray-500 hover:text-primary-600 transition-colors font-medium">Accessories</Link></li>
-                            </ul>
+                {navMenu && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-[600px] bg-white rounded-2xl shadow-xl border border-gray-100 p-8 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                    <div className="grid grid-cols-3 gap-8">
+                      <div className="col-span-2">
+                         <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                           <div>
+                              <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">{navMenu.shopCategories.title || 'Categories'}</h4>
+                              <ul className="space-y-3">
+                                {navMenu.shopCategories.links.map((link, i) => (
+                                  <li key={i}><Link href={link.href} className="text-sm text-gray-500 hover:text-primary-600 transition-colors font-medium">{link.label}</Link></li>
+                                ))}
+                              </ul>
+                           </div>
+                           <div>
+                              <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">{navMenu.shopCollections.title || 'Collections'}</h4>
+                              <ul className="space-y-3">
+                                {navMenu.shopCollections.links.map((link, i) => (
+                                  <li key={i}><Link href={link.href} className="text-sm text-gray-500 hover:text-primary-600 transition-colors font-medium">{link.label}</Link></li>
+                                ))}
+                              </ul>
+                           </div>
                          </div>
-                         <div>
-                            <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Collections</h4>
-                            <ul className="space-y-3">
-                              <li><Link href="/products?category=new" className="text-sm text-gray-500 hover:text-primary-600 transition-colors font-medium flex items-center gap-2">New Arrivals <Zap className="w-3 h-3 text-amber-400 fill-current" /></Link></li>
-                              <li><Link href="/products?category=bestsellers" className="text-sm text-gray-500 hover:text-primary-600 transition-colors font-medium">Bestsellers</Link></li>
-                              <li><Link href="/products?category=sale" className="text-sm text-red-500 hover:text-red-700 transition-colors font-medium">Clearance Event</Link></li>
-                            </ul>
-                         </div>
-                       </div>
-                    </div>
-                    <div className="col-span-1 bg-gray-50 rounded-xl p-4 flex flex-col justify-between">
-                       <div>
-                         <div className="aspect-square rounded-lg bg-white overflow-hidden mb-3 shadow-sm border border-gray-100">
-                           <img src="https://images.unsplash.com/photo-1620336655174-3268cb1b7470?w=400&h=400&fit=crop" alt="Featured" className="w-full h-full object-cover" />
-                         </div>
-                         <p className="text-sm font-bold text-gray-900 line-clamp-1">Charizard Base Set</p>
-                         <p className="text-xs text-gray-500 font-medium">Trending Artifact</p>
-                       </div>
-                       <Link href="/products" className="text-xs font-black text-primary-600 uppercase tracking-widest hover:underline mt-4 inline-block">View Item</Link>
+                      </div>
+                      {navMenu.featuredPromotion && (
+                        <div className="col-span-1 bg-gray-50 rounded-xl p-4 flex flex-col justify-between">
+                           <div>
+                             <div className="aspect-square rounded-lg bg-white overflow-hidden mb-3 shadow-sm border border-gray-100">
+                               <img src={navMenu.featuredPromotion.imageUrl} alt={navMenu.featuredPromotion.title} className="w-full h-full object-cover" />
+                             </div>
+                             <p className="text-sm font-bold text-gray-900 line-clamp-1">{navMenu.featuredPromotion.title}</p>
+                             {navMenu.featuredPromotion.subtitle && <p className="text-xs text-gray-500 font-medium">{navMenu.featuredPromotion.subtitle}</p>}
+                           </div>
+                           <Link href={navMenu.featuredPromotion.linkHref} className="text-xs font-black text-primary-600 uppercase tracking-widest hover:underline mt-4 inline-block">{navMenu.featuredPromotion.linkText}</Link>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
               </div>
-              <Link href="/products" className="text-sm font-bold text-gray-600 hover:text-primary-600 transition-colors py-8 h-20 flex items-center">
-                All Products
-              </Link>
-              <Link href="/products?category=featured" className="text-sm font-bold text-gray-600 hover:text-primary-600 transition-colors py-8 h-20 flex items-center">
-                Featured
-              </Link>
+              {navMenu?.otherLinks.map((link, i) => (
+                <Link key={i} href={link.href} className="text-sm font-bold text-gray-600 hover:text-primary-600 transition-colors py-8 h-20 flex items-center">
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
 

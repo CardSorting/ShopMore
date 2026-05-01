@@ -3,7 +3,7 @@
  * Manages store-wide configuration and setup progress.
  */
 import type { ISettingsRepository, IProductRepository, IDiscountRepository } from '@domain/repositories';
-import type { JsonValue } from '@domain/models';
+import type { JsonValue, NavigationMenu } from '@domain/models';
 import { AuditService } from './AuditService';
 
 export interface SetupGuideProgress {
@@ -74,5 +74,14 @@ export class SettingsService {
       targetId: key,
       details: { value }
     });
+  }
+
+  async getNavigationMenu(menuId: string): Promise<NavigationMenu | null> {
+    const raw = await this.settingsRepo.get<NavigationMenu>(`navigation_${menuId}`);
+    return raw;
+  }
+
+  async updateNavigationMenu(menuId: string, menu: NavigationMenu, actor: { id: string, email: string }): Promise<void> {
+    await this.updateSetting(`navigation_${menuId}`, menu as unknown as JsonValue, actor);
   }
 }

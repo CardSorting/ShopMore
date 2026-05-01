@@ -29,6 +29,7 @@ import {
   Languages,
   ShoppingBag,
   Settings,
+  MenuSquare,
   X
 } from 'lucide-react';
 import { 
@@ -63,6 +64,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'general', label: 'General', description: 'Store name, address, and time zone', icon: Store, group: 'store' },
   { id: 'branding', label: 'Branding', description: 'Logos, colors, and design tokens', icon: Palette, group: 'store' },
   { id: 'notifications', label: 'Notifications', description: 'Staff and customer alert preferences', icon: Bell, group: 'store' },
+  { id: '../navigation', label: 'Navigation', description: 'Configure storefront mega-menu', icon: MenuSquare, group: 'store' },
   
   // Sales Group
   { id: 'payments', label: 'Payments', description: 'Payment providers and settlement', icon: CreditCard, group: 'sales' },

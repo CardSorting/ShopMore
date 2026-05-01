@@ -325,6 +325,35 @@ export interface Address {
   country: string;
 }
 
+export interface NavigationLink {
+  label: string;
+  href: string;
+  icon?: string;
+  isExternal?: boolean;
+  children?: NavigationLink[];
+}
+
+export interface NavigationColumn {
+  title: string;
+  links: NavigationLink[];
+}
+
+export interface NavigationPromotion {
+  imageUrl: string;
+  title: string;
+  subtitle?: string;
+  linkText: string;
+  linkHref: string;
+}
+
+export interface NavigationMenu {
+  id: string; // e.g. "main-nav"
+  shopCategories: NavigationColumn;
+  shopCollections: NavigationColumn;
+  featuredPromotion?: NavigationPromotion;
+  otherLinks: NavigationLink[]; 
+}
+
 export interface AdminDashboardSummary {
   productCount: number;
   lowStockCount: number;

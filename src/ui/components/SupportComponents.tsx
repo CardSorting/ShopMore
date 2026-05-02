@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   ArrowLeft, ChevronRight, FileText, ThumbsUp, ThumbsDown, 
   MessageSquare, ExternalLink, Calendar, User, Search, CheckCircle2,
-  Send
+  Send, Clock
 } from 'lucide-react';
 import type { KnowledgebaseArticle, KnowledgebaseCategory, SupportTicket } from '@domain/models';
 import Link from 'next/link';
@@ -18,10 +18,10 @@ export function KnowledgebaseCategoryCard({ category, onClick }: { category: Kno
       <div className="h-12 w-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-4 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
         <FileText className="h-6 w-6" />
       </div>
-      <h3 className="text-lg font-bold mb-2 group-hover:text-primary-600 transition-colors">{category.name}</h3>
-      <p className="text-sm font-medium text-gray-500 line-clamp-2">{category.description}</p>
+      <h3 className="text-lg font-black mb-2 group-hover:text-primary-600 transition-colors">{category.name}</h3>
+      <p className="text-sm font-medium text-gray-500 line-clamp-2 leading-relaxed">{category.description}</p>
       <div className="mt-4 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-primary-500 transition-colors">
-        <span>View {category.articleCount} articles</span>
+        <span>{category.articleCount} Articles</span>
         <ChevronRight className="h-3 w-3" />
       </div>
     </button>
@@ -42,8 +42,12 @@ export function KnowledgebaseArticleList({ articles, categoryName, onBack, onArt
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
+            <div className="flex items-center gap-2 mb-1">
+               <Link href="/support" className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary-600">Support</Link>
+               <ChevronRight className="h-2 w-2 text-gray-300" />
+               <span className="text-[10px] font-black uppercase tracking-widest text-primary-600">{categoryName}</span>
+            </div>
             <h2 className="text-3xl font-black text-gray-900 tracking-tight">{categoryName}</h2>
-            <p className="text-sm font-medium text-gray-500">{articles.length} helpful articles</p>
           </div>
         </div>
       </div>
@@ -60,8 +64,13 @@ export function KnowledgebaseArticleList({ articles, categoryName, onBack, onArt
                 <FileText className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{article.title}</p>
-                <p className="text-sm font-medium text-gray-500 mt-1 line-clamp-1">{article.excerpt}</p>
+                <div className="flex items-center gap-3 mb-1">
+                  <p className="text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{article.title}</p>
+                  {article.tags?.includes('popular') && (
+                    <span className="text-[8px] font-black uppercase tracking-tighter bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Most Used</span>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-gray-500 line-clamp-1">{article.excerpt}</p>
               </div>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
@@ -101,9 +110,11 @@ export function KnowledgebaseArticleView({ article, relatedArticles, onBack, onA
           </button>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 px-2 py-0.5 rounded-lg">{article.categoryName}</span>
-              <span className="text-[10px] font-bold text-gray-300">•</span>
-              <span className="text-[10px] font-bold text-gray-400">{Math.ceil(article.content.split(' ').length / 200)} min read</span>
+               <Link href="/support" className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary-600">Support</Link>
+               <ChevronRight className="h-2 w-2 text-gray-300" />
+               <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary-600">{article.categoryName}</button>
+               <ChevronRight className="h-2 w-2 text-gray-300" />
+               <span className="text-[10px] font-black uppercase tracking-widest text-primary-600 truncate max-w-[150px]">{article.title}</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{article.title}</h1>
           </div>
@@ -112,13 +123,26 @@ export function KnowledgebaseArticleView({ article, relatedArticles, onBack, onA
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-8 space-y-12">
-          <article className="bg-white rounded-4xl p-8 md:p-12 border border-gray-100 shadow-xl max-w-none">
+          <article className="bg-white rounded-4xl p-8 md:p-12 border border-gray-100 shadow-xl max-w-none prose prose-slate prose-lg prose-headings:font-black prose-headings:tracking-tight prose-a:text-primary-600 prose-strong:text-gray-900">
             <div className="whitespace-pre-wrap font-medium text-gray-600 leading-relaxed text-base">
                {article.content}
             </div>
           </article>
 
-          {/* Helpful Section */}
+          {/* Recommended Next Step */}
+          <div className="bg-primary-50 rounded-[2.5rem] p-8 md:p-10 border border-primary-100 flex flex-col md:flex-row items-center gap-8">
+            <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-sm text-primary-600 shrink-0">
+               <MessageSquare className="h-8 w-8" />
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <h4 className="text-xl font-black text-gray-900 tracking-tight">Need further assistance?</h4>
+              <p className="text-sm font-medium text-gray-500 mt-1">If this guide didn't solve your issue, our collectors are ready to help personally.</p>
+            </div>
+            <Link href="/support?contact=true" className="px-8 py-4 rounded-2xl bg-gray-900 text-white font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10">
+              Open a Ticket
+            </Link>
+          </div>
+
           <div className="bg-gray-900 rounded-[2.5rem] p-8 md:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
             <div className="relative z-10 text-center md:text-left">
               <h3 className="text-xl font-black tracking-tight">Was this article helpful?</h3>
@@ -155,7 +179,7 @@ export function KnowledgebaseArticleView({ article, relatedArticles, onBack, onA
 
         <div className="lg:col-span-4 space-y-8">
            <div className="bg-gray-50 rounded-4xl p-8 border border-gray-100/50">
-             <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Article Details</h3>
+             <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Article Metadata</h3>
              <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <User className="h-4 w-4 text-gray-400" />
@@ -168,7 +192,14 @@ export function KnowledgebaseArticleView({ article, relatedArticles, onBack, onA
                   <Calendar className="h-4 w-4 text-gray-400" />
                   <div>
                     <p className="text-[10px] font-black uppercase text-gray-400">Last Updated</p>
-                    <p className="text-xs font-bold text-gray-900">{article.updatedAt.toLocaleDateString()}</p>
+                    <p className="text-xs font-bold text-gray-900">{new Date(article.updatedAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Clock className="h-4 w-4 text-gray-400" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-gray-400">Reading Time</p>
+                    <p className="text-xs font-bold text-gray-900">{Math.ceil(article.content.split(' ').length / 200)} Minutes</p>
                   </div>
                 </div>
              </div>

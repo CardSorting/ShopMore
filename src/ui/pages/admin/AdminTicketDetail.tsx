@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { 
   ArrowLeft, MessageSquare, Clock, AlertCircle, CheckCircle2, 
   Send, User, Mail, Package, Receipt, ExternalLink, MoreVertical,
-  History, Shield, Loader2, Search
+  History, Shield, Loader2, Search, Sparkles
 } from 'lucide-react';
 import { useServices } from '../../hooks/useServices';
 import { useAuth } from '../../hooks/useAuth';
@@ -319,7 +319,7 @@ export function AdminTicketDetail() {
             {/* Reply Input */}
             <div className="p-4 border-t bg-white">
               <form onSubmit={handleSendReply} className="space-y-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
                   <div className="flex items-center gap-4">
                     <button
                       type="button"
@@ -338,18 +338,28 @@ export function AdminTicketDetail() {
                   </div>
                   
                   {macros.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Quick Replies</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Quick Macros:</p>
+                      {macros.slice(0, 3).map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => handleApplyMacro(m)}
+                          className="text-[9px] font-bold bg-gray-50 border border-gray-100 rounded-lg px-2 py-1 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600 transition-all"
+                        >
+                          {m.name}
+                        </button>
+                      ))}
                       <select 
                         onChange={(e) => {
                           const m = macros.find(x => x.id === e.target.value);
                           if (m) handleApplyMacro(m);
                           e.target.value = '';
                         }}
-                        className="text-[10px] font-bold bg-white border border-gray-100 rounded-lg px-2 py-1 outline-none hover:border-gray-300 transition-all cursor-pointer shadow-sm"
+                        className="text-[9px] font-bold bg-white border border-gray-100 rounded-lg px-2 py-1 outline-none hover:border-gray-300 transition-all cursor-pointer"
                       >
-                        <option value="">Select Macro...</option>
-                        {macros.map(m => (
+                        <option value="">More...</option>
+                        {macros.slice(3).map(m => (
                           <option key={m.id} value={m.id}>{m.name}</option>
                         ))}
                       </select>
@@ -380,6 +390,35 @@ export function AdminTicketDetail() {
                   </div>
                 </div>
               </form>
+            </div>
+          </div>
+
+          {/* Next Best Action Card */}
+          <div className="bg-primary-600 rounded-2xl p-6 text-white shadow-xl shadow-primary-500/20 relative overflow-hidden group">
+            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="h-4 w-4" />
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/60">Next Best Action</h4>
+              </div>
+              <p className="text-sm font-bold mb-6">This customer has a pending order. Check shipment status before replying.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => handleStatusChange('in_progress')}
+                  className="bg-white/20 hover:bg-white/30 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors"
+                >
+                  Verify Shipping
+                </button>
+                <button 
+                  onClick={() => {
+                    const m = macros.find(x => x.category.toLowerCase().includes('shipping') || x.name.toLowerCase().includes('delay'));
+                    if (m) handleApplyMacro(m);
+                  }}
+                  className="bg-white text-primary-600 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-colors"
+                >
+                  Send Delay Macro
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -706,6 +706,7 @@ export interface SupportMacro {
   name: string;
   content: string;
   category: string;
+  slug?: string;
 }
 
 // ─────────────────────────────────────────────

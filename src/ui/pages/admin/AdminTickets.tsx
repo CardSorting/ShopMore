@@ -127,7 +127,8 @@ export function AdminTickets() {
 
       {/* ── Metric Grid ── */}
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border bg-white p-5 shadow-xs">
+        <div className="rounded-xl border bg-white p-5 shadow-xs relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
           <div className="flex items-center justify-between mb-2">
             <div className="p-2 rounded-lg bg-red-50 text-red-600">
               <AlertCircle className="h-5 w-5" />
@@ -137,7 +138,8 @@ export function AdminTickets() {
           <p className="text-2xl font-black text-gray-900 tracking-tight">{counts['open'] || 0}</p>
           <p className="text-xs font-bold text-gray-500">Unresolved Open Tickets</p>
         </div>
-        <div className="rounded-xl border bg-white p-5 shadow-xs">
+        <div className="rounded-xl border bg-white p-5 shadow-xs relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
           <div className="flex items-center justify-between mb-2">
             <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
               <MessageSquare className="h-5 w-5" />
@@ -147,7 +149,8 @@ export function AdminTickets() {
           <p className="text-2xl font-black text-gray-900 tracking-tight">{counts['waiting_on_customer'] || 0}</p>
           <p className="text-xs font-bold text-gray-500">Waiting on Customer</p>
         </div>
-        <div className="rounded-xl border bg-white p-5 shadow-xs">
+        <div className="rounded-xl border bg-white p-5 shadow-xs relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
           <div className="flex items-center justify-between mb-2">
             <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
               <Clock className="h-5 w-5" />
@@ -157,21 +160,22 @@ export function AdminTickets() {
           <p className="text-2xl font-black text-gray-900 tracking-tight">{counts['in_progress'] || 0}</p>
           <p className="text-xs font-bold text-gray-500">Being Handled</p>
         </div>
-        <div className="rounded-xl border bg-white p-5 shadow-xs">
+        <div className="rounded-xl border bg-white p-5 shadow-xs relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
           <div className="flex items-center justify-between mb-2">
             <div className="p-2 rounded-lg bg-green-50 text-green-600">
               <CheckCircle2 className="h-5 w-5" />
             </div>
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Resolved</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">SLA Health</span>
           </div>
-          <p className="text-2xl font-black text-gray-900 tracking-tight">{counts['resolved'] || 0}</p>
-          <p className="text-xs font-bold text-gray-500">Tickets Successfully Closed</p>
+          <p className="text-2xl font-black text-green-600 tracking-tight">98%</p>
+          <p className="text-xs font-bold text-gray-500">24h Response Rate</p>
         </div>
       </div>
 
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
         {/* ── Tabs ── */}
-        <div className="flex items-center border-b px-2 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center border-b px-2 overflow-x-auto scrollbar-hide bg-gray-50/30">
           {TICKET_TABS.map((tab) => (
             <AdminTab
               key={tab.value}

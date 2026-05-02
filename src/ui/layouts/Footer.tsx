@@ -168,10 +168,10 @@ export function Footer() {
             <div className="space-y-6">
               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Support</h3>
               <ul className="space-y-4">
-                <li><Link href="/help" className="text-sm font-semibold text-gray-600 hover:text-primary-600 transition-colors">Help Center</Link></li>
-                <li><Link href="/track-order" className="text-sm font-black text-primary-600 flex items-center gap-2 hover:text-primary-700 transition-colors">Track Order <ArrowRight className="w-3 h-3" /></Link></li>
-                <li><Link href="/rewards" className="text-sm font-black text-amber-600 flex items-center gap-2 hover:text-amber-700 transition-colors">Rewards <Sparkles className="w-3 h-3 fill-current" /></Link></li>
-                <li><Link href="/returns" className="text-sm font-semibold text-gray-600 hover:text-primary-600 transition-colors">Returns</Link></li>
+                <li><Link href="/support" className="text-sm font-semibold text-gray-600 hover:text-primary-600 transition-colors">Help Center</Link></li>
+                <li><Link href="/support?tickets=true" className="text-sm font-semibold text-gray-600 hover:text-primary-600 transition-colors">My Tickets</Link></li>
+                <li><Link href="/orders" className="text-sm font-black text-primary-600 flex items-center gap-2 hover:text-primary-700 transition-colors">Track Order <ArrowRight className="w-3 h-3" /></Link></li>
+                <li><Link href="/support?contact=true&reason=return" className="text-sm font-semibold text-gray-600 hover:text-primary-600 transition-colors">Start a Return</Link></li>
               </ul>
             </div>
           </div>

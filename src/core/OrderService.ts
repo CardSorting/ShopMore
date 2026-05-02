@@ -42,6 +42,7 @@ import {
   ProductNotFoundError,
 } from '@domain/errors';
 import { logger } from '@utils/logger';
+import { getSQLiteDB } from '../infrastructure/sqlite/database';
 
 class InMemoryLockProvider implements ILockProvider {
   private locks = new Set<string>();
@@ -610,6 +611,53 @@ export class OrderService {
         carrier: data.shippingCarrier
       }
     });
+  }
+
+  async getDigitalAssets(userId: string): Promise<Array<{
+    orderId: string;
+    orderDate: Date;
+    productName: string;
+    productId: string;
+    productImageUrl: string;
+    assets: any[];
+  }>> {
+    const orders = await this.orderRepo.getByUserId(userId);
+    const digitalAssets: any[] = [];
+
+    for (const order of orders) {
+      if (order.status === 'cancelled') continue;
+      
+      for (const item of order.items) {
+        if (item.digitalAssets && item.digitalAssets.length > 0) {
+          // Find latest download log for these assets
+          const db = getSQLiteDB();
+          const logs = await db
+            .selectFrom('digital_access_logs' as any)
+            .select(['createdAt', 'assetId'])
+            .where('userId', '=', userId)
+            .where('assetId', 'in', item.digitalAssets.map((a: any) => a.id))
+            .orderBy('createdAt', 'desc')
+            .execute();
+
+          const logMap = new Map(logs.map((l: any) => [l.assetId, l.createdAt]));
+
+          digitalAssets.push({
+            orderId: order.id,
+            orderDate: order.createdAt,
+            productName: item.name,
+            productId: item.productId,
+            productImageUrl: item.imageUrl,
+            assets: item.digitalAssets.map((a: any) => ({
+              ...a,
+              lastDownloadedAt: logMap.get(a.id)
+            }))
+          });
+        }
+      }
+    }
+
+    // Sort by most recent purchase
+    return digitalAssets.sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
   }
 }
 

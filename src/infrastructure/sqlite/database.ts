@@ -702,5 +702,25 @@ export async function initDatabase() {
     .addColumn('userId', 'text')
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .execute();
+
+  // Digital Access Oversight
+  await db.schema
+    .createTable('digital_access_logs')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('userId', 'text', (col) => col.notNull())
+    .addColumn('assetId', 'text', (col) => col.notNull())
+    .addColumn('orderId', 'text')
+    .addColumn('ipAddress', 'text')
+    .addColumn('userAgent', 'text')
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createIndex('idx_digital_access_userId')
+    .on('digital_access_logs')
+    .column('userId')
+    .ifNotExists()
+    .execute();
 }
 

@@ -290,11 +290,20 @@ export function OrdersPage() {
                                   <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-black text-gray-900">{item.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="truncate text-sm font-black text-gray-900">{item.name}</p>
+                                    {item.digitalAssets && item.digitalAssets.length > 0 && (
+                                      <span className="inline-flex items-center gap-1 rounded-md bg-primary-50 px-1.5 py-0.5 text-[10px] font-black uppercase text-primary-600 border border-primary-100">
+                                        Digital
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs font-bold text-gray-400">Qty: {item.quantity} • {formatMoney(item.unitPrice)} each</p>
                                 </div>
                                 <div className="flex flex-col gap-2 shrink-0">
-                                  <Link href={`/support?orderId=${order.id}&productId=${item.productId}&productName=${encodeURIComponent(item.name)}`} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm text-center">Return or Replace</Link>
+                                  {item.digitalAssets && item.digitalAssets.length > 0 && (
+                                    <Link href="/account/vault" className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors shadow-sm text-center">Download Assets</Link>
+                                  )}
                                   <Link href={`/support?orderId=${order.id}&productId=${item.productId}&productName=${encodeURIComponent(item.name)}`} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm text-center">Get Support</Link>
                                 </div>
                               </div>

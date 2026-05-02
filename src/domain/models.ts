@@ -248,6 +248,7 @@ export interface CartItem {
   priceSnapshot: number; // cents at time of add
   quantity: number;
   imageUrl: string;
+  isDigital?: boolean;
 }
 
 export interface Order {

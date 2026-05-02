@@ -151,6 +151,7 @@ export function createApiClientServices() {
             updateOrderStatus: (id: string, status: OrderStatus, _actor: { id: string; email: string }) => request<void>(`/api/admin/orders/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
             batchUpdateOrderStatus: (ids: string[], status: OrderStatus, _actor: { id: string; email: string }) => request<void>('/api/admin/orders/batch', { method: 'PATCH', body: JSON.stringify({ ids, status }) }),
             getCustomerSummaries: (users: User[]) => request<any[]>('/api/admin/customers', { method: 'POST', body: JSON.stringify({ users }) }),
+            getDigitalAssets: (userId: string) => (sessionScoped(userId), request<any[]>(`/api/account/vault?userId=${userId}`)),
         },
         discountService: {
             getAllDiscounts: () => request<any[]>('/api/admin/discounts'),

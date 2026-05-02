@@ -177,8 +177,26 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
                 <div key={item.productId} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/50 transition">
                   <div className="h-12 w-12 rounded-lg border bg-gray-50 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{item.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-gray-900 truncate">{item.name}</p>
+                      {item.digitalAssets && item.digitalAssets.length > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-primary-50 px-1.5 py-0.5 text-[10px] font-black uppercase text-primary-600 border border-primary-100">
+                          Digital
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 mt-0.5">{formatCurrency(item.unitPrice)} × {item.quantity}</p>
+                    
+                    {item.digitalAssets && item.digitalAssets.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {item.digitalAssets.map((asset: any) => (
+                          <div key={asset.id} className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
+                            <Clock className="h-3 w-3" />
+                            {asset.name} ({(asset.size / 1024 / 1024).toFixed(2)} MB)
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <p className="text-sm font-bold text-gray-900 tracking-tight">{formatCurrency(item.unitPrice * item.quantity)}</p>
                 </div>
@@ -313,38 +331,50 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
               <Truck className="h-4 w-4 text-primary-500" />
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-900">Logistics & Tracking</h3>
             </div>
-            <form onSubmit={handleUpdateFulfillment} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Shipping Carrier</label>
-                <select 
-                  name="shippingCarrier"
-                  defaultValue={order.shippingCarrier || ''}
-                  className="w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500 transition"
+            {order.items.every(i => i.digitalAssets && i.digitalAssets.length > 0) ? (
+              <div className="rounded-xl bg-primary-50 border border-primary-100 p-4">
+                <p className="text-xs font-bold text-primary-800 flex items-center gap-2">
+                  <Shield className="h-3 w-3" />
+                  Digital Fulfillment
+                </p>
+                <p className="text-[10px] text-primary-600 mt-1 leading-relaxed">
+                  This order contains only digital products. Tracking is managed via secure access logs rather than a physical carrier.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleUpdateFulfillment} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Shipping Carrier</label>
+                  <select 
+                    name="shippingCarrier"
+                    defaultValue={order.shippingCarrier || ''}
+                    className="w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500 transition"
+                  >
+                    <option value="">Select Carrier</option>
+                    <option value="USPS">USPS</option>
+                    <option value="UPS">UPS</option>
+                    <option value="FedEx">FedEx</option>
+                    <option value="DHL">DHL</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tracking Number</label>
+                  <input 
+                    name="trackingNumber"
+                    type="text"
+                    defaultValue={order.trackingNumber || ''}
+                    placeholder="e.g. 1Z999..."
+                    className="w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500 transition"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full rounded-xl border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
                 >
-                  <option value="">Select Carrier</option>
-                  <option value="USPS">USPS</option>
-                  <option value="UPS">UPS</option>
-                  <option value="FedEx">FedEx</option>
-                  <option value="DHL">DHL</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tracking Number</label>
-                <input 
-                  name="trackingNumber"
-                  type="text"
-                  defaultValue={order.trackingNumber || ''}
-                  placeholder="e.g. 1Z999..."
-                  className="w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500 transition"
-                />
-              </div>
-              <button 
-                type="submit"
-                className="w-full rounded-xl border bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
-              >
-                Update Logistics
-              </button>
-            </form>
+                  Update Logistics
+                </button>
+              </form>
+            )}
           </div>
 
           {/* Risk Card */}

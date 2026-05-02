@@ -2,7 +2,7 @@
 
 import { useAuth } from '../hooks/useAuth';
 import { useServices } from '../hooks/useServices';
-import { Package, Heart, MapPin, Settings, Star, ChevronRight, LogOut, ShieldCheck, Clock, Tag } from 'lucide-react';
+import { Package, Heart, MapPin, Settings, Star, ChevronRight, LogOut, ShieldCheck, Clock, Tag, HardDrive, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@utils/formatters';
@@ -14,21 +14,26 @@ export function AccountPage() {
   const { user, signOut } = useAuth();
   const services = useServices();
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [digitalAssetsCount, setDigitalAssetsCount] = useState(0);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const loadRecentOrders = async () => {
+    const loadDashboardData = async () => {
       try {
-        const result = await services.orderService.getOrders(user.id, { sort: 'newest' });
-        setRecentOrders(result.slice(0, 2));
+        const [orders, assets] = await Promise.all([
+          services.orderService.getOrders(user.id, { sort: 'newest' }),
+          services.orderService.getDigitalAssets(user.id)
+        ]);
+        setRecentOrders(orders.slice(0, 2));
+        setDigitalAssetsCount(assets.length);
       } catch (err) {
-        logger.error('Failed to load recent orders', err);
+        logger.error('Failed to load dashboard data', err);
       } finally {
         setLoadingOrders(false);
       }
     };
-    void loadRecentOrders();
+    void loadDashboardData();
   }, [user, services]);
 
   if (!user) return (
@@ -68,6 +73,7 @@ export function AccountPage() {
           <aside className="lg:col-span-3 space-y-4">
             <AccountNavLink href="/account" icon={Settings} label="Overview" active />
             <AccountNavLink href="/orders" icon={Package} label="Order History" />
+            <AccountNavLink href="/account/vault" icon={HardDrive} label="Digital Vault" />
             <AccountNavLink href="/wishlist" icon={Heart} label="My Wishlist" />
             <AccountNavLink href="/account/addresses" icon={MapPin} label="Saved Addresses" />
             <AccountNavLink href="/rewards" icon={Star} label="Vault Rewards" />
@@ -107,6 +113,25 @@ export function AccountPage() {
                </div>
                <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/20 rounded-full blur-[100px] -mr-32 -mt-32" />
             </div>
+
+            {/* Digital Library Widget */}
+            {digitalAssetsCount > 0 && (
+               <div className="bg-white rounded-[3rem] border border-primary-100 p-8 shadow-xl shadow-primary-200/20 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 group">
+                  <div className="flex items-center gap-6">
+                     <div className="w-20 h-20 bg-primary-600 rounded-3xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:rotate-6">
+                        <HardDrive className="w-10 h-10" />
+                     </div>
+                     <div>
+                        <h3 className="text-2xl font-black text-gray-900 tracking-tight">Your Digital Vault</h3>
+                        <p className="text-gray-500 font-medium mt-1">You have <span className="text-primary-600 font-bold">{digitalAssetsCount}</span> asset{digitalAssetsCount === 1 ? '' : 's'} ready for download.</p>
+                     </div>
+                  </div>
+                  <Link href="/account/vault" className="flex items-center gap-2 px-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg">
+                     Open Library <ChevronRight className="w-4 h-4" />
+                  </Link>
+                  <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary-500/5 rounded-full blur-3xl" />
+               </div>
+            )}
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">

@@ -218,8 +218,8 @@ export function OrderConfirmation({ order, userEmail, userName, context = 'confi
                           {item.digitalAssets?.map((asset) => (
                             <a 
                               key={asset.id} 
-                              href={asset.url} 
-                              target="_blank" 
+                              href={`/api/downloads/${asset.id}?userId=${user?.id || order.userId}`} 
+                              download
                               rel="noopener noreferrer"
                               className="group flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-gray-100 transition-all hover:border-primary-500 hover:shadow-md hover:-translate-y-0.5"
                             >

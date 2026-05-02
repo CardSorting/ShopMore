@@ -1,40 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ImageService, ImageFolder } from '../../../../infrastructure/services/ImageService';
+import { StorageService, StorageFolder } from '../../../../infrastructure/services/StorageService';
 
-export const runtime = 'nodejs'; // Required for Sharp
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    const folder = (formData.get('folder') as ImageFolder) || 'products';
+    const folder = (formData.get('folder') as StorageFolder) || 'products';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'File must be an image' }, { status: 400 });
-    }
-
-    // Limit size to 10MB (Sharp can handle it, but for lean we want to avoid massive uploads)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File size exceeds 10MB' }, { status: 400 });
-    }
-
     const buffer = Buffer.from(await file.arrayBuffer());
-    
-    const result = await ImageService.processAndSave(
+
+    // If it's a digital asset, use the StorageService for private storage
+    if (folder === 'digital-assets') {
+      const result = await StorageService.saveFile(
+        buffer,
+        folder,
+        file.name,
+        file.type
+      );
+      return NextResponse.json(result);
+    }
+
+    // Otherwise, if it's an image, use ImageService for optimization
+    if (file.type.startsWith('image/')) {
+      // Limit size to 10MB for processed images
+      if (file.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ error: 'Image size exceeds 10MB' }, { status: 400 });
+      }
+
+      const result = await ImageService.processAndSave(
+        buffer,
+        folder as ImageFolder,
+        file.name
+      );
+      return NextResponse.json(result);
+    }
+
+    // Default to raw storage for other public files
+    const result = await StorageService.saveFile(
       buffer,
       folder,
-      file.name
+      file.name,
+      file.type
     );
 
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to process image', details: error.message },
+      { error: 'Failed to process upload', details: error.message },
       { status: 500 }
     );
   }

@@ -504,6 +504,7 @@ export function addCartItem(
     priceSnapshot: product.price,
     quantity,
     imageUrl: product.imageUrl,
+    isDigital: product.isDigital,
   };
 
   if (existingIndex >= 0) {

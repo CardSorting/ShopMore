@@ -51,13 +51,16 @@ function validateEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-function validateCheckoutDetails(email: string, address: Address): CheckoutFieldErrors {
+function validateCheckoutDetails(email: string, address: Address, isPurelyDigital: boolean = false): CheckoutFieldErrors {
   const errors: CheckoutFieldErrors = {};
   if (!validateEmail(email)) errors.email = 'Enter a valid email address for your receipt and delivery updates.';
-  if (!address.street.trim()) errors.street = 'Enter the street address where your order should ship.';
-  if (!address.city.trim()) errors.city = 'Enter a city.';
-  if (!address.state.trim()) errors.state = 'Enter a state or region.';
-  if (!address.zip.trim()) errors.zip = 'Enter a ZIP or postal code.';
+  
+  if (!isPurelyDigital) {
+    if (!address.street.trim()) errors.street = 'Enter the street address where your order should ship.';
+    if (!address.city.trim()) errors.city = 'Enter a city.';
+    if (!address.state.trim()) errors.state = 'Enter a state or region.';
+    if (!address.zip.trim()) errors.zip = 'Enter a ZIP or postal code.';
+  }
   return errors;
 }
 
@@ -96,20 +99,31 @@ export function CheckoutPage() {
       }
     }
   }, [user]);
+  
+  const cartItems = cart?.items ?? [];
 
   useEffect(() => {
     localStorage.setItem('checkout:address', JSON.stringify(address));
   }, [address]);
 
-  const shipping = subtotal >= 10000 ? 0 : 599;
+  const isPurelyDigital = useMemo(() => {
+    return cartItems.length > 0 && cartItems.every(item => item.isDigital);
+  }, [cartItems]);
+
+  const shipping = isPurelyDigital || subtotal >= 10000 ? 0 : 599;
   const discountAmount = appliedDiscount?.amount ?? 0;
   const total = Math.max(0, subtotal + shipping - discountAmount);
   const freeShippingRemaining = Math.max(0, 10000 - subtotal);
   const currentStepIndex = CHECKOUT_STEPS.findIndex((item) => item.id === step);
 
   function goToStep(nextStep: CheckoutStep) {
+    if (nextStep === 'shipping' && isPurelyDigital) {
+      goToStep('payment');
+      return;
+    }
+
     if (nextStep === 'payment' || nextStep === 'shipping') {
-      const errors = validateCheckoutDetails(email, address);
+      const errors = validateCheckoutDetails(email, address, isPurelyDigital);
       setFieldErrors(errors);
       if (Object.keys(errors).length > 0) {
         setStep('information');
@@ -177,8 +191,6 @@ export function CheckoutPage() {
   useEffect(() => {
     if (checkoutError) document.getElementById('checkout-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [checkoutError]);
-
-  const cartItems = cart?.items ?? [];
 
   if (loadingCart) {
     return (
@@ -248,7 +260,11 @@ export function CheckoutPage() {
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-12">
         <main className="px-4 py-10 sm:px-6 lg:col-span-7 lg:px-12 lg:py-16">
-          <Stepper steps={CHECKOUT_STEPS} currentStepId={step} onStepClick={goToStep} />
+          <Stepper 
+            steps={CHECKOUT_STEPS.filter(s => !(isPurelyDigital && s.id === 'shipping'))} 
+            currentStepId={step} 
+            onStepClick={goToStep} 
+          />
 
           <div className="max-w-2xl mx-auto lg:mx-0">
             {checkoutError && (
@@ -289,59 +305,64 @@ export function CheckoutPage() {
                   </div>
                 </section>
 
-                <section>
-                  <h2 className="mb-8 text-3xl font-black tracking-tight text-gray-900">Destination</h2>
-                  <div className="grid grid-cols-1 gap-6">
-                    <FormField 
-                      label="Street Address" 
-                      id="checkout-street"
-                      autoComplete="shipping street-address" 
-                      error={fieldErrors.street} 
-                      value={address.street} 
-                      onChange={(val) => setAddress({ ...address, street: val })} 
-                      placeholder="Street address, suite, or apartment" 
-                    />
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                {!isPurelyDigital && (
+                  <section>
+                    <h2 className="mb-8 text-3xl font-black tracking-tight text-gray-900">Destination</h2>
+                    <div className="grid grid-cols-1 gap-6">
                       <FormField 
-                        label="City" 
-                        id="checkout-city"
-                        autoComplete="shipping address-level2" 
-                        error={fieldErrors.city}
-                        value={address.city} 
-                        onChange={(val) => setAddress({ ...address, city: val })} 
+                        label="Street Address" 
+                        id="checkout-street"
+                        autoComplete="shipping street-address" 
+                        error={fieldErrors.street} 
+                        value={address.street} 
+                        onChange={(val) => setAddress({ ...address, street: val })} 
+                        placeholder="Street address, suite, or apartment" 
                       />
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <FormField 
-                          label="State" 
-                          id="checkout-state"
-                          autoComplete="shipping address-level1" 
-                          error={fieldErrors.state}
-                          value={address.state} 
-                          onChange={(val) => setAddress({ ...address, state: val })} 
+                          label="City" 
+                          id="checkout-city"
+                          autoComplete="shipping address-level2" 
+                          error={fieldErrors.city}
+                          value={address.city} 
+                          onChange={(val) => setAddress({ ...address, city: val })} 
                         />
-                        <FormField 
-                          label="ZIP Code" 
-                          id="checkout-zip"
-                          autoComplete="shipping postal-code" 
-                          error={fieldErrors.zip}
-                          value={address.zip} 
-                          onChange={(val) => setAddress({ ...address, zip: val })} 
-                        />
+                        <div className="grid grid-cols-2 gap-6">
+                          <FormField 
+                            label="State" 
+                            id="checkout-state"
+                            autoComplete="shipping address-level1" 
+                            error={fieldErrors.state}
+                            value={address.state} 
+                            onChange={(val) => setAddress({ ...address, state: val })} 
+                          />
+                          <FormField 
+                            label="ZIP Code" 
+                            id="checkout-zip"
+                            autoComplete="shipping postal-code" 
+                            error={fieldErrors.zip}
+                            value={address.zip} 
+                            onChange={(val) => setAddress({ ...address, zip: val })} 
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </section>
+                  </section>
+                )}
 
                 <div className="flex flex-col-reverse gap-6 pt-8 sm:flex-row sm:items-center sm:justify-between border-t border-gray-100">
                   <Link href="/cart" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back to cart
                   </Link>
                   <button 
-                    onClick={() => goToStep('shipping')} 
+                    onClick={() => goToStep(isPurelyDigital ? 'payment' : 'shipping')} 
                     data-testid="continue-to-shipping" 
                     className="group relative overflow-hidden rounded-2xl bg-gray-900 px-10 py-5 text-sm font-black text-white shadow-2xl transition-all hover:bg-black hover:-translate-y-1 active:translate-y-0"
                   >
-                    <span className="relative z-10 flex items-center gap-2">Continue to Shipping <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                    <span className="relative z-10 flex items-center gap-2">
+                      {isPurelyDigital ? 'Continue to Payment' : 'Continue to Shipping'} 
+                      <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </span>
                     <div className="absolute inset-0 z-0 bg-linear-to-r from-primary-600 to-blue-600 opacity-0 transition-opacity group-hover:opacity-100" />
                   </button>
                 </div>
@@ -411,7 +432,9 @@ export function CheckoutPage() {
                     <div className="bg-gray-50/50 px-8 py-6 border-b border-gray-100">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Order Commitment</p>
                       <div className="mt-2 flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-600">{totalItems} Items ready for shipment</span>
+                        <span className="text-sm font-bold text-gray-600">
+                          {isPurelyDigital ? 'Instant digital fulfillment' : `${totalItems} Items ready for shipment`}
+                        </span>
                         <span className="text-2xl font-black text-gray-900">{formatMoney(total)}</span>
                       </div>
                     </div>
@@ -541,7 +564,9 @@ export function CheckoutPage() {
 
               <div className="mt-12 space-y-4 border-t border-gray-100 pt-10">
                 <SummaryRow label="Subtotal" value={formatMoney(subtotal)} />
-                <SummaryRow label="Standard Shipping" value={shipping === 0 ? 'Free' : formatMoney(shipping)} />
+                {!isPurelyDigital && (
+                  <SummaryRow label="Standard Shipping" value={shipping === 0 ? 'Free' : formatMoney(shipping)} />
+                )}
                 <SummaryRow label="Estimated Tax" value="Calculated at next step" />
                 {appliedDiscount && <SummaryRow label="Promotional Discount" value={`-${formatMoney(appliedDiscount.amount)}`} isDiscount />}
                 

@@ -644,14 +644,26 @@ export async function initDatabase() {
     .addColumn('userId', 'text', (col) => col.notNull())
     .addColumn('customerEmail', 'text', (col) => col.notNull())
     .addColumn('customerName', 'text')
+    .addColumn('assigneeId', 'text')
+    .addColumn('assigneeName', 'text')
     .addColumn('orderId', 'text')
     .addColumn('productId', 'text')
     .addColumn('subject', 'text', (col) => col.notNull())
     .addColumn('status', 'text', (col) => col.notNull())
     .addColumn('priority', 'text', (col) => col.notNull())
+    .addColumn('type', 'text')
+    .addColumn('tags', 'text')
+    .addColumn('slaDeadline', 'text')
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .addColumn('updatedAt', 'text', (col) => col.notNull())
     .execute();
+
+  // Support Ticket Migrations
+  try { await db.schema.alterTable('support_tickets').addColumn('assigneeId', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('support_tickets').addColumn('assigneeName', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('support_tickets').addColumn('type', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('support_tickets').addColumn('tags', 'text').execute(); } catch {}
+  try { await db.schema.alterTable('support_tickets').addColumn('slaDeadline', 'text').execute(); } catch {}
 
   await db.schema
     .createTable('ticket_messages')
@@ -676,7 +688,10 @@ export async function initDatabase() {
     .addColumn('name', 'text', (col) => col.notNull())
     .addColumn('content', 'text', (col) => col.notNull())
     .addColumn('category', 'text', (col) => col.notNull())
+    .addColumn('slug', 'text')
     .execute();
+
+  try { await db.schema.alterTable('support_macros').addColumn('slug', 'text').execute(); } catch {}
 
   await db.schema
     .createTable('support_article_feedback')

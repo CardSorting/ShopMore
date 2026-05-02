@@ -142,6 +142,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: MessageSquare,
         aliases: ['support', 'help', 'tickets', 'issues', 'returns'],
       },
+      {
+        id: 'support-macros',
+        href: '/admin/support/macros',
+        label: 'Support Macros',
+        description: 'Manage saved replies for efficiency',
+        icon: Tag,
+        aliases: ['macros', 'saved replies', 'templates', 'responses'],
+      },
     ],
   },
   {

@@ -262,8 +262,13 @@ export function createApiClientServices() {
             createTicket: (data: Partial<SupportTicket>) => request<SupportTicket>('/api/tickets', { method: 'POST', body: JSON.stringify(data) }),
             updateTicketStatus: (id: string, status: string) => request<SupportTicket>(`/api/admin/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
             updateTicketPriority: (id: string, priority: string) => request<SupportTicket>(`/api/admin/tickets/${id}/priority`, { method: 'PATCH', body: JSON.stringify({ priority }) }),
+            updateTicketProperties: (id: string, properties: Partial<SupportTicket>) => request<SupportTicket>(`/api/admin/tickets/${id}/properties`, { method: 'PATCH', body: JSON.stringify(properties) }),
+            batchUpdateTickets: (ids: string[], updates: Partial<SupportTicket>) => request<void>('/api/admin/tickets/batch', { method: 'PATCH', body: JSON.stringify({ ids, updates }) }),
             addMessage: (id: string, content: string, senderId?: string, senderType?: string, visibility: 'public' | 'internal' = 'public') => request<TicketMessage>(`/api/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify({ content, senderId, senderType, visibility }) }),
             getMacros: () => request<SupportMacro[]>('/api/support/macros'),
+            saveMacro: (data: Partial<SupportMacro>) => request<void>('/api/support/macros', { method: 'POST', body: JSON.stringify(data) }),
+            updateMacro: (id: string, data: Partial<SupportMacro>) => request<void>(`/api/support/macros/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+            deleteMacro: (id: string) => request<void>(`/api/support/macros/${id}`, { method: 'DELETE' }),
         },
         knowledgebaseService: {
             getCategories: () => request<KnowledgebaseCategory[]>('/api/support/categories'),

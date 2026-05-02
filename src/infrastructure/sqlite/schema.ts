@@ -289,11 +289,16 @@ export interface SupportTicketTable {
   userId: string;
   customerEmail: string;
   customerName: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
   orderId: string | null;
   productId: string | null;
   subject: string;
   status: string;
   priority: string;
+  type: string | null;
+  tags: string | null; // JSON string
+  slaDeadline: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -313,6 +318,7 @@ export interface SupportMacroTable {
   name: string;
   content: string;
   category: string;
+  slug: string | null;
 }
 
 export interface SupportArticleFeedbackTable {

@@ -673,19 +673,25 @@ export interface WishlistItem {
 // Support & Tickets
 // ─────────────────────────────────────────────
 
-export type TicketStatus = 'open' | 'in_progress' | 'waiting_on_customer' | 'resolved' | 'closed';
+export type TicketStatus = 'new' | 'open' | 'pending' | 'on_hold' | 'solved' | 'closed';
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TicketType = 'question' | 'incident' | 'problem' | 'task';
 
 export interface SupportTicket {
   id: string;
   userId: string;
   customerEmail: string;
   customerName?: string;
+  assigneeId?: string;
+  assigneeName?: string;
   orderId?: string;
   productId?: string;
   subject: string;
   status: TicketStatus;
   priority: TicketPriority;
+  type?: TicketType;
+  tags?: string[];
+  slaDeadline?: Date;
   messages: TicketMessage[];
   createdAt: Date;
   updatedAt: Date;

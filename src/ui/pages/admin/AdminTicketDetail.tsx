@@ -1,15 +1,15 @@
-'use client';
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   ArrowLeft, MessageSquare, Clock, AlertCircle, CheckCircle2, 
   Send, User, Mail, Package, Receipt, ExternalLink, MoreVertical,
-  History, Shield, Loader2, Search, Sparkles
+  History, Shield, Loader2, Search, Sparkles, Tag, Users, HelpCircle,
+  AlertTriangle, Calendar, Plus, X, ChevronDown, ChevronUp, FileText, Activity,
+  PackageCheck, DollarSign, ArrowRight, RotateCw
 } from 'lucide-react';
 import { useServices } from '../../hooks/useServices';
 import { useAuth } from '../../hooks/useAuth';
-import type { SupportTicket, TicketMessage, TicketStatus, TicketPriority, SupportMacro } from '@domain/models';
+import type { SupportTicket, TicketMessage, TicketStatus, TicketPriority, SupportMacro, TicketType, Order } from '@domain/models';
 import { formatShortDate, formatFullDateTime } from '@utils/formatters';
 import { 
   AdminPageHeader, 
@@ -31,583 +31,565 @@ export function AdminTicketDetail() {
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [statusLoading, setStatusLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'conversation' | 'activity'>('conversation');
+  const [isInternal, setIsInternal] = useState(false);
+  
+  const [localProps, setLocalProps] = useState<Partial<SupportTicket> | null>(null);
+  const [isSavingProps, setIsSavingProps] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  
+  const [macros, setMacros] = useState<SupportMacro[]>([]);
+  const [macroQuery, setMacroQuery] = useState('');
+  const [showMacros, setShowMacros] = useState(false);
+  const [customerStats, setCustomerStats] = useState<{ total: number; resolved: number; spend: number } | null>(null);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const loadTicket = useCallback(async () => {
+  const loadTicketData = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await services.ticketService.getTicket(id);
-      setTicket(data);
+      const result = await services.ticketService.getTicket(id);
+      if (!result) throw new Error('Ticket not found');
+      
+      setTicket(result);
+      setLocalProps({
+        status: result.status,
+        priority: result.priority,
+        type: result.type,
+        assigneeId: result.assigneeId,
+        assigneeName: result.assigneeName,
+        tags: result.tags || []
+      });
+
+      // Load macros and customer context
+      const [m, allTickets, userOrders] = await Promise.all([
+        services.ticketService.getMacros(),
+        services.ticketService.getUserTickets(result.userId),
+        services.orderService.getOrders(result.userId)
+      ]);
+      
+      setMacros(m);
+      setRecentOrders(userOrders.slice(0, 3));
+      setCustomerStats({
+        total: allTickets.length,
+        resolved: allTickets.filter(t => t.status === 'solved' || t.status === 'closed').length,
+        spend: userOrders.reduce((sum, o) => sum + o.total, 0)
+      });
+
     } catch (err) {
-      toast('error', 'Failed to load ticket details');
-      router.push('/admin/tickets');
+      toast('error', err instanceof Error ? err.message : 'Failed to load ticket');
     } finally {
       setLoading(false);
     }
-  }, [id, services.ticketService, toast, router]);
+  }, [id, services, toast]);
 
   useEffect(() => {
-    void loadTicket();
-  }, [loadTicket]);
+    void loadTicketData();
+  }, [loadTicketData]);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (activeTab === 'conversation' && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [ticket?.messages]);
+  }, [activeTab, ticket?.messages]);
 
-  const [isInternal, setIsInternal] = useState(false);
-  const [macros, setMacros] = useState<SupportMacro[]>([]);
-  const [customerTickets, setCustomerTickets] = useState<SupportTicket[]>([]);
-
-  useEffect(() => {
-    const loadSecondaryData = async () => {
-      try {
-        const [m, t] = await Promise.all([
-          services.ticketService.getMacros(),
-          ticket ? services.ticketService.getUserTickets(ticket.userId) : Promise.resolve([])
-        ]);
-        setMacros(m);
-        if (ticket) {
-          setCustomerTickets(t.filter(x => x.id !== id));
-        }
-      } catch (err) {
-        console.error('Failed to load secondary support data', err);
-      }
-    };
-    loadSecondaryData();
-  }, [services.ticketService, ticket, id]);
-
-  const handleApplyMacro = (macro: SupportMacro) => {
-    setReply(prev => prev + (prev ? '\n\n' : '') + macro.content);
-    toast('success', `Applied macro: ${macro.name}`);
-  };
-
-  const handleSendReply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reply.trim() || !currentUser || isSending) return;
-
+  const handleSendReply = async () => {
+    if (!reply.trim()) return;
     setIsSending(true);
     try {
-      await services.ticketService.addMessage(id, reply, currentUser.id, 'agent', isInternal ? 'internal' : 'public');
+      const visibility = isInternal ? 'internal' : 'public';
+      await services.ticketService.addMessage(id, reply, currentUser?.id, 'agent', visibility);
       setReply('');
-      setIsInternal(false);
-      await loadTicket(); // Refresh to show new message
-      toast('success', isInternal ? 'Internal note added' : 'Reply sent successfully');
+      toast('success', isInternal ? 'Internal note added' : 'Reply sent');
+      await loadTicketData();
     } catch (err) {
-      toast('error', 'Failed to send reply');
+      toast('error', 'Failed to send message');
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleStatusChange = async (newStatus: TicketStatus) => {
-    if (statusLoading || !ticket) return;
-    
-    setStatusLoading(true);
+  const handleApplyMacro = (macro: SupportMacro) => {
+    setReply(prev => (prev ? prev + '\n' + macro.content : macro.content));
+    setShowMacros(false);
+    toast('success', `Applied macro: ${macro.name}`);
+  };
+
+  const saveProperties = async () => {
+    if (!localProps) return;
+    setIsSavingProps(true);
     try {
-      await services.ticketService.updateTicketStatus(id, newStatus);
-      await services.ticketService.addMessage(id, `Status changed to ${newStatus.replace('_', ' ')}`, 'system', 'system', 'public');
-      await loadTicket();
-      toast('success', `Ticket marked as ${newStatus.replace('_', ' ')}`);
+      await services.ticketService.updateTicketProperties(id, localProps);
+      toast('success', 'Properties updated');
+      await loadTicketData();
     } catch (err) {
-      toast('error', 'Failed to update status');
+      toast('error', 'Failed to update properties');
     } finally {
-      setStatusLoading(false);
+      setIsSavingProps(false);
     }
   };
 
-  const handlePriorityChange = async (newPriority: TicketPriority) => {
-    if (!ticket) return;
-    try {
-      await services.ticketService.updateTicketPriority(id, newPriority);
-      await services.ticketService.addMessage(id, `Priority changed to ${newPriority}`, 'system', 'system', 'public');
-      await loadTicket();
-      toast('success', `Priority updated to ${newPriority}`);
-    } catch (err) {
-      toast('error', 'Failed to update priority');
+  const addTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && newTag.trim() && localProps) {
+      if (!localProps.tags?.includes(newTag.trim())) {
+        setLocalProps({ ...localProps, tags: [...(localProps.tags || []), newTag.trim()] });
+      }
+      setNewTag('');
+      e.preventDefault();
     }
   };
 
-  const getStatusConfig = (status: TicketStatus) => {
-    const map: Record<TicketStatus, { bg: string, text: string, icon: any, label: string }> = {
-      open: { bg: 'bg-red-50', text: 'text-red-700', icon: AlertCircle, label: 'Open' },
-      in_progress: { bg: 'bg-amber-50', text: 'text-amber-700', icon: Clock, label: 'In Progress' },
-      waiting_on_customer: { bg: 'bg-blue-50', text: 'text-blue-700', icon: MessageSquare, label: 'Waiting' },
-      resolved: { bg: 'bg-green-50', text: 'text-green-700', icon: CheckCircle2, label: 'Resolved' },
-      closed: { bg: 'bg-gray-100', text: 'text-gray-700', icon: CheckCircle2, label: 'Closed' }
-    };
-    return map[status] || map.open;
+  const removeTag = (tag: string) => {
+    if (localProps) {
+      setLocalProps({ ...localProps, tags: localProps.tags?.filter(t => t !== tag) });
+    }
   };
 
-  if (loading) {
+  const getSLAInfo = useMemo(() => {
+    if (!ticket) return null;
+    if (ticket.status === 'solved' || ticket.status === 'closed') {
+      return { label: 'Achieved', color: 'text-green-500', bg: 'bg-green-50', percent: 100 };
+    }
+    
+    const deadline = ticket.slaDeadline || new Date(ticket.createdAt.getTime() + (24 * 60 * 60 * 1000));
+    const now = new Date();
+    const diff = deadline.getTime() - now.getTime();
+    const totalSLA = 24 * 60 * 60 * 1000;
+    const elapsed = totalSLA - Math.max(0, diff);
+    const percent = Math.min(100, (elapsed / totalSLA) * 100);
+
+    if (diff < 0) {
+      const hours = Math.abs(Math.floor(diff / (60 * 60 * 1000)));
+      return { label: `${hours}h Breached`, color: 'text-red-600', bg: 'bg-red-50', percent: 100 };
+    }
+
+    const hoursLeft = Math.floor(diff / (60 * 60 * 1000));
+    const color = hoursLeft < 4 ? 'text-red-500' : hoursLeft < 12 ? 'text-amber-500' : 'text-blue-500';
+    return { label: `${hoursLeft}h left`, color, bg: color.replace('text', 'bg').replace('500', '50'), percent };
+  }, [ticket]);
+
+  if (loading || !ticket || !localProps) {
     return (
-      <div className="space-y-6 pb-20 animate-in fade-in">
-        <div className="h-20 bg-gray-50 rounded-xl animate-pulse" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 h-[600px] bg-gray-50 rounded-xl animate-pulse" />
-          <div className="lg:col-span-4 h-[400px] bg-gray-50 rounded-xl animate-pulse" />
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
       </div>
     );
   }
 
-  if (!ticket) return null;
-
-  const statusCfg = getStatusConfig(ticket.status);
-
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      {/* Header / Breadcrumbs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
+    <div className="flex flex-col h-[calc(100vh-120px)] animate-in fade-in duration-500">
+      
+      {/* ── Sub-Header Command Bar ── */}
+      <div className="flex items-center justify-between py-4 border-b border-gray-100 mb-6">
+        <div className="flex items-center gap-6">
           <button 
             onClick={() => router.push('/admin/tickets')}
-            className="group flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors"
+            className="p-2 rounded-xl border bg-white hover:bg-gray-50 transition-all text-gray-400 hover:text-gray-900 shadow-sm"
           >
-            <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
-            Back to All Tickets
+            <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-              Ticket <span className="text-gray-400 font-medium">#{ticket.id.slice(0, 8).toUpperCase()}</span>
-            </h1>
-            <div className="flex items-center gap-2">
-              <select 
-                value={ticket.status}
-                onChange={(e) => handleStatusChange(e.target.value as any)}
-                className={`h-7 px-3 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm outline-none transition-all ${statusCfg.bg} ${statusCfg.text} border-transparent focus:border-gray-200`}
-              >
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="waiting_on_customer">Waiting</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-
-              <select 
-                value={ticket.priority}
-                onChange={(e) => handlePriorityChange(e.target.value as any)}
-                className={`h-7 px-3 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm outline-none transition-all ${
-                  ticket.priority === 'urgent' ? 'bg-red-600 text-white border-red-700' : 'bg-gray-100 text-gray-600 border-transparent'
-                }`}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
+          <div>
+             <h1 className="text-xl font-black text-gray-900 tracking-tight">
+               #{ticket.id.slice(0, 8).toUpperCase()} <span className="text-gray-400 ml-2 font-medium">{ticket.subject}</span>
+             </h1>
+             <div className="flex items-center gap-3 mt-1">
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{ticket.customerEmail}</span>
+               <span className="text-gray-300">•</span>
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Requested {formatShortDate(ticket.createdAt.toString())}</span>
+             </div>
           </div>
-          <p className="text-sm font-medium text-gray-500">{ticket.subject}</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {ticket.status !== 'resolved' && (
-            <button 
-              onClick={() => handleStatusChange('resolved')}
-              disabled={statusLoading}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-xs font-black text-white shadow-sm hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
-              {statusLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-              Mark Resolved
-            </button>
-          )}
-          {ticket.status === 'resolved' && (
-            <button 
-              onClick={() => handleStatusChange('open')}
-              disabled={statusLoading}
-              className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-xs font-black text-white shadow-sm hover:bg-black transition-colors disabled:opacity-50"
-            >
-              {statusLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <History className="h-3 w-3" />}
-              Reopen Ticket
-            </button>
-          )}
-          <div className="relative group">
-            <button className="p-2 rounded-lg border bg-white hover:bg-gray-50 transition-colors">
-              <MoreVertical className="h-4 w-4 text-gray-400" />
-            </button>
-            <div className="absolute right-0 mt-2 w-48 rounded-xl border bg-white shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 p-1">
-              <button 
-                onClick={() => handleStatusChange('in_progress')}
-                className="w-full text-left px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 rounded-lg"
-              >
-                Set to In Progress
-              </button>
-              <button 
-                onClick={() => handleStatusChange('waiting_on_customer')}
-                className="w-full text-left px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 rounded-lg"
-              >
-                Set to Waiting
-              </button>
-              <div className="h-px bg-gray-100 my-1" />
-              <button className="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg">
-                Delete Ticket
-              </button>
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
+           <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+             <button 
+               onClick={() => setActiveTab('conversation')}
+               className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'conversation' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+             >
+               Conversation
+             </button>
+             <button 
+               onClick={() => setActiveTab('activity')}
+               className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'activity' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+             >
+               Activity Feed
+             </button>
+           </div>
+           <button 
+             onClick={saveProperties}
+             disabled={isSavingProps}
+             className="px-6 py-2.5 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10 disabled:opacity-50"
+           >
+             {isSavingProps ? 'Updating...' : 'Update Ticket'}
+           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Chat / Message Area */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col h-[600px]">
-            {/* Thread Header */}
-            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">
-                  {ticket.customerName?.charAt(0) || ticket.customerEmail.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-xs font-black text-gray-900">{ticket.customerName || 'Customer'}</p>
-                  <p className="text-[10px] text-gray-500 font-medium">Conversation started {formatShortDate(ticket.createdAt.toString())}</p>
-                </div>
-              </div>
-            </div>
+      <div className="flex-1 flex gap-8 overflow-hidden">
+        {/* ── Main content Area ── */}
+        <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-gray-200/50">
+          
+          {activeTab === 'conversation' ? (
+            <>
+              <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-10 bg-[#fdfdfe] scrollbar-hide">
+                {ticket.messages.map((msg) => {
+                  const isAgent = msg.senderType === 'agent';
+                  const isSystem = msg.senderType === 'system';
+                  const isInternalMsg = msg.visibility === 'internal';
+                  
+                  if (isSystem) return null;
 
-            {/* Messages Scroll Area */}
-            <div 
-              ref={scrollRef}
-              className="flex-1 overflow-y-auto p-6 space-y-8 scroll-smooth bg-[#f8f9fa]"
-            >
-              {ticket.messages.map((msg, idx) => {
-                const isAgent = msg.senderType === 'agent';
-                const isSystem = msg.senderType === 'system';
-                const isInternal = msg.visibility === 'internal';
-                
-                if (isSystem) {
                   return (
-                    <div key={msg.id} className="flex justify-center">
-                      <div className="bg-gray-100 rounded-full px-4 py-1 flex items-center gap-2">
-                        <Shield className="h-3 w-3 text-gray-400" />
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{msg.content}</span>
+                    <div key={msg.id} className="flex gap-6 group">
+                      <div className={`h-10 w-10 rounded-2xl shrink-0 flex items-center justify-center text-[10px] font-black shadow-sm ${
+                        isAgent ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {isAgent ? 'PM' : (ticket.customerName?.[0] || 'C')}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-black text-gray-900">
+                              {isAgent ? (isInternalMsg ? 'Internal Note' : 'Support Agent') : (ticket.customerName || ticket.customerEmail)}
+                            </span>
+                            {isInternalMsg && (
+                              <span className="text-[8px] font-black uppercase tracking-[0.2em] bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Private</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-300 group-hover:text-gray-400 transition-colors">
+                            {formatFullDateTime(msg.createdAt.toString())}
+                          </span>
+                        </div>
+                        <div className={`text-sm leading-relaxed p-4 rounded-3xl ${
+                          isInternalMsg 
+                            ? 'bg-amber-50/50 border border-amber-100 text-amber-900 italic' 
+                            : isAgent 
+                              ? 'bg-gray-50 text-gray-800' 
+                              : 'bg-white border border-gray-100 text-gray-800 shadow-sm'
+                        }`}>
+                          {msg.content}
+                        </div>
                       </div>
                     </div>
                   );
-                }
-
-                return (
-                  <div key={msg.id} className={`flex ${isAgent ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] space-y-1`}>
-                      <div className={`flex items-center gap-2 mb-1 ${isAgent ? 'flex-row-reverse' : ''}`}>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                          {isAgent ? (isInternal ? 'Internal Note' : 'Support Team') : (ticket.customerName || 'Customer')}
-                        </span>
-                        <span className="text-[9px] text-gray-300 font-medium">
-                          {formatFullDateTime(msg.createdAt.toString())}
-                        </span>
-                      </div>
-                      <div className={`
-                        relative px-5 py-3.5 rounded-2xl text-sm leading-relaxed
-                        ${isInternal 
-                          ? 'bg-amber-50 text-amber-900 border border-amber-200 rounded-tr-none shadow-sm'
-                          : isAgent 
-                            ? 'bg-primary-600 text-white rounded-tr-none shadow-lg shadow-primary-500/10' 
-                            : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none shadow-sm'
-                        }
-                      `}>
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Reply Input */}
-            <div className="p-4 border-t bg-white">
-              <form onSubmit={handleSendReply} className="space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setIsInternal(false)}
-                      className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all ${!isInternal ? 'bg-primary-600 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                    >
-                      Public Reply
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsInternal(true)}
-                      className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all ${isInternal ? 'bg-amber-600 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                    >
-                      Internal Note
-                    </button>
-                  </div>
-                  
-                  {macros.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Quick Macros:</p>
-                      {macros.slice(0, 3).map(m => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => handleApplyMacro(m)}
-                          className="text-[9px] font-bold bg-gray-50 border border-gray-100 rounded-lg px-2 py-1 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600 transition-all"
-                        >
-                          {m.name}
-                        </button>
-                      ))}
-                      <select 
-                        onChange={(e) => {
-                          const m = macros.find(x => x.id === e.target.value);
-                          if (m) handleApplyMacro(m);
-                          e.target.value = '';
-                        }}
-                        className="text-[9px] font-bold bg-white border border-gray-100 rounded-lg px-2 py-1 outline-none hover:border-gray-300 transition-all cursor-pointer"
-                      >
-                        <option value="">More...</option>
-                        {macros.slice(3).map(m => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-                <div className="relative">
-                  <textarea
-                    value={reply}
-                    onChange={(e) => setReply(e.target.value)}
-                    placeholder={isInternal ? "Add an internal note only agents can see..." : "Type your response..."}
-                    rows={3}
-                    className={`w-full resize-none rounded-xl border p-4 pb-12 text-sm font-medium focus:ring-4 outline-none transition ${
-                      isInternal 
-                        ? 'bg-amber-50/50 border-amber-200 focus:bg-white focus:border-amber-500 focus:ring-amber-500/5' 
-                        : 'bg-gray-50 border-gray-200 focus:bg-white focus:border-primary-500 focus:ring-primary-500/5'
-                    }`}
-                  />
-                  <div className="absolute right-3 bottom-3 flex items-center gap-3">
-                    <p className="text-[10px] text-gray-400 font-bold hidden md:block">Press ⌘+Enter to send</p>
-                    <button
-                      type="submit"
-                      disabled={!reply.trim() || isSending}
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg text-white shadow-xl transition-all disabled:opacity-50 ${isInternal ? 'bg-amber-600 hover:bg-amber-700' : 'bg-gray-900 hover:bg-black'}`}
-                    >
-                      {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          {/* Next Best Action Card */}
-          <div className="bg-primary-600 rounded-2xl p-6 text-white shadow-xl shadow-primary-500/20 relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform duration-700" />
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="h-4 w-4" />
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/60">Next Best Action</h4>
-              </div>
-              <p className="text-sm font-bold mb-6">This customer has a pending order. Check shipment status before replying.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={() => handleStatusChange('in_progress')}
-                  className="bg-white/20 hover:bg-white/30 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors"
-                >
-                  Verify Shipping
-                </button>
-                <button 
-                  onClick={() => {
-                    const m = macros.find(x => x.category.toLowerCase().includes('shipping') || x.name.toLowerCase().includes('delay'));
-                    if (m) handleApplyMacro(m);
-                  }}
-                  className="bg-white text-primary-600 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-colors"
-                >
-                  Send Delay Macro
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar / Context */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Customer Context Card */}
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b bg-gray-50/50">
-              <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Customer Context</h3>
-            </div>
-            <div className="p-5 space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-black text-gray-900">{ticket.customerName || 'No name provided'}</p>
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mt-0.5">
-                    <Mail className="h-3 w-3" />
-                    {ticket.customerEmail}
-                  </div>
-                  <Link 
-                    href={`/admin/customers/${ticket.userId}`}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold text-primary-600 hover:underline mt-2"
-                  >
-                    View Customer Profile
-                    <ExternalLink className="h-2 w-2" />
-                  </Link>
-                </div>
+                })}
               </div>
 
-              {ticket.orderId && (
-                <div className="pt-5 border-t">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Linked Order</p>
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <Receipt className="h-4 w-4 text-gray-400" />
-                      <p className="text-xs font-bold text-gray-900">Order #{ticket.orderId.slice(0, 8).toUpperCase()}</p>
+              {/* Reply Box */}
+              {ticket.status !== 'closed' && (
+                <div className="p-6 border-t bg-gray-50/30">
+                  <div className="bg-white rounded-4xl border border-gray-100 shadow-xl overflow-hidden">
+                    <div className="flex items-center gap-1 px-4 py-3 border-b bg-gray-50/50">
+                       <button 
+                         onClick={() => setIsInternal(false)}
+                         className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isInternal ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                       >
+                         Public Reply
+                       </button>
+                       <button 
+                         onClick={() => setIsInternal(true)}
+                         className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isInternal ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                       >
+                         Internal Note
+                       </button>
+                       <div className="h-4 w-px bg-gray-200 mx-2" />
+                       
+                       <div className="relative">
+                          <button 
+                            onClick={() => setShowMacros(!showMacros)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-500 transition-all"
+                          >
+                            <Sparkles className="h-3 w-3 text-primary-500" />
+                            Macros
+                            <ChevronDown className={`h-3 w-3 transition-transform ${showMacros ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {showMacros && (
+                            <div className="absolute bottom-full mb-3 left-0 w-80 bg-white rounded-2xl shadow-2xl border p-2 z-50 animate-in slide-in-from-bottom-2">
+                              <div className="relative mb-3">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                                <input 
+                                  autoFocus
+                                  value={macroQuery}
+                                  onChange={e => setMacroQuery(e.target.value)}
+                                  placeholder="Search macros..."
+                                  className="w-full bg-gray-50 rounded-xl pl-8 pr-4 py-2 text-xs font-bold outline-none border border-transparent focus:border-primary-100"
+                                />
+                              </div>
+                              <div className="max-h-60 overflow-y-auto scrollbar-hide">
+                                 {Array.from(new Set(macros.map(m => m.category))).map(cat => {
+                                   const catMacros = macros.filter(m => m.category === cat && (m.name.toLowerCase().includes(macroQuery.toLowerCase()) || m.content.toLowerCase().includes(macroQuery.toLowerCase())));
+                                   if (catMacros.length === 0) return null;
+                                   return (
+                                     <div key={cat} className="mb-4">
+                                       <h5 className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300 px-3 mb-2">{cat}</h5>
+                                       <div className="space-y-1">
+                                          {catMacros.map(m => (
+                                            <button
+                                              key={m.id}
+                                              onClick={() => handleApplyMacro(m)}
+                                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-primary-50 group transition-all"
+                                            >
+                                              <p className="text-xs font-bold text-gray-700 group-hover:text-primary-700">{m.name}</p>
+                                              <p className="text-[10px] text-gray-400 line-clamp-1">{m.content}</p>
+                                            </button>
+                                          ))}
+                                       </div>
+                                     </div>
+                                   );
+                                 })}
+                              </div>
+                            </div>
+                          )}
+                       </div>
                     </div>
-                    <Link href={`/admin/orders/${ticket.orderId}`}>
-                      <ExternalLink className="h-3 w-3 text-gray-400 hover:text-gray-900 transition-colors" />
-                    </Link>
+
+                    <textarea 
+                      value={reply}
+                      onChange={e => setReply(e.target.value)}
+                      placeholder={isInternal ? "Type a private internal note..." : "Type your message to the customer..."}
+                      className="w-full h-40 p-6 text-sm font-medium outline-none resize-none leading-relaxed"
+                    />
+
+                    <div className="px-6 py-4 border-t flex items-center justify-between bg-gray-50/50">
+                       <span className="text-[10px] font-bold text-gray-400">Press Cmd+Enter to send</span>
+                       <button 
+                         onClick={handleSendReply}
+                         disabled={isSending || !reply.trim()}
+                         className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 ${
+                           isInternal ? 'bg-amber-600 shadow-amber-500/20 hover:bg-amber-700' : 'bg-primary-600 shadow-primary-500/20 hover:bg-primary-700'
+                         }`}
+                       >
+                         {isSending ? <RotateCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                         {isInternal ? 'Add Internal Note' : 'Send Reply'}
+                       </button>
+                    </div>
                   </div>
                 </div>
               )}
-
-              {ticket.productId && (
-                <div className="pt-5 border-t">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Related Product</p>
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <Package className="h-4 w-4 text-gray-400" />
-                      <p className="text-xs font-bold text-gray-900 truncate max-w-[150px]">Product Inquiry</p>
+            </>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-12 scrollbar-hide">
+              <div className="max-w-2xl mx-auto space-y-8">
+                 {ticket.messages.filter(m => m.senderType === 'system' || m.visibility === 'internal').reverse().map((msg) => (
+                    <div key={msg.id} className="relative pl-12 pb-10 group">
+                       <div className="absolute left-0 top-0 h-8 w-8 rounded-full bg-white border-2 border-gray-100 flex items-center justify-center z-10 group-hover:border-primary-500 transition-colors">
+                          {msg.senderType === 'system' ? <History className="h-4 w-4 text-blue-500" /> : <Shield className="h-4 w-4 text-amber-500" />}
+                       </div>
+                       <div className="absolute left-4 top-8 bottom-0 w-px bg-gray-100" />
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{formatFullDateTime(msg.createdAt.toString())}</p>
+                       <p className="text-sm font-bold text-gray-900 leading-relaxed">{msg.content}</p>
+                       <p className="text-[10px] text-gray-400 font-medium mt-1">Logged by {msg.senderType === 'system' ? 'System Orchestrator' : 'Support Agent'}</p>
                     </div>
-                    <Link href={`/admin/products/${ticket.productId}`}>
-                      <ExternalLink className="h-3 w-3 text-gray-400 hover:text-gray-900 transition-colors" />
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Internal Metadata */}
-          <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">Internal Stats</h4>
-              <div className="flex items-center gap-2">
-                 <div className="h-5 w-5 rounded-full bg-primary-500 flex items-center justify-center border-2 border-gray-900">
-                    <span className="text-[8px] font-black text-white">AD</span>
+                 ))}
+                 <div className="text-center py-10">
+                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">End of History</p>
                  </div>
-                 <span className="text-[10px] font-black text-white/60">Admin User</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-white/40 text-[9px] font-bold uppercase mb-1">Created</p>
-                <p className="text-xs font-bold">{formatShortDate(ticket.createdAt.toString())}</p>
+          )}
+        </div>
+
+        {/* ── Sidebars (Properties & Context) ── */}
+        <aside className="w-80 flex flex-col gap-6 overflow-y-auto pr-2 pb-10 scrollbar-hide">
+            
+            {/* SLA Monitor */}
+            {getSLAInfo && (
+              <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+                 <div className="flex items-center justify-between mb-4">
+                   <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                     <Clock className="h-3.5 w-3.5" />
+                     SLA Status
+                   </h3>
+                   <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${getSLAInfo.bg} ${getSLAInfo.color}`}>
+                     {getSLAInfo.label}
+                   </span>
+                 </div>
+                 <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${getSLAInfo.color.replace('text', 'bg')}`} 
+                      style={{ width: `${getSLAInfo.percent}%` }}
+                    />
+                 </div>
               </div>
-              <div>
-                <p className="text-white/40 text-[9px] font-bold uppercase mb-1">Messages</p>
-                <p className="text-xs font-bold">{ticket.messages.length}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-white/40 text-[9px] font-bold uppercase mb-1">Priority</p>
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${ticket.priority === 'urgent' ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`} />
-                  <p className="text-xs font-bold uppercase">{ticket.priority}</p>
+            )}
+
+            {/* Customer Profile & Lifetime Context */}
+            <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-12 w-12 rounded-2xl bg-primary-50 flex items-center justify-center border border-primary-100 text-primary-600">
+                  <User className="h-6 w-6" />
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <h3 className="text-sm font-black text-gray-900 truncate">{ticket.customerName || 'Requester'}</h3>
+                  <p className="text-[10px] font-bold text-gray-400 truncate">{ticket.customerEmail}</p>
                 </div>
               </div>
-            </div>
-          </div>
+              
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                 <div className="bg-gray-50 rounded-2xl p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Orders</p>
+                    <p className="text-sm font-black text-gray-900">12</p>
+                 </div>
+                 <div className="bg-gray-50 rounded-2xl p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">LTV</p>
+                    <p className="text-sm font-black text-green-600">${customerStats?.spend.toFixed(2)}</p>
+                 </div>
+              </div>
 
-          {/* Customer History Sidebar */}
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b bg-gray-50/50">
-              <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Previous Tickets</h3>
+              <div className="space-y-4">
+                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                    <span className="text-gray-400">Resolved Rate</span>
+                    <span className="text-gray-900">{customerStats?.resolved}/{customerStats?.total}</span>
+                 </div>
+                 <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary-600" 
+                      style={{ width: `${(customerStats?.resolved || 0) / (customerStats?.total || 1) * 100}%` }} 
+                    />
+                 </div>
+              </div>
+
+              <Link 
+                href={`/admin/customers/${ticket.userId}`}
+                className="mt-8 flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
+              >
+                Full Customer View
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-            <div className="p-4 space-y-3">
-              {customerTickets.length > 0 ? (
-                customerTickets.map(t => (
-                  <Link 
-                    key={t.id} 
-                    href={`/admin/tickets/${t.id}`}
-                    className="block p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                       <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${
-                         t.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                       }`}>
-                         {t.status}
-                       </span>
-                       <span className="text-[9px] text-gray-300 font-medium">{formatShortDate(t.createdAt.toString())}</span>
+
+            {/* Ticket Properties */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center justify-between">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Properties</h3>
+                <Tag className="h-3.5 w-3.5 text-gray-300" />
+              </div>
+              <div className="p-6 space-y-6">
+                 <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Status</label>
+                    <select 
+                      value={localProps.status}
+                      onChange={e => setLocalProps({ ...localProps, status: e.target.value as any })}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="new">New</option>
+                      <option value="open">Open</option>
+                      <option value="pending">Pending</option>
+                      <option value="on_hold">On-hold</option>
+                      <option value="solved">Solved</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Priority</label>
+                    <div className="grid grid-cols-2 gap-2">
+                       {['low', 'medium', 'high', 'urgent'].map(p => (
+                         <button
+                           key={p}
+                           onClick={() => setLocalProps({ ...localProps, priority: p as any })}
+                           className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                             localProps.priority === p 
+                               ? 'bg-gray-900 text-white border-gray-900 shadow-md' 
+                               : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'
+                           }`}
+                         >
+                           {p}
+                         </button>
+                       ))}
                     </div>
-                    <p className="text-xs font-bold text-gray-900 group-hover:text-primary-600 transition-colors truncate">{t.subject}</p>
-                  </Link>
-                ))
-              ) : (
-                <div className="py-4 text-center">
-                  <p className="text-[10px] text-gray-400 font-bold italic">No previous interactions</p>
-                </div>
-              )}
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Ticket Type</label>
+                    <select 
+                      value={localProps.type || ''}
+                      onChange={e => setLocalProps({ ...localProps, type: e.target.value as any })}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">(Not selected)</option>
+                      <option value="question">Question</option>
+                      <option value="incident">Incident</option>
+                      <option value="problem">Problem</option>
+                      <option value="task">Task</option>
+                    </select>
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Assignee</label>
+                    <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5">
+                      <div className="h-5 w-5 rounded-full bg-primary-100 flex items-center justify-center text-[8px] font-black text-primary-600 uppercase">
+                        {localProps.assigneeName?.[0] || 'U'}
+                      </div>
+                      <span className="text-xs font-bold text-gray-600 truncate">{localProps.assigneeName || 'Unassigned'}</span>
+                    </div>
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Tags</label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                       {localProps.tags?.map(t => (
+                         <span key={t} className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-200 group">
+                            {t}
+                            <button onClick={() => removeTag(t)} className="text-gray-300 hover:text-red-500 transition-colors"><X className="h-3 w-3" /></button>
+                         </span>
+                       ))}
+                    </div>
+                    <div className="relative">
+                      <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-300" />
+                      <input 
+                        value={newTag}
+                        onChange={e => setNewTag(e.target.value)}
+                        onKeyDown={addTag}
+                        placeholder="Add tag..."
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-[10px] font-bold outline-none focus:bg-white focus:ring-4 focus:ring-primary-500/5 transition-all"
+                      />
+                    </div>
+                 </div>
+              </div>
             </div>
-          </div>
 
-          {/* Knowledgebase Search Card */}
-          <AdminKBSearch onSelectArticle={(art) => {
-             const link = `${window.location.origin}/support?article=${art.slug}`;
-             setReply(prev => prev + (prev ? '\n\n' : '') + `You might find this article helpful: ${link}`);
-             toast('success', 'Article link added to reply');
-          }} />
-        </div>
-      </div>
-    </div>
-  );
-}
+            {/* Linked Context (Order/Product) */}
+            <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group">
+               <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/5 blur-2xl group-hover:scale-150 transition-transform duration-700" />
+               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
+                 <Package className="h-4 w-4" />
+                 Linked Context
+               </h3>
+               
+               <div className="space-y-4">
+                 {recentOrders.length > 0 ? (
+                   recentOrders.map(order => (
+                     <div key={order.id} className="bg-white/10 p-4 rounded-2xl border border-white/10 hover:bg-white/20 transition-all cursor-pointer group/item">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-white/50">Order History</span>
+                          <ExternalLink className="h-3 w-3 text-white/30 group-hover/item:text-white transition-colors" />
+                        </div>
+                        <p className="text-xs font-black">#{order.id.slice(0, 8).toUpperCase()}</p>
+                        <p className="text-[10px] text-white/60 mt-1 flex justify-between">
+                          <span>${order.total.toFixed(2)}</span>
+                          <span className="uppercase">{order.status}</span>
+                        </p>
+                     </div>
+                   ))
+                 ) : (
+                   <p className="text-[10px] font-bold text-white/20 italic">No order history</p>
+                 )}
 
-function AdminKBSearch({ onSelectArticle }: { onSelectArticle: (art: any) => void }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
-  const services = useServices();
-
-  useEffect(() => {
-    if (query.length > 2) {
-      const timer = setTimeout(async () => {
-        const data = await services.knowledgebaseService.getArticles({ query });
-        setResults(data);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      setResults([]);
-    }
-  }, [query, services.knowledgebaseService]);
-
-  return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b bg-gray-50/50">
-        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">KB Helper</h3>
-      </div>
-      <div className="p-4 space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-          <input 
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search articles..."
-            className="w-full rounded-lg border bg-gray-50 py-2 pl-9 pr-3 text-xs font-medium focus:bg-white focus:ring-4 focus:ring-primary-500/5 outline-none transition"
-          />
-        </div>
-        <div className="space-y-2 max-h-[200px] overflow-y-auto">
-          {results.map(art => (
-            <button 
-              key={art.id}
-              onClick={() => onSelectArticle(art)}
-              className="w-full text-left p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group"
-            >
-              <p className="text-[11px] font-bold text-gray-900 group-hover:text-primary-600 truncate">{art.title}</p>
-              <p className="text-[9px] text-gray-400 font-medium">{art.categoryName}</p>
-            </button>
-          ))}
-          {query.length > 2 && results.length === 0 && (
-            <p className="text-[10px] text-center text-gray-400 py-4 font-medium">No matches found</p>
-          )}
-          {query.length <= 2 && (
-             <p className="text-[10px] text-center text-gray-400 py-4 font-medium italic">Search to suggest articles</p>
-          )}
-        </div>
+                 {ticket.productId && (
+                   <div className="bg-white/10 p-4 rounded-2xl border border-white/10 hover:bg-white/20 transition-all cursor-pointer group/item">
+                     <div className="flex items-center justify-between mb-2">
+                       <span className="text-[9px] font-black uppercase tracking-widest text-white/50">Product Detail</span>
+                       <ExternalLink className="h-3 w-3 text-white/30 group-hover/item:text-white transition-colors" />
+                     </div>
+                     <p className="text-xs font-black truncate">Linked Item Ref</p>
+                  </div>
+                 )}
+               </div>
+            </div>
+        </aside>
       </div>
     </div>
   );

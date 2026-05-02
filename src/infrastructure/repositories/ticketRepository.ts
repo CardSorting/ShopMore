@@ -7,11 +7,16 @@ function mapTicket(row: any): SupportTicket {
     userId: row.userId,
     customerEmail: row.customerEmail,
     customerName: row.customerName || undefined,
+    assigneeId: row.assigneeId || undefined,
+    assigneeName: row.assigneeName || undefined,
     orderId: row.orderId || undefined,
     productId: row.productId || undefined,
     subject: row.subject,
     status: row.status as TicketStatus,
     priority: row.priority as TicketPriority,
+    type: row.type || undefined,
+    tags: row.tags ? JSON.parse(row.tags) : [],
+    slaDeadline: row.slaDeadline ? new Date(row.slaDeadline) : undefined,
     messages: [],
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
@@ -31,7 +36,7 @@ function mapMessage(row: any): TicketMessage {
 }
 
 export const ticketRepository = {
-  async getTickets(options?: { status?: string; userId?: string; limit?: number }) {
+  async getTickets(options?: { status?: string; userId?: string; assigneeId?: string; limit?: number }) {
     const db = getSQLiteDB();
     let query = db.selectFrom('support_tickets').selectAll();
     
@@ -41,6 +46,10 @@ export const ticketRepository = {
 
     if (options?.userId) {
       query = query.where('userId', '=', options.userId);
+    }
+
+    if (options?.assigneeId) {
+      query = query.where('assigneeId', '=', options.assigneeId);
     }
     
     query = query.orderBy('createdAt', 'desc');
@@ -81,11 +90,16 @@ export const ticketRepository = {
       userId: ticket.userId,
       customerEmail: ticket.customerEmail,
       customerName: ticket.customerName || null,
+      assigneeId: ticket.assigneeId || null,
+      assigneeName: ticket.assigneeName || null,
       orderId: ticket.orderId || null,
       productId: ticket.productId || null,
       subject: ticket.subject,
       status: ticket.status,
       priority: ticket.priority,
+      type: ticket.type || null,
+      tags: ticket.tags ? JSON.stringify(ticket.tags) : null,
+      slaDeadline: ticket.slaDeadline?.toISOString() || null,
       createdAt: ticket.createdAt.toISOString(),
       updatedAt: ticket.updatedAt.toISOString(),
     }).execute();
@@ -104,20 +118,32 @@ export const ticketRepository = {
     }
   },
 
-  async updateTicketStatus(id: string, status: string) {
+  async updateTicketProperties(id: string, updates: Partial<SupportTicket>) {
     const db = getSQLiteDB();
+    const values: any = { 
+      updatedAt: new Date().toISOString() 
+    };
+    
+    if (updates.status) values.status = updates.status;
+    if (updates.priority) values.priority = updates.priority;
+    if (updates.type) values.type = updates.type;
+    if (updates.assigneeId) values.assigneeId = updates.assigneeId;
+    if (updates.assigneeName) values.assigneeName = updates.assigneeName;
+    if (updates.tags) values.tags = JSON.stringify(updates.tags);
+    if (updates.slaDeadline) values.slaDeadline = updates.slaDeadline.toISOString();
+
     await db.updateTable('support_tickets')
-      .set({ status, updatedAt: new Date().toISOString() })
+      .set(values)
       .where('id', '=', id)
       .execute();
   },
 
+  async updateTicketStatus(id: string, status: string) {
+    return this.updateTicketProperties(id, { status: status as any });
+  },
+
   async updateTicketPriority(id: string, priority: string) {
-    const db = getSQLiteDB();
-    await db.updateTable('support_tickets')
-      .set({ priority, updatedAt: new Date().toISOString() })
-      .where('id', '=', id)
-      .execute();
+    return this.updateTicketProperties(id, { priority: priority as any });
   },
 
   async addMessage(message: TicketMessage) {
@@ -138,17 +164,50 @@ export const ticketRepository = {
       .execute();
   },
 
+  async batchUpdateTickets(ids: string[], updates: Partial<SupportTicket>) {
+    const db = getSQLiteDB();
+    const values: any = { 
+      updatedAt: new Date().toISOString() 
+    };
+    
+    if (updates.status) values.status = updates.status;
+    if (updates.priority) values.priority = updates.priority;
+    if (updates.assigneeId) values.assigneeId = updates.assigneeId;
+    if (updates.assigneeName) values.assigneeName = updates.assigneeName;
+    if (updates.type) values.type = updates.type;
+
+    await db.updateTable('support_tickets')
+      .set(values)
+      .where('id', 'in', ids)
+      .execute();
+  },
+
   async getMacros() {
     const db = getSQLiteDB();
     const rows = await db.selectFrom('support_macros').selectAll().execute();
     return rows;
   },
 
-  async addMacro(macro: { name: string; content: string; category: string }) {
+  async addMacro(macro: { name: string; content: string; category: string; slug?: string }) {
     const db = getSQLiteDB();
     await db.insertInto('support_macros').values({
       id: crypto.randomUUID(),
       ...macro
     }).execute();
+  },
+
+  async updateMacro(id: string, updates: Partial<{ name: string; content: string; category: string; slug: string }>) {
+    const db = getSQLiteDB();
+    await db.updateTable('support_macros')
+      .set(updates)
+      .where('id', '=', id)
+      .execute();
+  },
+
+  async deleteMacro(id: string) {
+    const db = getSQLiteDB();
+    await db.deleteFrom('support_macros')
+      .where('id', '=', id)
+      .execute();
   }
 };

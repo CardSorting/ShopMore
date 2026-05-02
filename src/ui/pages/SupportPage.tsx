@@ -49,6 +49,7 @@ export function SupportPage() {
   const [searchResults, setSearchResults] = useState<KnowledgebaseArticle[]>([]);
   const [userTickets, setUserTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [reason, setReason] = useState('question');
   
   const services = useServices();
   const { user } = useAuth();
@@ -128,8 +129,10 @@ export function SupportPage() {
         orderId: orderId || undefined,
         productId: productId || undefined,
         subject,
-        priority: 'medium',
-        status: 'open',
+        type: reason as any,
+        tags: [reason],
+        priority: (reason === 'order' || reason === 'technical') ? 'high' : 'medium',
+        status: 'new',
         messages: [
           {
             id: crypto.randomUUID(),
@@ -588,6 +591,23 @@ export function SupportPage() {
                   )}
 
                   <div className="space-y-6">
+                    <div>
+                      <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">What can we help with?</label>
+                      <select 
+                        value={reason}
+                        onChange={e => setReason(e.target.value)}
+                        required
+                        className="w-full rounded-2xl border-2 border-gray-50 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10 appearance-none cursor-pointer"
+                      >
+                        <option value="question">General Question</option>
+                        <option value="order">Order Tracking/Issue</option>
+                        <option value="return">Return or Exchange</option>
+                        <option value="product">Product Information</option>
+                        <option value="technical">Technical Problem</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
                     <div>
                       <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">Subject</label>
                       <input 

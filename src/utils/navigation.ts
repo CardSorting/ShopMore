@@ -4,7 +4,7 @@
  * Mirroring industry standards (Shopify, Stripe).
  */
 
-import type { Product, ProductCategory } from '@domain/models';
+import type { Product, ProductCategory, Collection } from '@domain/models';
 
 /**
  * Normalizes a string into a URL-friendly handle/slug.
@@ -36,11 +36,24 @@ export const STORE_PATHS = {
 /**
  * Returns the URL for a product detail page.
  * Uses the handle if available, otherwise falls back to ID.
+ * Supports an optional collection context for industry-standard contextual routing.
  */
-export function getProductUrl(product: Pick<Product, 'handle' | 'id'>): string {
+export function getProductUrl(
+  product: Pick<Product, 'handle' | 'id'>, 
+  collection?: string | Pick<Collection, 'handle'>
+): string {
   const identifier = product.handle || product.id;
+  const collectionHandle = typeof collection === 'string' 
+    ? collection 
+    : collection?.handle;
+
+  if (collectionHandle) {
+    return `/collections/${collectionHandle}${STORE_PATHS.PRODUCTS}/${identifier}`;
+  }
+  
   return `${STORE_PATHS.PRODUCTS}/${identifier}`;
 }
+
 
 /**
  * Returns the URL for a collection/category page.

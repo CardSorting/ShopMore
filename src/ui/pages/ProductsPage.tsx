@@ -20,7 +20,8 @@ export function ProductsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const params = useParams();
-  const collectionSlug = params?.slug as string | undefined;
+  const collectionSlug = (params?.slug as string | undefined) || (params?.handle as string | undefined); // handle can be slug in collection route
+
   const services = useServices();
   const [sortBy, setSortBy] = useState<string>('newest');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -376,8 +377,9 @@ export function ProductsPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
                   {products.map((p) => (
-                    <ProductCard key={p.id} product={p} />
+                    <ProductCard key={p.id} product={p} collectionSlug={collectionSlug} />
                   ))}
+
                 </div>
 
                 {nextCursor && !search && (
@@ -399,7 +401,8 @@ export function ProductsPage() {
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, collectionSlug }: { product: Product, collectionSlug?: string }) {
+
   const { user } = useAuth();
   const router = useRouter();
   const { addItem } = useCart();
@@ -448,7 +451,8 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <article className="group relative" data-testid="product-card">
       <div className="aspect-square overflow-hidden rounded-3xl bg-gray-50 border shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
-        <Link href={getProductUrl(product)} className="block h-full w-full">
+        <Link href={getProductUrl(product, collectionSlug)} className="block h-full w-full">
+
 
           <img
             src={product.imageUrl}
@@ -506,7 +510,8 @@ function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         
-          <Link href={getProductUrl(product)}>{product.name}</Link>
+          <Link href={getProductUrl(product, collectionSlug)}>{product.name}</Link>
+
 
         <p className="text-[10px] text-gray-400 font-bold mb-2">Ref: {product.id.slice(0, 8).toUpperCase()}</p>
         

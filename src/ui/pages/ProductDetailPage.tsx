@@ -39,7 +39,8 @@ function toFriendlyError(err: unknown): string {
 }
 
 export function ProductDetailPage() {
-  const { handle } = useParams<{ handle: string }>();
+  const { handle, slug } = useParams<{ handle: string, slug?: string }>();
+
   const { user } = useAuth();
   const { addItem } = useCart();
   const services = useServices();
@@ -184,10 +185,12 @@ export function ProductDetailPage() {
         <Breadcrumbs 
           items={[
             { label: 'Catalog', href: STORE_PATHS.PRODUCTS },
+            ...(slug ? [{ label: slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), href: getCollectionUrl(slug) }] : []),
             { label: product.category, href: getCollectionUrl(product.category) },
             { label: product.name }
           ]} 
         />
+
 
 
         {/* Sticky Sub-Nav (Industry Standard) */}

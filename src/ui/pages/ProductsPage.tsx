@@ -8,10 +8,11 @@ import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import type { Product } from '@domain/models';
-import { Search, Filter, ShoppingBag, ChevronRight, PackageSearch, RefreshCcw, Heart } from 'lucide-react';
+import { Search, Filter, ShoppingBag, ChevronRight, PackageSearch, RefreshCcw, Heart, Check } from 'lucide-react';
 import { useWishlist } from '../hooks/useWishlist';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 
 export function ProductsPage() {
   const searchParams = useSearchParams();
@@ -111,6 +112,9 @@ export function ProductsPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={[{ label: 'Catalog' }]} />
+
         {/* Header */}
         <div className="mb-12">
            <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4">The Catalog</h1>
@@ -303,6 +307,7 @@ function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
   const [isFavoriting, setIsFavoriting] = useState(false);
 
   const isFavorite = isInWishlist(product.id);
@@ -314,6 +319,8 @@ function ProductCard({ product }: { product: Product }) {
     setAdding(true);
     try {
       await addItem(product.id, 1);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
     } finally {
       setAdding(false);
     }
@@ -373,6 +380,10 @@ function ProductCard({ product }: { product: Product }) {
           >
             {adding ? (
               <RefreshCcw className="h-4 w-4 animate-spin" />
+            ) : added ? (
+              <>
+                <Check className="h-4 w-4 text-green-600" /> Added
+              </>
             ) : product.stock === 0 ? (
               'Sold Out'
             ) : (

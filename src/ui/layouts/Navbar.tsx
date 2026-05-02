@@ -295,8 +295,8 @@ export function Navbar() {
                         <Shield className="w-5 h-5" />
                       </Link>
                     ) : (
-                      <Link href="/orders" className="h-10 w-10 rounded-xl bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-all flex items-center justify-center shadow-sm">
-                        <Package className="w-5 h-5" />
+                      <Link href="/account" className="h-10 w-10 rounded-xl bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-all flex items-center justify-center shadow-sm">
+                        <User className="w-5 h-5" />
                       </Link>
                     )}
                   </div>
@@ -359,6 +359,9 @@ export function Navbar() {
                   <Link href="/wishlist" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 hover:bg-red-50 text-gray-900 font-black text-sm transition-colors">
                     <Heart className="w-5 h-5 text-gray-400" /> Favorites
                   </Link>
+                  <Link href="/track-order" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 hover:bg-blue-50 text-gray-900 font-black text-sm transition-colors">
+                    <Truck className="w-5 h-5 text-gray-400" /> Track Order
+                  </Link>
                 </div>
 
                 {navMenu && (
@@ -388,8 +391,8 @@ export function Navbar() {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-3">
-                      <Link href="/orders" onClick={() => setIsMenuOpen(false)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-sm font-black text-white hover:bg-black transition-all shadow-xl">
-                         My Orders
+                      <Link href="/account" onClick={() => setIsMenuOpen(false)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-sm font-black text-white hover:bg-black transition-all shadow-xl">
+                         My Account
                       </Link>
                       <button 
                         onClick={handleSignOut}

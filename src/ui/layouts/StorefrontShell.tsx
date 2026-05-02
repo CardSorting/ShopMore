@@ -8,6 +8,7 @@
 import { usePathname } from 'next/navigation';
 import { Navbar } from '@ui/layouts/Navbar';
 import { Footer } from '@ui/layouts/Footer';
+import { BottomNav } from '@ui/components/BottomNav';
 
 export function StorefrontShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -22,6 +23,7 @@ export function StorefrontShell({ children }: { children: React.ReactNode }) {
             <Navbar />
             <main className="flex-1 w-full pb-20 lg:pb-0">{children}</main>
             <Footer />
+            <BottomNav />
         </div>
     );
 }

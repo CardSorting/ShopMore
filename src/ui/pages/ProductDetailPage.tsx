@@ -21,6 +21,7 @@ import { useWishlist } from '../hooks/useWishlist';
 import { MAX_CART_QUANTITY } from '@domain/rules';
 import { logger } from '@utils/logger';
 import { ProductReviews } from '../components/ProductReviews';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 
 function toFriendlyError(err: unknown): string {
   if (err instanceof Error && err.message) {
@@ -172,14 +173,13 @@ export function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-white pb-24 lg:pb-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="mb-10 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
-          <Link href="/" className="hover:text-primary-600 transition-colors">Home</Link>
-          <ChevronRight className="h-3 w-3 opacity-30" />
-          <Link href="/products" className="hover:text-primary-600 transition-colors">Products</Link>
-          <ChevronRight className="h-3 w-3 opacity-30" />
-          <span className="text-gray-900 truncate">{product.name}</span>
-        </nav>
+        <Breadcrumbs 
+          items={[
+            { label: 'Catalog', href: '/products' },
+            { label: product.category, href: `/products?category=${product.category}` },
+            { label: product.name }
+          ]} 
+        />
 
         {/* Sticky Sub-Nav (Industry Standard) */}
         <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 mb-12 hidden lg:block">

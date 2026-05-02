@@ -269,6 +269,9 @@ export function createApiClientServices() {
             saveMacro: (data: Partial<SupportMacro>) => request<void>('/api/support/macros', { method: 'POST', body: JSON.stringify(data) }),
             updateMacro: (id: string, data: Partial<SupportMacro>) => request<void>(`/api/support/macros/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
             deleteMacro: (id: string) => request<void>(`/api/support/macros/${id}`, { method: 'DELETE' }),
+            getHealthMetrics: () => request<{ slaCompliance: number; unassignedRate: number; totalActive: number }>('/api/admin/support/health'),
+            getCustomerSummary: (userId: string) => request<{ totalTickets: number; resolvedCount: number; totalSpend: number; recentOrders: any[] }>(`/api/admin/support/customers/${userId}/summary`),
+            sendHeartbeat: (ticketId: string, userId: string, userName: string) => request<{ viewers: { id: string; name: string }[] }>(`/api/admin/support/tickets/${ticketId}/heartbeat`, { method: 'POST', body: JSON.stringify({ userId, userName }) }),
         },
         knowledgebaseService: {
             getCategories: () => request<KnowledgebaseCategory[]>('/api/support/categories'),

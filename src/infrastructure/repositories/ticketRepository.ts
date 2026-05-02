@@ -136,6 +136,23 @@ export const ticketRepository = {
       .set(values)
       .where('id', '=', id)
       .execute();
+
+    // PRODUCTION HARDENING: Automatic System Audit Log
+    const auditEntries = Object.entries(updates)
+      .filter(([key]) => key !== 'updatedAt')
+      .map(([key, val]) => `Ticket ${key} changed to "${val}"`);
+    
+    if (auditEntries.length > 0) {
+      await this.addMessage({
+        id: crypto.randomUUID(),
+        ticketId: id,
+        senderId: 'system',
+        senderType: 'system',
+        visibility: 'internal',
+        content: `Audit: ${auditEntries.join(', ')}`,
+        createdAt: new Date()
+      });
+    }
   },
 
   async updateTicketStatus(id: string, status: string) {
@@ -180,6 +197,64 @@ export const ticketRepository = {
       .set(values)
       .where('id', 'in', ids)
       .execute();
+
+    // PRODUCTION HARDENING: Batch Audit Logging
+    const auditContent = `Bulk update performed on ${ids.length} tickets: ${Object.entries(updates).map(([k, v]) => `${k}=${v}`).join(', ')}`;
+    for (const ticketId of ids) {
+      await this.addMessage({
+        id: crypto.randomUUID(),
+        ticketId,
+        senderId: 'system',
+        senderType: 'system',
+        visibility: 'internal',
+        content: auditContent,
+        createdAt: new Date()
+      });
+    }
+  },
+
+  async getTicketHealthMetrics() {
+    const db = getSQLiteDB();
+    const tickets = await db.selectFrom('support_tickets').selectAll().execute();
+    const total = tickets.length;
+    if (total === 0) return { slaCompliance: 100, unassignedRate: 0, totalActive: 0 };
+
+    const unresolved = tickets.filter(t => t.status !== 'solved' && t.status !== 'closed');
+    const unassigned = unresolved.filter(t => !t.assigneeId);
+    
+    const breached = unresolved.filter(t => {
+      const deadline = t.slaDeadline ? new Date(t.slaDeadline) : new Date(new Date(t.createdAt).getTime() + (24 * 60 * 60 * 1000));
+      return deadline.getTime() < Date.now();
+    });
+
+    return {
+      slaCompliance: Math.round(((unresolved.length - breached.length) / (unresolved.length || 1)) * 100),
+      unassignedRate: Math.round((unassigned.length / (unresolved.length || 1)) * 100),
+      totalActive: unresolved.length
+    };
+  },
+
+  async getCustomerSupportSummary(userId: string) {
+    const db = getSQLiteDB();
+    const [tickets, orders] = await Promise.all([
+      db.selectFrom('support_tickets').selectAll().where('userId', '=', userId).execute(),
+      db.selectFrom('orders').selectAll().where('userId', '=', userId).execute()
+    ]);
+
+    const totalSpend = orders.reduce((sum, o) => sum + o.total, 0);
+    const resolvedCount = tickets.filter(t => t.status === 'solved' || t.status === 'closed').length;
+
+    return {
+      totalTickets: tickets.length,
+      resolvedCount,
+      totalSpend: totalSpend / 100, // cents to dollars
+      recentOrders: orders.slice(0, 3).map(o => ({
+        id: o.id,
+        total: o.total / 100,
+        status: o.status,
+        createdAt: new Date(o.createdAt)
+      }))
+    };
   },
 
   async getMacros() {
@@ -209,5 +284,42 @@ export const ticketRepository = {
     await db.deleteFrom('support_macros')
       .where('id', '=', id)
       .execute();
+  },
+
+  async markHeartbeat(ticketId: string, userId: string, userName: string) {
+    const db = getSQLiteDB();
+    const id = `ticket_view_${ticketId}`;
+    const expiresAt = new Date(Date.now() + 15000).toISOString(); // 15s TTL
+    
+    // Upsert claim
+    await db.insertInto('hive_claims')
+      .values({
+        id,
+        owner: `${userId}:${userName}`,
+        expiresAt,
+        createdAt: new Date().toISOString()
+      })
+      .onConflict(oc => oc.column('id').doUpdateSet({
+        owner: `${userId}:${userName}`,
+        expiresAt
+      }))
+      .execute();
+  },
+
+  async getActiveViewers(ticketId: string, currentUserId: string) {
+    const db = getSQLiteDB();
+    const id = `ticket_view_${ticketId}`;
+    const now = new Date().toISOString();
+    
+    const claim = await db.selectFrom('hive_claims')
+      .selectAll()
+      .where('id', '=', id)
+      .where('expiresAt', '>', now)
+      .executeTakeFirst();
+      
+    if (!claim) return [];
+    const [ownerId, ownerName] = claim.owner.split(':');
+    if (ownerId === currentUserId) return [];
+    return [{ id: ownerId, name: ownerName }];
   }
 };

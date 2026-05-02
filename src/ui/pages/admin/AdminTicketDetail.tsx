@@ -43,6 +43,7 @@ export function AdminTicketDetail() {
   const [showMacros, setShowMacros] = useState(false);
   const [customerStats, setCustomerStats] = useState<{ total: number; resolved: number; spend: number } | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [viewers, setViewers] = useState<{ id: string; name: string }[]>([]);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -62,19 +63,18 @@ export function AdminTicketDetail() {
         tags: result.tags || []
       });
 
-      // Load macros and customer context
-      const [m, allTickets, userOrders] = await Promise.all([
+      // PRODUCTION HARDENING: Real context fetching
+      const [m, summary] = await Promise.all([
         services.ticketService.getMacros(),
-        services.ticketService.getUserTickets(result.userId),
-        services.orderService.getOrders(result.userId)
+        services.ticketService.getCustomerSummary(result.userId)
       ]);
       
       setMacros(m);
-      setRecentOrders(userOrders.slice(0, 3));
+      setRecentOrders(summary.recentOrders);
       setCustomerStats({
-        total: allTickets.length,
-        resolved: allTickets.filter(t => t.status === 'solved' || t.status === 'closed').length,
-        spend: userOrders.reduce((sum, o) => sum + o.total, 0)
+        total: summary.totalTickets,
+        resolved: summary.resolvedCount,
+        spend: summary.totalSpend
       });
 
     } catch (err) {
@@ -110,11 +110,45 @@ export function AdminTicketDetail() {
     }
   };
 
+  const [isOtherAgentViewing, setIsOtherAgentViewing] = useState(false);
+
   const handleApplyMacro = (macro: SupportMacro) => {
-    setReply(prev => (prev ? prev + '\n' + macro.content : macro.content));
+    let content = macro.content;
+    
+    // Industrial Placeholder Engine
+    const placeholders: Record<string, string> = {
+      '{{customer.name}}': ticket?.customerName || 'Customer',
+      '{{customer.first_name}}': ticket?.customerName?.split(' ')[0] || 'there',
+      '{{customer.email}}': ticket?.customerEmail || '',
+      '{{ticket.id}}': ticket?.id.slice(0, 8).toUpperCase() || '',
+      '{{agent.name}}': currentUser?.displayName || 'Support Agent',
+      '{{order.id}}': ticket?.orderId ? `#${ticket.orderId.slice(0, 8).toUpperCase()}` : 'N/A'
+    };
+
+    Object.entries(placeholders).forEach(([key, val]) => {
+      content = content.replace(new RegExp(key, 'g'), val);
+    });
+
+    setReply(prev => (prev ? prev + '\n' + content : content));
     setShowMacros(false);
     toast('success', `Applied macro: ${macro.name}`);
   };
+
+  // PRODUCTION HARDENING: Real Heartbeat / Collision Detection
+  useEffect(() => {
+    if (!ticket || !currentUser) return;
+
+    const performHeartbeat = async () => {
+      try {
+        const res = await services.ticketService.sendHeartbeat(ticket.id, currentUser.id, currentUser.displayName);
+        setViewers(res.viewers);
+      } catch (e) { /* silent */ }
+    };
+
+    performHeartbeat();
+    const interval = setInterval(performHeartbeat, 10000); // 10s heartbeat
+    return () => clearInterval(interval);
+  }, [ticket?.id, currentUser?.id, services.ticketService]);
 
   const saveProperties = async () => {
     if (!localProps) return;
@@ -190,11 +224,29 @@ export function AdminTicketDetail() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-             <h1 className="text-xl font-black text-gray-900 tracking-tight">
-               #{ticket.id.slice(0, 8).toUpperCase()} <span className="text-gray-400 ml-2 font-medium">{ticket.subject}</span>
-             </h1>
+             <div className="flex items-center gap-3">
+                 <h1 className="text-xl font-black text-gray-900 tracking-tight">
+                   #{ticket.id.slice(0, 8).toUpperCase()} <span className="text-gray-400 ml-2 font-medium">{ticket.subject}</span>
+                 </h1>
+                 {viewers.length > 0 && (
+                   <div className="flex -space-x-1.5 overflow-hidden">
+                     {viewers.map((v: { id: string; name: string }) => (
+                       <div 
+                         key={v.id} 
+                         title={`${v.name} is also viewing`}
+                         className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 border border-amber-100 text-amber-600 animate-in fade-in slide-in-from-top-1 duration-500"
+                       >
+                          <Users className="h-3 w-3" />
+                          <span className="text-[9px] font-black uppercase tracking-widest">{v.name}</span>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+             </div>
              <div className="flex items-center gap-3 mt-1">
-               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{ticket.customerEmail}</span>
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-primary-600 cursor-pointer transition-colors">{ticket.customerEmail}</span>
+               <span className="text-gray-300">•</span>
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Via Online Store</span>
                <span className="text-gray-300">•</span>
                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Requested {formatShortDate(ticket.createdAt.toString())}</span>
              </div>

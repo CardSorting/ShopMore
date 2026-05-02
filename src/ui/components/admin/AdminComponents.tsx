@@ -257,6 +257,23 @@ export function AdminStatusBadge({ status, type }: AdminStatusBadgeProps) {
   );
 }
 
+export function AdminBadge({ label, type = 'gray' }: { label: string; type?: 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'purple' }) {
+  const styles = {
+    blue: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200/50',
+    green: 'bg-green-50 text-green-700 ring-1 ring-green-200/50',
+    amber: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200/50',
+    red: 'bg-red-50 text-red-700 ring-1 ring-red-200/50',
+    gray: 'bg-gray-100 text-gray-700 ring-1 ring-gray-200/50',
+    purple: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200/50',
+  };
+  
+  return (
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${styles[type]}`}>
+      {label}
+    </span>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════
    EMPTY STATE — Friendly zero-data displays
    ═══════════════════════════════════════════════════════ */

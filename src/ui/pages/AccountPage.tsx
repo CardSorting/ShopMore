@@ -10,7 +10,7 @@ export function AccountPage() {
 
   if (!user) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-[3rem] p-12 text-center shadow-xl border border-gray-100">
+      <div className="max-w-md w-full bg-white rounded-5xl p-12 text-center shadow-xl border border-gray-100">
         <h1 className="text-3xl font-black text-gray-900 mb-4 tracking-tighter">Welcome Back</h1>
         <p className="text-gray-500 mb-10 font-medium leading-relaxed">Sign in to track your orders, view your wishlist, and manage your collection vault.</p>
         <Link href="/login" className="block w-full py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200">
@@ -59,7 +59,7 @@ export function AccountPage() {
           {/* Main Content */}
           <main className="lg:col-span-9 space-y-12">
             {/* Rewards Overview */}
-            <div className="bg-gray-900 rounded-[3rem] p-10 text-white relative overflow-hidden group">
+            <div className="bg-gray-900 rounded-5xl p-10 text-white relative overflow-hidden group">
                <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                   <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-primary-400 text-[10px] font-black uppercase tracking-widest mb-6">
@@ -157,7 +157,7 @@ function AccountNavLink({ href, icon: Icon, label, active = false }: { href: str
 
 function OrderCard({ id, date, status, total, items }: { id: string, date: string, status: string, total: number, items: number }) {
   return (
-    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+    <div className="bg-white rounded-4xl p-6 border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
       <div className="flex items-center justify-between mb-4">
          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">

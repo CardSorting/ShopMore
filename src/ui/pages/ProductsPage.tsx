@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
-import type { Product } from '@domain/models';
+import type { Product, ProductCategory } from '@domain/models';
 import { Search, Filter, ShoppingBag, ChevronRight, PackageSearch, RefreshCcw, Heart, Check } from 'lucide-react';
 import { useWishlist } from '../hooks/useWishlist';
 import Link from 'next/link';
@@ -23,20 +23,26 @@ export function ProductsPage() {
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
-  const categories = [
-    { id: 'Singles', name: 'Rare Singles' },
-    { id: 'sealed', name: 'Sealed Product' },
-    { id: 'accessories', name: 'Accessories' },
-    { id: 'promo', name: 'Promo Cards' },
-  ];
-
   const conditions = ['Near Mint', 'Lightly Played', 'Moderately Played', 'Damaged'];
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const data = await services.taxonomyService.getCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+    };
+    void loadCategories();
+  }, [services.taxonomyService]);
 
   const loadProducts = useCallback(async (cursor?: string) => {
     setLoading(true);
@@ -166,11 +172,11 @@ export function ProductsPage() {
                   <label key={cat.id} className="flex items-center gap-3 group cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={selectedCategories.includes(cat.id)}
+                      checked={selectedCategories.includes(cat.slug)}
                       onChange={(e) => {
                         const next = e.target.checked 
-                          ? [...selectedCategories, cat.id]
-                          : selectedCategories.filter(id => id !== cat.id);
+                          ? [...selectedCategories, cat.slug]
+                          : selectedCategories.filter(slug => slug !== cat.slug);
                         setSelectedCategories(next);
                       }}
                       className="h-5 w-5 rounded-lg border-gray-200 text-primary-600 focus:ring-primary-500"

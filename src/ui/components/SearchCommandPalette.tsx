@@ -16,7 +16,7 @@ import { useServices } from '../hooks/useServices';
 import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
 import { formatCurrency } from '@utils/formatters';
-import type { Product } from '@domain/models';
+import type { Product, ProductCategory } from '@domain/models';
 
 export function SearchCommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,6 +24,7 @@ export function SearchCommandPalette() {
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
   
   const router = useRouter();
   const services = useServices();
@@ -86,11 +87,21 @@ export function SearchCommandPalette() {
 
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  // Load recent searches
+  // Load recent searches and categories
   useEffect(() => {
     const saved = localStorage.getItem('search:recent');
     if (saved) setRecentSearches(JSON.parse(saved));
-  }, []);
+
+    const loadCategories = async () => {
+      try {
+        const data = await services.taxonomyService.getCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+    };
+    void loadCategories();
+  }, [services.taxonomyService]);
 
   const saveSearch = (term: string) => {
     const updated = [term, ...recentSearches.filter(t => t !== term)].slice(0, 5);
@@ -208,23 +219,30 @@ export function SearchCommandPalette() {
               <section>
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">Discovery Shortcuts</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Singles', icon: Sparkles, href: '/products?category=single', color: 'bg-amber-50 text-amber-600' },
-                    { label: 'Sealed', icon: Archive, href: '/products?category=booster', color: 'bg-blue-50 text-blue-600' },
-                    { label: 'Supplies', icon: Layers3, href: '/products?category=accessory', color: 'bg-purple-50 text-purple-600' },
-                    { label: 'New', icon: ArrowRight, href: '/products?category=new', color: 'bg-primary-50 text-primary-600' },
-                  ].map((link) => (
-                    <button
-                      key={link.label}
-                      onClick={() => { setIsOpen(false); router.push(link.href); }}
-                      className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-gray-50/50 hover:bg-white transition-all border border-transparent hover:border-gray-100 hover:shadow-xl group"
-                    >
-                      <div className={`p-3 rounded-xl ${link.color} transition-colors group-hover:scale-110 duration-300`}>
-                        <link.icon className="h-6 w-6" />
-                      </div>
-                      <span className="text-xs font-black text-gray-900">{link.label}</span>
-                    </button>
-                  ))}
+                  {categories.slice(0, 4).map((cat, i) => {
+                    const icons = [Sparkles, Archive, Layers3, Zap];
+                    const colors = [
+                      'bg-amber-50 text-amber-600',
+                      'bg-blue-50 text-blue-600',
+                      'bg-purple-50 text-purple-600',
+                      'bg-primary-50 text-primary-600'
+                    ];
+                    const Icon = icons[i % icons.length];
+                    const colorClass = colors[i % colors.length];
+
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setIsOpen(false); router.push(`/products?category=${cat.slug}`); }}
+                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-gray-50/50 hover:bg-white transition-all border border-transparent hover:border-gray-100 hover:shadow-xl group"
+                      >
+                        <div className={`p-3 rounded-xl ${colorClass} transition-colors group-hover:scale-110 duration-300`}>
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <span className="text-xs font-black text-gray-900 truncate w-full text-center">{cat.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
 

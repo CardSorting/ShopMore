@@ -284,6 +284,29 @@ export interface ProductMediaTable {
   createdAt: string;
 }
 
+export interface SupportTicketTable {
+  id: string;
+  userId: string;
+  customerEmail: string;
+  customerName: string | null;
+  orderId: string | null;
+  productId: string | null;
+  subject: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TicketMessageTable {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  senderType: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface Database {
   products: ProductTable;
   product_media: ProductMediaTable;
@@ -307,5 +330,7 @@ export interface Database {
   product_types: ProductTypeTable;
   wishlists: WishlistTable;
   wishlist_items: WishlistItemTable;
+  support_tickets: SupportTicketTable;
+  ticket_messages: TicketMessageTable;
 }
 

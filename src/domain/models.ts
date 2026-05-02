@@ -668,3 +668,64 @@ export interface WishlistItem {
   productId: string;
   createdAt: Date;
 }
+
+// ─────────────────────────────────────────────
+// Support & Tickets
+// ─────────────────────────────────────────────
+
+export type TicketStatus = 'open' | 'in_progress' | 'waiting_on_customer' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  customerEmail: string;
+  customerName?: string;
+  orderId?: string;
+  productId?: string;
+  subject: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  messages: TicketMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TicketMessage {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  senderType: 'customer' | 'agent' | 'system';
+  content: string;
+  createdAt: Date;
+}
+
+// ─────────────────────────────────────────────
+// Knowledgebase & FAQ
+// ─────────────────────────────────────────────
+
+export interface KnowledgebaseCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  icon?: string;
+  articleCount: number;
+}
+
+export interface KnowledgebaseArticle {
+  id: string;
+  categoryId: string;
+  categoryName?: string;
+  title: string;
+  slug: string;
+  content: string; // Markdown or HTML
+  excerpt: string;
+  authorName?: string;
+  viewCount: number;
+  helpfulCount: number;
+  notHelpfulCount: number;
+  tags?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}

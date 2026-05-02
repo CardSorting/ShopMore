@@ -636,5 +636,32 @@ export async function initDatabase() {
     .column('wishlistId')
     .ifNotExists()
     .execute();
+
+  await db.schema
+    .createTable('support_tickets')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('userId', 'text', (col) => col.notNull())
+    .addColumn('customerEmail', 'text', (col) => col.notNull())
+    .addColumn('customerName', 'text')
+    .addColumn('orderId', 'text')
+    .addColumn('productId', 'text')
+    .addColumn('subject', 'text', (col) => col.notNull())
+    .addColumn('status', 'text', (col) => col.notNull())
+    .addColumn('priority', 'text', (col) => col.notNull())
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createTable('ticket_messages')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('ticketId', 'text', (col) => col.notNull())
+    .addColumn('senderId', 'text', (col) => col.notNull())
+    .addColumn('senderType', 'text', (col) => col.notNull())
+    .addColumn('content', 'text', (col) => col.notNull())
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .execute();
 }
 

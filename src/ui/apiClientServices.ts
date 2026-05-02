@@ -3,7 +3,7 @@
  */
 'use client';
 
-import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductManagementFilters, ProductManagementOverview, ProductSavedView, ProductSavedViewResult, ProductUpdate, User, OrderNote, PurchaseOrder, InventoryLocation, Supplier, Collection, ProductCategory, ProductType } from '@domain/models';
+import type { Address, AdminDashboardSummary, Cart, InventoryOverview, Order, OrderStatus, Product, ProductDraft, ProductManagementFilters, ProductManagementOverview, ProductSavedView, ProductSavedViewResult, ProductUpdate, User, OrderNote, PurchaseOrder, InventoryLocation, Supplier, Collection, ProductCategory, ProductType, SupportTicket, TicketMessage, KnowledgebaseCategory, KnowledgebaseArticle } from '@domain/models';
 
 const sessionScoped = (userId: string) => void userId;
 const DATE_FIELD_KEYS = new Set(['createdAt', 'updatedAt', 'joined', 'lastOrder', 'startsAt', 'endsAt', 'expectedAt', 'estimatedDeliveryDate', 'at']);
@@ -240,6 +240,29 @@ export function createApiClientServices() {
             addItem: (wishlistId: string, productId: string) => request<void>(`/api/wishlists/${wishlistId}/items`, { method: 'POST', body: JSON.stringify({ productId }) }),
             removeItem: (wishlistId: string, productId: string) => request<void>(`/api/wishlists/${wishlistId}/items?productId=${productId}`, { method: 'DELETE' }),
             checkStatus: (productId: string) => request<{ isInWishlist: boolean }>(`/api/wishlists/status?productId=${productId}`),
+        },
+        ticketService: {
+            listTickets: (options?: { status?: string; query?: string; limit?: number }) => {
+                const qs = new URLSearchParams();
+                if (options?.status) qs.set('status', options.status);
+                if (options?.query) qs.set('query', options.query);
+                if (options?.limit) qs.set('limit', String(options.limit));
+                return request<SupportTicket[]>(`/api/admin/tickets?${qs}`);
+            },
+            getTicket: (id: string) => request<SupportTicket>(`/api/admin/tickets/${id}`),
+            createTicket: (data: Partial<SupportTicket>) => request<SupportTicket>('/api/tickets', { method: 'POST', body: JSON.stringify(data) }),
+            updateTicketStatus: (id: string, status: string) => request<SupportTicket>(`/api/admin/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+            addMessage: (id: string, content: string, senderId?: string, senderType?: string) => request<TicketMessage>(`/api/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify({ content, senderId, senderType }) }),
+        },
+        knowledgebaseService: {
+            getCategories: () => request<KnowledgebaseCategory[]>('/api/support/categories'),
+            getArticles: (options?: { categoryId?: string; query?: string }) => {
+                const qs = new URLSearchParams();
+                if (options?.categoryId) qs.set('categoryId', options.categoryId);
+                if (options?.query) qs.set('query', options.query);
+                return request<KnowledgebaseArticle[]>(`/api/support/articles?${qs}`);
+            },
+            getArticle: (slug: string) => request<KnowledgebaseArticle>(`/api/support/articles/${slug}`),
         },
     };
 }

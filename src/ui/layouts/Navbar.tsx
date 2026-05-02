@@ -111,7 +111,7 @@ export function Navbar() {
               </Link>
            </div>
            <div className="hidden lg:flex items-center gap-4">
-              <span className="text-white/40">Support: 24/7 Experts</span>
+              <Link href="/support" className="text-white/40 hover:text-white transition-colors">Support: 24/7 Experts</Link>
               <span className="w-1 h-1 rounded-full bg-white/20" />
               <span className="flex items-center gap-1.5 cursor-pointer hover:text-white">
                  US / USD <ChevronDown className="w-3 h-3" />

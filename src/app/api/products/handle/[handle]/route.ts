@@ -3,11 +3,12 @@ import { getServerServices } from '@infrastructure/server/services';
 
 export async function GET(
   request: Request,
-  { params }: { params: { handle: string } }
+  { params }: { params: Promise<{ handle: string }> }
 ) {
   try {
+    const { handle } = await params;
     const services = await getServerServices();
-    const product = await services.productService.getProductByHandle(params.handle);
+    const product = await services.productService.getProductByHandle(handle);
     return NextResponse.json(product);
   } catch (error: any) {
     console.error('Failed to get product by handle:', error);

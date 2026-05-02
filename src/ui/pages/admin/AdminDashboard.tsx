@@ -25,7 +25,8 @@ import {
   Plus,
   Search,
   Settings as SettingsIcon,
-  Tag
+  Tag,
+  MessageSquare
 } from 'lucide-react';
 import { formatCurrency, formatShortDate, formatBytes } from '@utils/formatters';
 import { 
@@ -138,7 +139,7 @@ export function AdminDashboard() {
           { label: 'Add Product', href: '/admin/products/new', icon: Plus, color: 'text-blue-600 bg-blue-50' },
           { label: 'Upload Media', href: '/admin/files', icon: ImageIcon, color: 'text-purple-600 bg-purple-50' },
           { label: 'Create Discount', href: '/admin/discounts/new', icon: Tag, color: 'text-green-600 bg-green-50' },
-          { label: 'Store Settings', href: '/admin/settings', icon: SettingsIcon, color: 'text-gray-600 bg-gray-50' },
+          { label: 'Support Tickets', href: '/admin/tickets', icon: MessageSquare, color: 'text-red-600 bg-red-50' },
         ].map((action) => (
           <Link key={action.label} href={action.href} className="group flex items-center gap-4 rounded-2xl border bg-white p-4 transition-all hover:border-primary-500 hover:shadow-lg active:scale-95">
             <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${action.color} group-hover:bg-primary-600 group-hover:text-white`}>
@@ -263,7 +264,7 @@ export function AdminDashboard() {
         </div>
         <div className="flex items-center gap-6">
           <Link href="/admin/settings" className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-900 transition">Settings</Link>
-          <button className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-900 transition">Support</button>
+          <Link href="/admin/tickets" className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-900 transition">Support</Link>
         </div>
       </div>
     </div>

@@ -294,8 +294,8 @@ export function OrdersPage() {
                                   <p className="text-xs font-bold text-gray-400">Qty: {item.quantity} • {formatMoney(item.unitPrice)} each</p>
                                 </div>
                                 <div className="flex flex-col gap-2 shrink-0">
-                                  <button onClick={(e) => e.preventDefault()} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">Return or Replace</button>
-                                  <button onClick={(e) => e.preventDefault()} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">Get Support</button>
+                                  <Link href={`/support?orderId=${order.id}&productId=${item.productId}&productName=${encodeURIComponent(item.name)}`} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm text-center">Return or Replace</Link>
+                                  <Link href={`/support?orderId=${order.id}&productId=${item.productId}&productName=${encodeURIComponent(item.name)}`} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm text-center">Get Support</Link>
                                 </div>
                               </div>
                             ))}
@@ -339,10 +339,11 @@ export function OrdersPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <SupportCard icon={<CircleHelp className="h-6 w-6" />} title="Order Support" text="Need help with a delivery, return, or missing item?" href="/contact" action="Talk to us" />
+        <SupportCard icon={<CircleHelp className="h-6 w-6" />} title="Order Support" text="Need help with a delivery, return, or missing item?" href="/support" action="Talk to us" />
         <FilterSelect value={sortBy} onChange={(v) => setSortBy(v as SortOption)} options={[{ value: 'newest', label: 'Newest' }, { value: 'total_desc', label: 'Price: High' }, { value: 'total_asc', label: 'Price: Low' }]} />
         <SupportCard icon={<ShieldCheck className="h-6 w-6" />} title="Buyer Guarantee" text="All purchases are protected by our authenticity guarantee." href="/shipping-policy" action="Learn more" />
       </section>
+
     </div>
   );
 }

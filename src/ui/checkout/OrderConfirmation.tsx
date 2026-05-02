@@ -255,7 +255,7 @@ export function OrderConfirmation({ order, userEmail, userName, context = 'confi
               </Link>
               <div className="grid grid-cols-2 gap-3">
                 <button type="button" onClick={() => window.print()} className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-gray-50 hover:text-gray-900 transition-colors"><Printer className="h-4 w-4" /> Print</button>
-                <Link href="/contact" className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-gray-50 hover:text-gray-900 transition-colors"><HelpCircle className="h-4 w-4" /> Help</Link>
+                <Link href={`/support?orderId=${order.id}`} className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-gray-50 hover:text-gray-900 transition-colors"><HelpCircle className="h-4 w-4" /> Help</Link>
               </div>
             </section>
           </aside>

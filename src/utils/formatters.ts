@@ -49,6 +49,21 @@ export function formatShortDate(date: Date | string | null | undefined): string 
   }).format(d);
 }
 
+export function formatFullDateTime(date: Date | string | null | undefined): string {
+  if (!date) return 'N/A';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'Invalid Date';
+  
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(d);
+}
+
 export function estimateDelivery(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const start = new Date(d);

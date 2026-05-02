@@ -27,6 +27,7 @@ import {
   Truck,
   User,
   Zap,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -132,6 +133,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Customer profiles and purchase history',
         icon: User,
         aliases: ['buyers', 'accounts', 'people', 'users', 'support'],
+      },
+      {
+        id: 'tickets',
+        href: '/admin/tickets',
+        label: 'Support Tickets',
+        description: 'Manage customer inquiries and returns',
+        icon: MessageSquare,
+        aliases: ['support', 'help', 'tickets', 'issues', 'returns'],
       },
     ],
   },

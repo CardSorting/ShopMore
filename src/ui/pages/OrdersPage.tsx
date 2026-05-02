@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Truck,
+  ExternalLink,
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@domain/models';
 import { logger } from '@utils/logger';
@@ -53,6 +54,8 @@ function dateWindowToFrom(dateWindow: DateWindow): string | undefined {
   start.setDate(now.getDate() - (dateWindow === '30d' ? 30 : 90));
   return start.toISOString();
 }
+
+import { OrderTimeline } from '../components/OrderTimeline';
 
 export function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
@@ -144,148 +147,188 @@ export function OrdersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
-      <section className="rounded-3xl border border-gray-100 bg-white p-7 shadow-sm">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Orders</p>
-            <h1 className="mt-2 text-4xl font-black tracking-tight text-gray-900">Track, reorder, and manage receipts</h1>
-            <p className="mt-3 max-w-2xl text-sm font-medium text-gray-600">A Shopify-style overview with clear status, familiar actions, and timeline updates so non-technical users always know what to do next.</p>
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
+      <header className="relative overflow-hidden rounded-[2.5rem] bg-gray-900 p-8 text-white shadow-2xl lg:p-12">
+        <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-primary-600/20 blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
+        
+        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <nav className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+              <Link href="/" className="hover:text-white">Store</Link>
+              <span className="text-gray-600">/</span>
+              <span className="text-white">Order History</span>
+            </nav>
+            <h1 className="text-4xl font-black tracking-tight md:text-5xl lg:text-6xl">Your Orders.</h1>
+            <p className="mt-4 text-base font-medium text-gray-400">Track shipments, manage receipts, and quickly reorder your favorite collector items with our Shopify-inspired dashboard.</p>
           </div>
-          {spotlightOrder && (
-            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 lg:min-w-80">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Most recent order</p>
-              <p className="mt-2 text-lg font-black text-gray-900">{formatOrderNumber(spotlightOrder.id)}</p>
-              <p className="mt-1 text-sm font-bold text-gray-600">{STATUS_UI[spotlightOrder.status].label}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link href={`/orders/${spotlightOrder.id}`} className="rounded-xl bg-gray-900 px-4 py-2 text-xs font-black text-white hover:bg-black">View details</Link>
-                {spotlightOrder.trackingUrl && (
-                  <a href={spotlightOrder.trackingUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 hover:bg-gray-50">Track package</a>
-                )}
-              </div>
+          
+          <div className="flex flex-wrap gap-4">
+            <MetricCard label="Active" value={String(summary.active)} icon={<Truck className="h-4 w-4" />} dark />
+            <MetricCard label="Delivered" value={String(summary.delivered)} icon={<Package className="h-4 w-4" />} dark />
+            <MetricCard label="Total Spent" value={formatMoney(summary.totalSpent)} icon={<Receipt className="h-4 w-4" />} dark />
+          </div>
+        </div>
+      </header>
+
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-12">
+          {/* Seamless Order Feeds Tabs */}
+          <div className="mb-6 flex gap-8 overflow-x-auto border-b border-gray-100 custom-scrollbar hide-scrollbar">
+            {STATUS_FILTERS.map(status => (
+              <button 
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`pb-4 text-sm font-black whitespace-nowrap transition-all border-b-2 ${statusFilter === status ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'}`}
+              >
+                {status === 'all' ? 'All Orders' : status === 'pending' ? 'Not Yet Shipped' : STATUS_UI[status].label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-4 rounded-4xl border border-gray-100 bg-white p-4 shadow-sm md:flex-row md:items-center">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search orders, items, or tracking numbers..."
+                className="w-full rounded-2xl border-2 border-gray-50 bg-gray-50/50 py-3 pl-12 pr-4 text-sm font-bold outline-none transition focus:border-primary-500 focus:bg-white"
+              />
             </div>
-          )}
+            <div className="flex flex-wrap gap-2">
+              <FilterSelect value={dateWindow} onChange={(v) => setDateWindow(v as DateWindow)} options={[{ value: '30d', label: 'Last 30 Days' }, { value: '90d', label: 'Last 90 Days' }, { value: 'all', label: 'All Time' }]} />
+              <FilterSelect value={sortBy} onChange={(v) => setSortBy(v as SortOption)} options={[{ value: 'newest', label: 'Newest' }, { value: 'total_desc', label: 'Price: High' }, { value: 'total_asc', label: 'Price: Low' }]} />
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <MetricCard label="Active orders" value={String(summary.active)} icon={<Truck className="h-4 w-4" />} />
-          <MetricCard label="Delivered" value={String(summary.delivered)} icon={<Package className="h-4 w-4" />} />
-          <MetricCard label="Total spent" value={formatMoney(summary.totalSpent)} icon={<Receipt className="h-4 w-4" />} />
-        </div>
-      </section>
-
-      {orders.length === 0 ? (
-        <section className="rounded-3xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-          <ShoppingBag className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-          <h2 className="text-2xl font-black text-gray-900">No orders yet</h2>
-          <p className="mt-2 text-sm font-medium text-gray-500">Once you place an order, tracking updates and receipts will appear here.</p>
-          <Link href="/products" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-6 py-3 text-sm font-black text-white hover:bg-black">Start shopping <ArrowRight className="h-4 w-4" /></Link>
-        </section>
-      ) : (
-        <>
-          <section className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-              <div className="relative lg:col-span-5">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search order number or item name"
-                  className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-3 text-sm font-medium outline-none focus:border-gray-900"
-                />
+        <div className="lg:col-span-12 space-y-4">
+          {orders.length === 0 ? (
+            <div className="rounded-4xl border-2 border-dashed border-gray-100 bg-white p-20 text-center">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50 text-gray-300">
+                <ShoppingBag className="h-10 w-10" />
               </div>
-
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-bold text-gray-700 outline-none focus:border-gray-900 lg:col-span-2">
-                {STATUS_FILTERS.map((status) => <option key={status} value={status}>{status === 'all' ? 'All statuses' : STATUS_UI[status].label}</option>)}
-              </select>
-
-              <select value={dateWindow} onChange={(event) => setDateWindow(event.target.value as DateWindow)} className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-bold text-gray-700 outline-none focus:border-gray-900 lg:col-span-2">
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="all">All time</option>
-              </select>
-
-              <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortOption)} className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-bold text-gray-700 outline-none focus:border-gray-900 lg:col-span-3">
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="total_desc">Highest total</option>
-                <option value="total_asc">Lowest total</option>
-                <option value="status">Status</option>
-              </select>
+              <h2 className="text-2xl font-black text-gray-900">No orders found</h2>
+              <p className="mt-2 text-sm font-medium text-gray-500">Try adjusting your filters or start a new collection today.</p>
+              <Link href="/products" className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-8 py-4 text-sm font-black text-white shadow-xl hover:bg-black transition-transform hover:-translate-y-1">
+                Explore Store <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-          </section>
-
-          <section className="space-y-4" aria-label="Order history list">
-            {orders.map((order) => {
+          ) : (
+            orders.map((order) => {
               const expanded = expandedOrderId === order.id;
               const ui = STATUS_UI[order.status];
-              const topEvent = order.fulfillmentEvents?.[0];
-
+              
               return (
-                <article key={order.id} className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
-                  <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-12 md:items-center">
-                    <div className="md:col-span-3">
-                      <p className="font-mono text-sm font-black text-gray-900">{formatOrderNumber(order.id)}</p>
-                      <p className="mt-1 text-xs font-medium text-gray-500">Placed {formatDate(order.createdAt)}</p>
-                    </div>
+                <article key={order.id} className={`group overflow-hidden rounded-4xl border transition-all duration-300 ${expanded ? 'border-primary-200 bg-primary-50/10 shadow-xl' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-md'}`}>
+                  <div className="p-6 lg:p-8">
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center">
+                      <div className="lg:col-span-3">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-900 text-white shadow-lg">
+                            <Package className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="font-mono text-sm font-black text-gray-900">{formatOrderNumber(order.id)}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Placed {formatShortDate(order.createdAt)}</p>
+                          </div>
+                        </div>
+                      </div>
 
-                    <div className="md:col-span-3">
-                      <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black ${ui.badge}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} />
-                        {ui.label}
-                      </span>
-                      <p className="mt-2 text-xs font-medium text-gray-500">{orderStatusSubtitle(order.status)}</p>
-                    </div>
+                      <div className="lg:col-span-3">
+                        <OrderTimeline order={order} variant="compact" />
+                      </div>
 
-                    <div className="md:col-span-2">
-                      <p className="text-xs font-black uppercase tracking-widest text-gray-400">Total</p>
-                      <p className="mt-1 text-lg font-black text-gray-900">{formatMoney(order.total)}</p>
-                    </div>
+                      <div className="lg:col-span-2">
+                        <div className="flex -space-x-3 overflow-hidden">
+                          {order.items.slice(0, 3).map((item, i) => (
+                            <div key={i} className="relative inline-block h-10 w-10 overflow-hidden rounded-full border-2 border-white bg-gray-100 shadow-sm transition-transform group-hover:translate-x-1">
+                              <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                            </div>
+                          ))}
+                          {order.items.length > 3 && (
+                            <div className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-gray-900 text-[10px] font-black text-white shadow-sm">
+                              +{order.items.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="md:col-span-2">
-                      <p className="text-xs font-black uppercase tracking-widest text-gray-400">Latest update</p>
-                      <p className="mt-1 text-sm font-bold text-gray-700">{topEvent ? topEvent.label : 'Order created'}</p>
-                    </div>
+                      <div className="lg:col-span-2 text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Amount</p>
+                        <p className="text-xl font-black text-gray-900">{formatMoney(order.total)}</p>
+                      </div>
 
-                    <div className="flex justify-end gap-2 md:col-span-2">
-                      <Link href={`/orders/${order.id}`} className="rounded-xl bg-gray-900 px-3 py-2 text-xs font-black text-white hover:bg-black">Details</Link>
-                      <button type="button" onClick={() => setExpandedOrderId(expanded ? null : order.id)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-black text-gray-700 hover:bg-gray-50" aria-expanded={expanded}>
-                        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </button>
+                      <div className="lg:col-span-2 flex flex-col justify-end gap-2">
+                        <button 
+                          onClick={(e) => { e.preventDefault(); onReorder(order); }}
+                          disabled={reordering === order.id}
+                          className="flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-black text-white transition-all hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          {reordering === order.id ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                          Buy Again
+                        </button>
+                        <div className="flex gap-2">
+                          <Link href={`/orders/${order.id}`} className="flex-1 rounded-xl border-2 border-gray-100 bg-white px-4 py-2.5 text-center text-xs font-black text-gray-700 transition hover:bg-gray-50 hover:border-gray-200">
+                            Details
+                          </Link>
+                          <button 
+                            onClick={(e) => { e.preventDefault(); setExpandedOrderId(expanded ? null : order.id); }}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all ${expanded ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200 hover:bg-gray-50'}`}
+                          >
+                            <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   {expanded && (
-                    <div className="border-t border-gray-100 bg-gray-50/70 p-5">
-                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                        <div className="space-y-3 lg:col-span-7">
-                          <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">Timeline</h3>
-                          <ol className="space-y-3">
-                            {(order.fulfillmentEvents ?? []).map((event) => (
-                              <li key={event.id} className="rounded-xl border border-gray-100 bg-white p-3">
-                                <div className="flex items-center justify-between gap-3">
-                                  <p className="text-sm font-black text-gray-900">{event.label}</p>
-                                  <p className="text-xs font-bold text-gray-500">{formatShortDate(event.at)}</p>
+                    <div className="border-t border-gray-100 bg-gray-50/30 p-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
+                        <div className="lg:col-span-7">
+                          <h3 className="mb-6 text-xs font-black uppercase tracking-[0.2em] text-gray-400">Order Items</h3>
+                          <div className="space-y-4">
+                            {order.items.map((item) => (
+                              <div key={item.productId} className="flex items-center gap-4 rounded-2xl border border-white bg-white/50 p-4 shadow-sm transition hover:shadow-md">
+                                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-100 shadow-sm">
+                                  <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
                                 </div>
-                                <p className="mt-1 text-xs font-medium text-gray-600">{event.description}</p>
-                              </li>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-black text-gray-900">{item.name}</p>
+                                  <p className="text-xs font-bold text-gray-400">Qty: {item.quantity} • {formatMoney(item.unitPrice)} each</p>
+                                </div>
+                                <p className="text-sm font-black text-gray-900">{formatMoney(item.unitPrice * item.quantity)}</p>
+                              </div>
                             ))}
-                          </ol>
+                          </div>
                         </div>
 
-                        <div className="space-y-3 lg:col-span-5">
-                          <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">Actions</h3>
-                          <div className="grid grid-cols-1 gap-2">
-                            {order.trackingUrl ? (
-                              <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 hover:bg-gray-50">Track package</a>
-                            ) : (
-                              <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-500">Tracking will appear after shipment.</div>
-                            )}
-                            <button type="button" onClick={() => onReorder(order)} disabled={reordering === order.id} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3 text-sm font-black text-white hover:bg-black disabled:opacity-60">
-                              <RefreshCcw className={`h-4 w-4 ${reordering === order.id ? 'animate-spin' : ''}`} />
-                              {reordering === order.id ? 'Adding items...' : 'Buy again'}
-                            </button>
-                            <Link href={`/orders/${order.id}`} className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 hover:bg-gray-50">View receipt and order details</Link>
+                        <div className="lg:col-span-5">
+                          <h3 className="mb-6 text-xs font-black uppercase tracking-[0.2em] text-gray-400">Shipment Timeline</h3>
+                          <div className="rounded-[2rem] border border-white bg-white/50 p-6 shadow-sm">
+                            <OrderTimeline order={order} />
+                            
+                            <div className="mt-10 grid grid-cols-1 gap-3">
+                              {order.trackingUrl ? (
+                                <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-2xl bg-primary-600 px-6 py-4 text-sm font-black text-white shadow-lg transition hover:bg-primary-700">
+                                  Track Package <ExternalLink className="h-4 w-4" />
+                                </a>
+                              ) : (
+                                <div className="rounded-2xl border-2 border-dashed border-gray-200 p-4 text-center text-xs font-bold text-gray-400">
+                                  Tracking number will appear once shipped.
+                                </div>
+                              )}
+                              <button 
+                                onClick={() => onReorder(order)} 
+                                disabled={reordering === order.id}
+                                className="flex items-center justify-between rounded-2xl bg-gray-900 px-6 py-4 text-sm font-black text-white shadow-lg transition hover:bg-black disabled:opacity-50"
+                              >
+                                {reordering === order.id ? 'Adding to cart...' : 'Buy it again'} 
+                                <RefreshCcw className={`h-4 w-4 ${reordering === order.id ? 'animate-spin' : ''}`} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -293,48 +336,54 @@ export function OrdersPage() {
                   )}
                 </article>
               );
-            })}
-          </section>
-        </>
-      )}
+            })
+          )}
+        </div>
+      </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SupportCard icon={<CircleHelp className="h-5 w-5" />} title="Need help with an order?" text="Talk to support for delivery issues, damaged items, or billing questions." href="/contact" action="Contact support" />
-        <SupportCard icon={<Calendar className="h-5 w-5" />} title="Returns & refund windows" text="Review policy details before starting a return request." href="/refund-policy" action="View refund policy" />
-        <SupportCard icon={<ShieldCheck className="h-5 w-5" />} title="Purchase confidence" text="Every shipment is verified and packed with collector-safe handling." href="/shipping-policy" action="Read shipping policy" />
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <SupportCard icon={<CircleHelp className="h-6 w-6" />} title="Order Support" text="Need help with a delivery, return, or missing item?" href="/contact" action="Talk to us" />
+        <FilterSelect value={sortBy} onChange={(v) => setSortBy(v as SortOption)} options={[{ value: 'newest', label: 'Newest' }, { value: 'total_desc', label: 'Price: High' }, { value: 'total_asc', label: 'Price: Low' }]} />
+        <SupportCard icon={<ShieldCheck className="h-6 w-6" />} title="Buyer Guarantee" text="All purchases are protected by our authenticity guarantee." href="/shipping-policy" action="Learn more" />
       </section>
     </div>
   );
 }
 
-function MetricCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+function MetricCard({ label, value, icon, dark }: { label: string; value: string; icon: React.ReactNode; dark?: boolean }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
-      <p className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">{icon}{label}</p>
-      <p className="mt-1 text-xl font-black text-gray-900">{value}</p>
+    <div className={`rounded-2xl border px-5 py-4 min-w-[140px] transition hover:scale-105 ${dark ? 'border-white/10 bg-white/5 text-white' : 'border-gray-100 bg-gray-50 text-gray-900'}`}>
+      <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-60">{icon}{label}</p>
+      <p className="mt-1 text-2xl font-black">{value}</p>
     </div>
   );
 }
 
-function SupportCard({
-  icon,
-  title,
-  text,
-  href,
-  action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-  href: string;
-  action: string;
-}) {
+function FilterSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <Link href={href} className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-primary-600">{icon}</div>
-      <h3 className="text-base font-black text-gray-900">{title}</h3>
-      <p className="mt-1 text-sm font-medium text-gray-600">{text}</p>
-      <p className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary-600">{action} <ArrowRight className="h-3.5 w-3.5" /></p>
+    <div className="relative group">
+      <select 
+        value={value} 
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none rounded-xl border-2 border-gray-50 bg-gray-50 px-4 py-2.5 pr-10 text-xs font-black text-gray-700 outline-none transition hover:border-gray-200 focus:border-primary-500 focus:bg-white"
+      >
+        {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 group-hover:text-gray-900" />
+    </div>
+  );
+}
+
+function SupportCard({ icon, title, text, href, action }: { icon: React.ReactNode; title: string; text: string; href: string; action: string }) {
+  return (
+    <Link href={href} className="group relative overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
+      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary-50 transition-transform group-hover:scale-150" />
+      <div className="relative">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-primary-600 transition-colors group-hover:bg-primary-600 group-hover:text-white">{icon}</div>
+        <h3 className="text-xl font-black text-gray-900">{title}</h3>
+        <p className="mt-2 text-sm font-medium text-gray-500 leading-relaxed">{text}</p>
+        <p className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary-600 group-hover:gap-3 transition-all">{action} <ArrowRight className="h-4 w-4" /></p>
+      </div>
     </Link>
   );
 }

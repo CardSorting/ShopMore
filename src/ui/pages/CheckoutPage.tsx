@@ -61,6 +61,8 @@ function validateCheckoutDetails(email: string, address: Address): CheckoutField
   return errors;
 }
 
+import { Stepper } from '../components/Stepper';
+
 export function CheckoutPage() {
   const { user } = useAuth();
   const { cart, loading: loadingCart, subtotal, totalItems } = useCart();
@@ -103,15 +105,7 @@ export function CheckoutPage() {
   const discountAmount = appliedDiscount?.amount ?? 0;
   const total = Math.max(0, subtotal + shipping - discountAmount);
   const freeShippingRemaining = Math.max(0, 10000 - subtotal);
-  const detailsValid = Object.keys(validateCheckoutDetails(email, address)).length === 0;
   const currentStepIndex = CHECKOUT_STEPS.findIndex((item) => item.id === step);
-
-  const summaryRows = useMemo(() => [
-    ['Subtotal', formatMoney(subtotal)],
-    ['Shipping', shipping === 0 ? 'Free' : formatMoney(shipping)],
-    ['Estimated tax', 'Calculated after payment review'],
-    ...(appliedDiscount ? [['Discount', `-${formatMoney(appliedDiscount.amount)}`]] : []),
-  ], [appliedDiscount, shipping, subtotal]);
 
   function goToStep(nextStep: CheckoutStep) {
     if (nextStep === 'payment' || nextStep === 'shipping') {
@@ -123,6 +117,7 @@ export function CheckoutPage() {
       }
     }
     setStep(nextStep);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const handleApplyDiscount = async () => {
@@ -190,7 +185,7 @@ export function CheckoutPage() {
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
           <RefreshCcw className="mx-auto h-10 w-10 animate-spin text-primary-600" />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-gray-400">Loading checkout...</p>
+          <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Initializing Checkout...</p>
         </div>
       </div>
     );
@@ -199,12 +194,14 @@ export function CheckoutPage() {
   if (cartItems.length === 0 && !isSuccess) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-3xl p-10 shadow-xl text-center border border-gray-100">
-          <ShoppingBag className="h-16 w-16 text-gray-200 mx-auto mb-6" />
-          <h1 className="text-2xl font-black text-gray-900 mb-2">Your cart is empty</h1>
-          <p className="text-gray-500 mb-8 font-medium">Add some items to your cart before checking out.</p>
-          <Link href="/products" className="inline-flex items-center justify-center w-full rounded-2xl bg-gray-900 px-8 py-4 text-sm font-black text-white shadow-xl transition hover:bg-black">
-            Continue shopping
+        <div className="max-w-md w-full bg-white rounded-[3rem] p-12 shadow-2xl text-center border border-gray-100">
+          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-gray-50 text-gray-200">
+            <ShoppingBag className="h-12 w-12" />
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 mb-3">Your cart is empty</h1>
+          <p className="text-gray-500 mb-10 font-medium leading-relaxed">It looks like you haven't added any trading cards to your cart yet. Let's find something special.</p>
+          <Link href="/products" className="inline-flex items-center justify-center w-full rounded-2xl bg-gray-900 px-8 py-5 text-sm font-black text-white shadow-xl transition-all hover:bg-black hover:-translate-y-1">
+            Browse Collections
           </Link>
         </div>
       </div>
@@ -215,104 +212,96 @@ export function CheckoutPage() {
 
   return (
     <div className="relative min-h-screen bg-white">
+      {/* Background Decor */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute -left-1/4 -top-1/4 h-1/2 w-1/2 rounded-full bg-primary-100/30 blur-[120px]" />
-        <div className="absolute -bottom-1/4 -right-1/4 h-1/2 w-1/2 rounded-full bg-blue-50/40 blur-[120px]" />
+        <div className="absolute -left-1/4 -top-1/4 h-1/2 w-1/2 rounded-full bg-primary-100/20 blur-[120px]" />
+        <div className="absolute -bottom-1/4 -right-1/4 h-1/2 w-1/2 rounded-full bg-blue-50/30 blur-[120px]" />
       </div>
 
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/" className="text-2xl font-black tracking-tighter text-gray-900">PlayMore<span className="text-primary-600">TCG</span></Link>
-          <div className="flex items-center gap-3">
-            <Link href="/contact" className="hidden text-xs font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 sm:inline">Need help?</Link>
-            <div className="hidden items-center gap-3 rounded-full border border-green-100 bg-green-50 px-4 py-2 md:flex">
+          <div className="flex items-center gap-6">
+            <div className="hidden items-center gap-2 rounded-full border border-green-100 bg-green-50 px-4 py-1.5 md:flex">
               <LockKeyhole className="h-3.5 w-3.5 text-green-600" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-green-700">Secure checkout powered by Stripe patterns</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-green-700">AES-256 SSL Secure</span>
             </div>
+            <Link href="/contact" className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-colors">Help</Link>
           </div>
         </div>
       </header>
 
+      {/* Mobile Sticky Summary Trigger */}
+      <div className="sticky top-[65px] z-40 border-b border-gray-100 bg-gray-50/95 px-4 py-4 backdrop-blur-sm lg:hidden">
+        <button 
+          onClick={() => setSummaryOpen(!summaryOpen)} 
+          className="flex w-full items-center justify-between"
+        >
+          <span className="flex items-center gap-2 text-xs font-black text-gray-700">
+            <ShoppingBag className="h-4 w-4" /> 
+            {summaryOpen ? 'Hide' : 'Show'} summary 
+            <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${summaryOpen ? 'rotate-180' : ''}`} />
+          </span>
+          <span className="text-sm font-black text-gray-900">{formatMoney(total)}</span>
+        </button>
+      </div>
+
       <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-12">
-        <main className="px-4 py-10 sm:px-6 lg:col-span-7 lg:px-8 lg:pr-16">
-          <nav aria-label="Checkout progress" className="mb-10 flex items-center gap-2 overflow-x-auto text-sm font-bold">
-            <Link href="/cart" className="flex items-center gap-1 text-primary-600 hover:underline">Cart <ChevronRight className="h-4 w-4 text-gray-300" /></Link>
-            {CHECKOUT_STEPS.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-current={step === item.id ? 'step' : undefined}
-                disabled={index > currentStepIndex + 1}
-                onClick={() => goToStep(item.id)}
-                className={`flex items-center gap-1 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40 ${step === item.id ? 'text-gray-950' : index < currentStepIndex ? 'text-primary-600' : 'text-gray-400 hover:text-gray-700'}`}
-              >
-                {index < currentStepIndex && <CheckCircle2 className="h-4 w-4" />}
-                {item.label}{index < CHECKOUT_STEPS.length - 1 && <ChevronRight className="h-4 w-4 text-gray-300" />}
-              </button>
-            ))}
-          </nav>
+        <main className="px-4 py-10 sm:px-6 lg:col-span-7 lg:px-12 lg:py-16">
+          <Stepper steps={CHECKOUT_STEPS} currentStepId={step} onStepClick={goToStep} />
 
-          <div className="max-w-xl">
-            <div className="mb-8 rounded-3xl border border-primary-100 bg-primary-50/60 p-5">
-              <div className="flex gap-4">
-                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
-                <div>
-                  <p className="text-sm font-black text-primary-950">Fast, familiar checkout</p>
-                  <p className="mt-1 text-xs font-medium leading-5 text-primary-800">Your contact, shipping, and payment sections can be reviewed before placing the order. Card entry is handled through Stripe Elements.</p>
-                </div>
-              </div>
-            </div>
-
+          <div className="max-w-2xl mx-auto lg:mx-0">
             {checkoutError && (
-              <div id="checkout-error" role="alert" className="mb-6 flex gap-3 rounded-2xl border-2 border-red-100 bg-red-50 p-5 text-sm font-bold text-red-700">
-                <AlertCircle className="h-5 w-5 shrink-0" />
-                <div><p className="font-black">Checkout needs attention</p><p className="mt-1 text-xs opacity-80">{checkoutError}</p></div>
+              <div id="checkout-error" role="alert" className="mb-10 flex gap-4 rounded-4xl border-2 border-red-100 bg-red-50 p-6 text-sm text-red-700 shadow-sm animate-in zoom-in-95">
+                <AlertCircle className="h-6 w-6 shrink-0" />
+                <div>
+                  <p className="font-black text-lg">Action required</p>
+                  <p className="mt-1 font-medium opacity-80">{checkoutError}</p>
+                </div>
               </div>
             )}
 
             {step === 'information' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-3 duration-300">
-                <section className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-                  <div className="mb-5 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Express checkout</p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {['Apple Pay', 'Google Pay'].map((label) => (
-                      <button key={label} type="button" disabled title="Wallet checkout is not enabled yet" className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 py-4 text-sm font-black text-gray-400">
-                        <Smartphone className="h-4 w-4" /> {label} unavailable
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-4 text-center text-xs font-medium text-gray-500">Continue below for secure card checkout.</p>
-                </section>
-
+              <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <section>
-                  <div className="mb-6 flex items-center justify-between">
-                  <h1 className="text-2xl font-black tracking-tight text-gray-900" data-testid="checkout-title">Contact</h1>
-                    {!user && <Link href="/login" className="text-sm font-bold text-primary-600 hover:underline">Log in for faster checkout</Link>}
+                  <div className="mb-8 flex items-center justify-between">
+                    <h1 className="text-3xl font-black tracking-tight text-gray-900" data-testid="checkout-title">Customer Identity</h1>
+                    {!user && <Link href="/login" className="text-xs font-black uppercase tracking-widest text-primary-600 hover:underline">Log in</Link>}
                   </div>
-                  <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-gray-500">Email address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <input id="checkout-email" type="email" autoComplete="email" aria-invalid={!!fieldErrors.email} aria-describedby={fieldErrors.email ? 'checkout-email-error' : undefined} value={email} onChange={(e) => setEmail(e.target.value)} readOnly={!!user} placeholder="you@example.com" className={`w-full rounded-2xl border-2 bg-white py-4 pl-11 pr-4 text-sm font-bold text-gray-900 outline-none transition focus:ring-4 focus:ring-primary-50 ${fieldErrors.email ? 'border-red-300' : 'border-gray-100 focus:border-primary-500'}`} />
-                  </div>
-                  {fieldErrors.email && <p id="checkout-email-error" className="mt-2 text-xs font-bold text-red-600">{fieldErrors.email}</p>}
-                  <label className="mt-4 flex items-center gap-2 text-xs font-medium text-gray-600"><input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-primary-600" /> Email me order updates and collector offers.</label>
-                </section>
-
-                <section>
-                  <h2 className="mb-6 text-2xl font-black tracking-tight text-gray-900">Shipping address</h2>
-                  <div className="grid grid-cols-1 gap-4">
+                  
+                  <div className="space-y-4">
                     <FormField 
-                      label="Address" 
+                      label="Email for receipt" 
+                      id="checkout-email" 
+                      type="email" 
+                      autoComplete="email" 
+                      error={fieldErrors.email} 
+                      value={email} 
+                      onChange={setEmail} 
+                      placeholder="you@example.com"
+                      readOnly={!!user}
+                      icon={<Mail className="h-4 w-4" />}
+                    />
+                    <label className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox" className="h-5 w-5 rounded-lg border-gray-200 text-primary-600 focus:ring-primary-500" />
+                      <span className="text-xs font-bold text-gray-600">Keep me updated on new drops and collector news.</span>
+                    </label>
+                  </div>
+                </section>
+
+                <section>
+                  <h2 className="mb-8 text-3xl font-black tracking-tight text-gray-900">Destination</h2>
+                  <div className="grid grid-cols-1 gap-6">
+                    <FormField 
+                      label="Street Address" 
                       id="checkout-street"
                       autoComplete="shipping street-address" 
                       error={fieldErrors.street} 
                       value={address.street} 
                       onChange={(val) => setAddress({ ...address, street: val })} 
-                      placeholder="Street address or PO box" 
+                      placeholder="Street address, suite, or apartment" 
                     />
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                       <FormField 
                         label="City" 
                         id="checkout-city"
@@ -321,196 +310,279 @@ export function CheckoutPage() {
                         value={address.city} 
                         onChange={(val) => setAddress({ ...address, city: val })} 
                       />
-                      <FormField 
-                        label="State" 
-                        id="checkout-state"
-                        autoComplete="shipping address-level1" 
-                        error={fieldErrors.state}
-                        value={address.state} 
-                        onChange={(val) => setAddress({ ...address, state: val })} 
-                      />
-                      <FormField 
-                        label="ZIP" 
-                        id="checkout-zip"
-                        autoComplete="shipping postal-code" 
-                        error={fieldErrors.zip}
-                        value={address.zip} 
-                        onChange={(val) => setAddress({ ...address, zip: val })} 
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <FormField 
-                        label="Country" 
-                        id="checkout-country"
-                        autoComplete="shipping country" 
-                        value={address.country} 
-                        onChange={(val) => setAddress({ ...address, country: val })} 
-                      />
-                      <FormField 
-                        label="Phone optional" 
-                        id="checkout-phone"
-                        type="tel" 
-                        autoComplete="tel" 
-                        value={phone} 
-                        onChange={setPhone} 
-                        placeholder="For carrier delivery questions" 
-                      />
+                      <div className="grid grid-cols-2 gap-6">
+                        <FormField 
+                          label="State" 
+                          id="checkout-state"
+                          autoComplete="shipping address-level1" 
+                          error={fieldErrors.state}
+                          value={address.state} 
+                          onChange={(val) => setAddress({ ...address, state: val })} 
+                        />
+                        <FormField 
+                          label="ZIP Code" 
+                          id="checkout-zip"
+                          autoComplete="shipping postal-code" 
+                          error={fieldErrors.zip}
+                          value={address.zip} 
+                          onChange={(val) => setAddress({ ...address, zip: val })} 
+                        />
+                      </div>
                     </div>
                   </div>
                 </section>
 
-                <div className="flex flex-col-reverse gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <Link href="/cart" className="inline-flex items-center gap-2 text-sm font-bold text-primary-600 hover:underline"><ArrowLeft className="h-4 w-4" /> Return to cart</Link>
-                  <button onClick={() => goToStep('shipping')} data-testid="continue-to-shipping" className="rounded-2xl bg-gray-900 px-8 py-5 text-sm font-black text-white shadow-xl transition hover:bg-black">Continue to shipping</button>
+                <div className="flex flex-col-reverse gap-6 pt-8 sm:flex-row sm:items-center sm:justify-between border-t border-gray-100">
+                  <Link href="/cart" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-colors">
+                    <ArrowLeft className="h-4 w-4" /> Back to cart
+                  </Link>
+                  <button 
+                    onClick={() => goToStep('shipping')} 
+                    data-testid="continue-to-shipping" 
+                    className="group relative overflow-hidden rounded-2xl bg-gray-900 px-10 py-5 text-sm font-black text-white shadow-2xl transition-all hover:bg-black hover:-translate-y-1 active:translate-y-0"
+                  >
+                    <span className="relative z-10 flex items-center gap-2">Continue to Shipping <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                    <div className="absolute inset-0 z-0 bg-linear-to-r from-primary-600 to-blue-600 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
                 </div>
               </div>
             )}
 
             {step === 'shipping' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-right-3 duration-300">
+              <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                 <ReviewCard email={email} address={address} shipping={shipping} onChange={setStep} />
+                
                 <section>
-                  <h1 className="mb-6 text-2xl font-black tracking-tight text-gray-900">Shipping method</h1>
-                  <div className="rounded-3xl border-2 border-primary-500 bg-primary-50/30 p-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4"><span className="flex h-5 w-5 items-center justify-center rounded-full border-4 border-primary-600 bg-white" /><div><p className="text-sm font-black text-gray-900">Standard insured shipping</p><p className="mt-1 text-xs font-medium text-gray-500">Tracked, protected packaging • estimated 3–5 business days</p></div></div>
-                      <span className="text-sm font-black text-gray-900">{shipping === 0 ? 'FREE' : formatMoney(shipping)}</span>
+                  <h1 className="mb-8 text-3xl font-black tracking-tight text-gray-900">Delivery Speed</h1>
+                  <div className="group relative overflow-hidden rounded-4xl border-2 border-primary-500 bg-primary-50/20 p-8 shadow-lg shadow-primary-100 transition-all hover:shadow-xl">
+                    <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-primary-500/10 blur-2xl" />
+                    <div className="flex items-center justify-between gap-6">
+                      <div className="flex items-center gap-6">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-lg">
+                          <Truck className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-black text-gray-900">Standard Insured Shipping</p>
+                          <p className="mt-1 text-sm font-medium text-gray-500">Tracked & packed in protective sleeves • 3–5 business days</p>
+                        </div>
+                      </div>
+                      <span className="text-lg font-black text-primary-700">{shipping === 0 ? 'FREE' : formatMoney(shipping)}</span>
                     </div>
                   </div>
                 </section>
-                <div className="rounded-2xl bg-blue-50 p-5 text-sm text-blue-800"><div className="flex gap-3"><Info className="h-5 w-5 shrink-0" /><p><span className="font-black">Shopify-style review:</span> you can still change your contact and address before payment.</p></div></div>
-                <div className="flex flex-col-reverse gap-4 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                  <button onClick={() => setStep('information')} className="inline-flex items-center gap-2 text-sm font-bold text-primary-600 hover:underline"><ArrowLeft className="h-4 w-4" /> Return to information</button>
-                  <button onClick={() => goToStep('payment')} data-testid="continue-to-payment" className="rounded-2xl bg-gray-900 px-8 py-5 text-sm font-black text-white shadow-xl transition hover:bg-black">Continue to payment</button>
+
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-6 text-sm text-blue-800">
+                  <div className="flex gap-4">
+                    <Info className="h-5 w-5 shrink-0 text-blue-600" />
+                    <p className="font-medium">Almost there. You'll be able to review all details and apply payment on the next step.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse gap-6 pt-8 sm:flex-row sm:items-center sm:justify-between border-t border-gray-100">
+                  <button onClick={() => setStep('information')} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-gray-900">
+                    <ArrowLeft className="h-4 w-4" /> Edit Address
+                  </button>
+                  <button 
+                    onClick={() => goToStep('payment')} 
+                    data-testid="continue-to-payment" 
+                    className="group relative overflow-hidden rounded-2xl bg-gray-900 px-10 py-5 text-sm font-black text-white shadow-2xl transition-all hover:bg-black hover:-translate-y-1"
+                  >
+                    <span className="relative z-10 flex items-center gap-2">Continue to Payment <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                    <div className="absolute inset-0 z-0 bg-linear-to-r from-primary-600 to-blue-600 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
                 </div>
               </div>
             )}
 
             {step === 'payment' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-right-3 duration-300">
+              <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                 <ReviewCard email={email} address={address} shipping={shipping} onChange={setStep} />
+                
                 <section>
-                  <div className="mb-6 flex items-center justify-between"><h1 className="text-2xl font-black tracking-tight text-gray-900" data-testid="payment-header">Payment</h1><span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-green-700"><ShieldCheck className="h-3.5 w-3.5" /> Secure</span></div>
-                  <div className="mb-4 grid gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 text-xs font-medium text-gray-600 sm:grid-cols-3">
-                    <span><strong className="block text-gray-900">1. Enter card</strong>Stripe securely collects card details.</span>
-                    <span><strong className="block text-gray-900">2. Authorize</strong>Your bank verifies the payment.</span>
-                    <span><strong className="block text-gray-900">3. Confirm</strong>We create your order and receipt.</span>
+                  <div className="mb-8 flex items-center justify-between">
+                    <h1 className="text-3xl font-black tracking-tight text-gray-900" data-testid="payment-header">Secure Payment</h1>
+                    <div className="flex items-center gap-2 grayscale opacity-50">
+                      <CreditCard className="h-5 w-5" />
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
                   </div>
-                  <div className="overflow-hidden rounded-3xl border-2 border-gray-900 shadow-xl shadow-gray-200/50">
-                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Order review</h3>
+
+                  <div className="overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-2xl shadow-gray-200/50">
+                    <div className="bg-gray-50/50 px-8 py-6 border-b border-gray-100">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Order Commitment</p>
                       <div className="mt-2 flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-700">{totalItems} items</span>
-                        <span className="text-lg font-black text-gray-900">{formatMoney(total)}</span>
+                        <span className="text-sm font-bold text-gray-600">{totalItems} Items ready for shipment</span>
+                        <span className="text-2xl font-black text-gray-900">{formatMoney(total)}</span>
                       </div>
                     </div>
-                    {isStripeConfigured ? (
-                      <Suspense fallback={<div className="p-16 text-center text-sm font-bold text-gray-400 animate-pulse">Initializing secure gateway...</div>}>
-                        <StripeCheckoutForm address={address} onSuccess={handleSuccess} onPlaceOrder={(isPlacing) => { setPlacing(isPlacing); setCheckoutStatus(isPlacing ? 'authorizing' : 'idle'); }} isPlacing={placing || checkoutStatus !== 'idle'} />
-                      </Suspense>
-                    ) : (
-                      <div className="bg-amber-50 p-8 text-center">
-                        <AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" />
-                        <p className="text-sm font-black text-amber-900">Payment gateway unavailable</p>
-                        <p className="mt-2 text-xs font-medium text-amber-700 mb-6">Stripe is not configured for this environment.</p>
-                        
-                        {/* Mock Checkout Button for E2E Testing */}
-                        <button 
-                          onClick={() => handleSuccess('mock_payment_method')}
-                          data-testid="mock-checkout-button"
-                          className="w-full rounded-2xl bg-gray-900 px-8 py-4 text-sm font-black text-white shadow-xl transition hover:bg-black"
-                        >
-                          Place Test Order (Mock)
-                        </button>
-                      </div>
-                    )}
+                    
+                    <div className="p-8">
+                      {isStripeConfigured ? (
+                        <Suspense fallback={<div className="flex flex-col items-center justify-center p-12 text-gray-400"><RefreshCcw className="h-8 w-8 animate-spin mb-4" /><p className="text-xs font-black uppercase tracking-widest">Securing Connection...</p></div>}>
+                          <StripeCheckoutForm 
+                            address={address} 
+                            onSuccess={handleSuccess} 
+                            onPlaceOrder={(isPlacing) => { setPlacing(isPlacing); setCheckoutStatus(isPlacing ? 'authorizing' : 'idle'); }} 
+                            isPlacing={placing || checkoutStatus !== 'idle'} 
+                          />
+                        </Suspense>
+                      ) : (
+                        <div className="text-center py-8">
+                          <AlertCircle className="mx-auto mb-6 h-12 w-12 text-amber-500" />
+                          <p className="text-xl font-black text-gray-900">Sandbox Environment</p>
+                          <p className="mt-2 text-sm font-medium text-gray-500 mb-8">This is a simulation. Click below to generate a test order.</p>
+                          <button 
+                            onClick={() => handleSuccess('mock_payment_method')}
+                            data-testid="mock-checkout-button"
+                            className="w-full rounded-2xl bg-gray-900 px-8 py-5 text-sm font-black text-white shadow-xl transition-all hover:bg-black hover:scale-[1.02]"
+                          >
+                            Complete Test Purchase
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </section>
-                <button onClick={() => setStep('shipping')} className="inline-flex items-center gap-2 border-t border-gray-100 pt-6 text-sm font-bold text-primary-600 hover:underline"><ArrowLeft className="h-4 w-4" /> Return to shipping</button>
+
+                <div className="flex justify-center border-t border-gray-100 pt-10 grayscale opacity-40">
+                  <div className="flex gap-10">
+                    <div className="flex items-center gap-2"><Lock className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-widest">PCI-DSS</span></div>
+                    <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-widest">Secure Cloud</span></div>
+                    <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-widest">Verified Auth</span></div>
+                  </div>
+                </div>
+
+                <button onClick={() => setStep('shipping')} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-gray-900">
+                  <ArrowLeft className="h-4 w-4" /> Back to Shipping
+                </button>
               </div>
             )}
 
-            <footer className="mt-16 border-t border-gray-100 pt-8"><div className="flex flex-wrap gap-5 text-[10px] font-black uppercase tracking-widest text-gray-400"><Link href="/refund-policy" className="hover:text-gray-900">Refund policy</Link><Link href="/shipping-policy" className="hover:text-gray-900">Shipping policy</Link><Link href="/privacy-policy" className="hover:text-gray-900">Privacy policy</Link><Link href="/terms" className="hover:text-gray-900">Terms</Link></div></footer>
+            <footer className="mt-24 border-t border-gray-100 pt-12 pb-8 text-center sm:text-left">
+              <div className="flex flex-wrap justify-center sm:justify-start gap-8 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                <Link href="/refund-policy" className="hover:text-gray-900 transition-colors">Returns</Link>
+                <Link href="/shipping-policy" className="hover:text-gray-900 transition-colors">Shipping</Link>
+                <Link href="/privacy-policy" className="hover:text-gray-900 transition-colors">Privacy</Link>
+                <Link href="/terms" className="hover:text-gray-900 transition-colors">Terms</Link>
+              </div>
+              <p className="mt-8 text-[10px] font-bold text-gray-300">© 2026 PlayMoreTCG. Industrialized E-commerce Flow.</p>
+            </footer>
           </div>
         </main>
 
-        <aside className="relative z-10 border-t border-gray-100 bg-gray-50/30 px-4 py-8 sm:px-6 lg:sticky lg:top-[73px] lg:col-span-5 lg:h-[calc(100vh-73px)] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:px-12">
-          <div className="mx-auto max-w-md">
-            <button onClick={() => setSummaryOpen(!summaryOpen)} className="mb-6 flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 lg:hidden"><span className="flex items-center gap-2 text-sm font-black text-gray-800"><ShoppingBag className="h-4 w-4" /> {summaryOpen ? 'Hide' : 'Show'} order summary</span><span className="flex items-center gap-2 font-black">{formatMoney(total)} <ChevronDown className={`h-4 w-4 transition ${summaryOpen ? 'rotate-180' : ''}`} /></span></button>
-            <div className={`${summaryOpen ? 'block' : 'hidden'} lg:block`}>
-              <div className="relative overflow-hidden rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-2xl shadow-gray-200/40 backdrop-blur-xl">
-                <div className="mb-8 flex items-center justify-between">
-                  <h2 className="text-xl font-black tracking-tight text-gray-900">Order summary</h2>
-                  <span className="rounded-full bg-gray-900 px-3 py-1 text-[10px] font-black text-white">{totalItems} item{totalItems === 1 ? '' : 's'}</span>
-                </div>
-                
-                <div className="max-h-80 space-y-5 overflow-y-auto pr-2 scrollbar-hide">
-                  {loadingCart ? [1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-gray-100/50" />) : cartItems.map((item) => (
-                    <div key={item.productId} className="flex items-center gap-4">
-                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white bg-white shadow-sm transition-transform hover:scale-105">
-                        <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
-                        <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-[10px] font-black text-white ring-2 ring-white shadow-lg">{item.quantity}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-black text-gray-900">{item.name}</p>
-                        <p className="mt-1 text-[10px] font-bold text-gray-400">{formatMoney(item.priceSnapshot)} / unit</p>
-                      </div>
-                      <p className="text-sm font-black text-gray-900">{formatMoney(item.priceSnapshot * item.quantity)}</p>
-                    </div>
-                  ))}
-                </div>
+        {/* Sidebar Summary - Enhanced Desktop */}
+        <aside className={`
+          fixed inset-0 z-50 transform bg-white transition-transform duration-500 lg:static lg:z-0 lg:translate-x-0
+          ${summaryOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+          lg:sticky lg:top-[65px] lg:col-span-5 lg:h-[calc(100vh-65px)] lg:overflow-y-auto lg:border-l lg:border-gray-100 lg:bg-gray-50/30 lg:px-12 lg:py-16
+        `}>
+          {/* Mobile Close Button */}
+          <button 
+            onClick={() => setSummaryOpen(false)}
+            className="absolute right-6 top-6 flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 lg:hidden"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
 
-                <div className="mt-10 border-t border-gray-100 pt-8">
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-400">Promo or gift card</p>
-                  <div className="flex gap-2">
-                    <input value={discountCode} onChange={(e) => setDiscountCode(e.target.value)} placeholder="Discount code" className="min-w-0 flex-1 rounded-2xl border-2 border-gray-100 bg-white/50 px-5 py-4 text-sm font-bold outline-none transition focus:border-primary-500 focus:bg-white" />
-                    <button onClick={handleApplyDiscount} disabled={isApplying || !discountCode.trim()} className="rounded-2xl bg-gray-900 px-6 py-4 text-xs font-black text-white transition hover:bg-black disabled:opacity-50">
-                      {isApplying ? <RefreshCcw className="h-4 w-4 animate-spin" /> : 'Apply'}
-                    </button>
-                  </div>
-                  {discountMessage && <p className={`mt-3 text-xs font-bold ${appliedDiscount ? 'text-green-700' : 'text-amber-700'}`}>{discountMessage}</p>}
-                  <p className="mt-3 text-[10px] font-medium leading-relaxed text-gray-400">Final order totals are calculated at checkout completion.</p>
-                  {appliedDiscount && (
-                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-xs font-black text-green-700">
-                      <span className="flex items-center gap-2"><Tag className="h-4 w-4" /> {appliedDiscount.code}</span>
-                      <button onClick={() => { setAppliedDiscount(null); setDiscountMessage(null); }} className="opacity-40 hover:opacity-100">Remove</button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-10 space-y-4 border-t border-gray-100 pt-8">
-                  <SummaryRow label="Subtotal" value={formatMoney(subtotal)} />
-                  <SummaryRow label="Shipping" value={shipping === 0 ? 'Free' : formatMoney(shipping)} />
-                  <SummaryRow label="Estimated tax" value="Calculated after review" />
-                  {appliedDiscount && <SummaryRow label="Discount" value={`-${formatMoney(appliedDiscount.amount)}`} isDiscount />}
-                  <div className="flex items-end justify-between border-t border-gray-100 pt-6">
-                    <span className="text-xl font-black text-gray-900">Total</span>
-                    <span className="text-right">
-                      <span className="mr-2 text-[10px] font-black uppercase text-gray-400">USD</span>
-                      <span className="text-4xl font-black tracking-tighter text-gray-900">{formatMoney(total)}</span>
-                    </span>
-                  </div>
-                </div>
+          <div className="mx-auto max-w-md p-6 lg:p-0">
+            <div className="relative overflow-hidden rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-2xl shadow-gray-200/40 backdrop-blur-xl">
+              <div className="mb-10 flex items-center justify-between">
+                <h2 className="text-2xl font-black tracking-tight text-gray-900">Order Summary</h2>
+                <span className="rounded-full bg-gray-900 px-4 py-1.5 text-[10px] font-black text-white">{totalItems} {totalItems === 1 ? 'Item' : 'Items'}</span>
               </div>
-              {freeShippingRemaining > 0 ? (
-                <div className="mt-6 rounded-2xl bg-white p-4 text-xs font-bold text-gray-600 shadow-sm">
-                  <Truck className="mb-2 h-4 w-4 text-primary-600" /> Add {formatMoney(freeShippingRemaining)} more for free standard shipping.
+              
+              <div className="max-h-[30vh] lg:max-h-80 space-y-6 overflow-y-auto pr-4 scrollbar-hide">
+                {cartItems.map((item) => (
+                  <div key={item.productId} className="flex items-center gap-5">
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-white bg-white shadow-md">
+                      <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                      <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-[10px] font-black text-white ring-4 ring-white shadow-lg">{item.quantity}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black text-gray-900">{item.name}</p>
+                      <p className="mt-1 text-[10px] font-bold text-gray-400">Collector Unit • {formatMoney(item.priceSnapshot)}</p>
+                    </div>
+                    <p className="text-sm font-black text-gray-900">{formatMoney(item.priceSnapshot * item.quantity)}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-12 border-t border-gray-100 pt-10">
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <Tag className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input 
+                      value={discountCode} 
+                      onChange={(e) => setDiscountCode(e.target.value)} 
+                      placeholder="Discount code" 
+                      className="w-full rounded-2xl border-2 border-gray-100 bg-white/50 py-4 pl-12 pr-4 text-sm font-bold outline-none transition focus:border-primary-500 focus:bg-white" 
+                    />
+                  </div>
+                  <button 
+                    onClick={handleApplyDiscount} 
+                    disabled={isApplying || !discountCode.trim()} 
+                    className="rounded-2xl bg-gray-900 px-8 py-4 text-xs font-black text-white transition-all hover:bg-black disabled:opacity-50 active:scale-95"
+                  >
+                    {isApplying ? <RefreshCcw className="h-4 w-4 animate-spin" /> : 'Apply'}
+                  </button>
                 </div>
-              ) : (
-                <div className="mt-6 rounded-2xl bg-green-50 p-4 text-xs font-bold text-green-700">
-                  <Truck className="mb-2 h-4 w-4" /> Free standard shipping unlocked.
+                {discountMessage && (
+                  <p className={`mt-4 rounded-xl px-4 py-2 text-xs font-bold animate-in slide-in-from-top-2 ${appliedDiscount ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                    {discountMessage}
+                  </p>
+                )}
+                {appliedDiscount && (
+                  <div className="mt-4 flex items-center justify-between rounded-2xl border border-green-200 bg-green-50/50 px-5 py-3 text-xs font-black text-green-700">
+                    <span className="flex items-center gap-2"><Tag className="h-4 w-4" /> {appliedDiscount.code}</span>
+                    <button onClick={() => { setAppliedDiscount(null); setDiscountMessage(null); }} className="text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">Remove</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-12 space-y-4 border-t border-gray-100 pt-10">
+                <SummaryRow label="Subtotal" value={formatMoney(subtotal)} />
+                <SummaryRow label="Standard Shipping" value={shipping === 0 ? 'Free' : formatMoney(shipping)} />
+                <SummaryRow label="Estimated Tax" value="Calculated at next step" />
+                {appliedDiscount && <SummaryRow label="Promotional Discount" value={`-${formatMoney(appliedDiscount.amount)}`} isDiscount />}
+                
+                <div className="flex items-end justify-between border-t border-gray-900 pt-8 mt-4">
+                  <span className="text-xl font-black text-gray-900 uppercase tracking-tight">Total Due</span>
+                  <div className="text-right">
+                    <span className="mr-2 text-[10px] font-black uppercase tracking-widest text-gray-400">USD</span>
+                    <span className="text-5xl font-black tracking-tighter text-gray-900 leading-none">{formatMoney(total)}</span>
+                  </div>
                 </div>
-              )}
-              <div className="mt-10 grid gap-6 border-t border-white/60 pt-8">
-                <TrustItem icon={<ShieldCheck className="h-4 w-4" />} title="Buyer protection" text="Authenticity-backed singles and sealed products." />
-                <TrustItem icon={<PackageCheck className="h-4 w-4" />} title="Protected packaging" text="Sleeved, packed, and boxed for collectors." />
-                <TrustItem icon={<HelpCircle className="h-4 w-4" />} title="Support after purchase" text="Order help, returns guidance, and delivery questions." />
               </div>
             </div>
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 border-t border-gray-100 pt-12 grayscale opacity-40">
-              <div className="flex items-center gap-2"><Lock className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.2em]">SSL Encrypted</span></div>
-              <div className="flex items-center gap-2"><CreditCard className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.2em]">Secure Payment</span></div>
-              <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.2em]">PCI Compliant</span></div>
+
+            <div className="mt-12 grid grid-cols-1 gap-4">
+              {freeShippingRemaining > 0 ? (
+                <div className="group flex items-center gap-4 rounded-3xl bg-white p-6 shadow-sm border border-gray-100 transition hover:shadow-md">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 transition-colors group-hover:bg-primary-600 group-hover:text-white">
+                    <Truck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-gray-900">Unlock Free Shipping</p>
+                    <p className="text-xs font-bold text-gray-400">Add {formatMoney(freeShippingRemaining)} more to your cart.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 rounded-3xl bg-green-500 p-6 shadow-xl text-white">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black">Free Shipping Unlocked</p>
+                    <p className="text-xs font-bold opacity-80">You've reached the $100.00 collector threshold.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-12 grid gap-8 border-t border-gray-200/50 pt-12">
+              <TrustItem icon={<ShieldCheck className="h-5 w-5" />} title="Authenticity Guaranteed" text="All TCG products are inspected by experts before shipping." />
+              <TrustItem icon={<PackageCheck className="h-5 w-5" />} title="Collector-First Packing" text="Sleeved and bubble-wrapped for maximum protection." />
+              <TrustItem icon={<HelpCircle className="h-5 w-5" />} title="Premium Support" text="Priority assistance for all orders over $50." />
             </div>
           </div>
         </aside>
@@ -528,55 +600,65 @@ function SummaryRow({ label, value, isDiscount }: { label: string; value: string
   );
 }
 
-function FormField({ label, id, value, onChange, placeholder, error, type = 'text', autoComplete }: { label: string; id: string; value: string; onChange: (v: string) => void; placeholder?: string; error?: string; type?: string; autoComplete?: string }) {
+function FormField({ label, id, value, onChange, placeholder, error, type = 'text', autoComplete, icon, readOnly }: { label: string; id: string; value: string; onChange: (v: string) => void; placeholder?: string; error?: string; type?: string; autoComplete?: string; icon?: React.ReactNode; readOnly?: boolean }) {
   return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-xs font-black uppercase tracking-widest text-gray-500">{label}</label>
-      <input 
-        id={id}
-        type={type}
-        autoComplete={autoComplete} 
-        aria-invalid={!!error} 
-        aria-describedby={error ? `${id}-error` : undefined}
-        value={value} 
-        onChange={(e) => onChange(e.target.value)} 
-        placeholder={placeholder} 
-        className={`w-full rounded-2xl border-2 px-4 py-4 text-sm font-bold outline-none transition focus:ring-4 focus:ring-primary-50 ${error ? 'border-red-300' : 'border-gray-100 focus:border-primary-500'}`} 
-      />
-      {error && <p id={`${id}-error`} className="mt-2 text-xs font-bold text-red-600">{error}</p>}
+    <div className="space-y-2">
+      <label htmlFor={id} className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{label}</label>
+      <div className="relative group">
+        {icon && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-primary-500">
+            {icon}
+          </div>
+        )}
+        <input 
+          id={id}
+          type={type}
+          autoComplete={autoComplete} 
+          aria-invalid={!!error} 
+          aria-describedby={error ? `${id}-error` : undefined}
+          value={value} 
+          onChange={(e) => onChange(e.target.value)} 
+          placeholder={placeholder} 
+          readOnly={readOnly}
+          className={`w-full rounded-2xl border-2 px-4 py-4 text-sm font-bold outline-none transition focus:ring-4 focus:ring-primary-50 ${icon ? 'pl-12' : ''} ${readOnly ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'} ${error ? 'border-red-200 focus:border-red-500' : 'border-gray-100 focus:border-primary-500'}`} 
+        />
+      </div>
+      {error && <p id={`${id}-error`} className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">{error}</p>}
     </div>
   );
 }
 
 function ReviewCard({ email, address, shipping, onChange }: { email: string; address: Address; shipping: number; onChange: (step: CheckoutStep) => void }) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white text-sm shadow-sm">
-      <ReviewRow label="Contact" value={email} onChange={() => onChange('information')} />
+    <div className="overflow-hidden rounded-4xl border border-gray-100 bg-white shadow-lg shadow-gray-100/50 divide-y divide-gray-50">
+      <ReviewRow label="Identity" value={email} onChange={() => onChange('information')} />
       <ReviewRow label="Ship to" value={`${address.street}, ${address.city}, ${address.state} ${address.zip}`} onChange={() => onChange('information')} />
-      <ReviewRow label="Method" value={`Standard insured • ${shipping === 0 ? 'Free' : formatMoney(shipping)}`} onChange={() => onChange('shipping')} isLast />
+      <ReviewRow label="Method" value={`Standard Insured • ${shipping === 0 ? 'Free' : formatMoney(shipping)}`} onChange={() => onChange('shipping')} isLast />
     </div>
   );
 }
 
 function ReviewRow({ label, value, onChange, isLast }: { label: string; value: string; onChange: () => void; isLast?: boolean }) {
   return (
-    <div className={`flex items-center justify-between gap-4 p-4 ${isLast ? '' : 'border-b border-gray-100'}`}>
-      <span className="w-20 text-xs font-black uppercase tracking-widest text-gray-400">{label}</span>
-      <span className="min-w-0 flex-1 truncate font-bold text-gray-700">{value}</span>
-      <button onClick={onChange} className="text-xs font-black text-primary-600 hover:underline">Change</button>
+    <div className="flex items-center justify-between gap-6 p-6 transition hover:bg-gray-50/50 group">
+      <div className="flex-1 min-w-0">
+        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">{label}</span>
+        <span className="block truncate text-sm font-bold text-gray-900">{value}</span>
+      </div>
+      <button onClick={onChange} className="shrink-0 text-[10px] font-black uppercase tracking-widest text-primary-600 hover:text-primary-800 transition-colors">Change</button>
     </div>
   );
 }
 
 function TrustItem({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
   return (
-    <div className="flex gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-primary-600 shadow-sm">
+    <div className="flex gap-5 group">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white text-primary-600 shadow-sm transition-transform group-hover:scale-110">
         {icon}
       </div>
       <div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-900">{title}</p>
-        <p className="mt-1 text-[10px] font-bold text-gray-400">{text}</p>
+        <p className="text-xs font-black uppercase tracking-widest text-gray-900">{title}</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-gray-400">{text}</p>
       </div>
     </div>
   );

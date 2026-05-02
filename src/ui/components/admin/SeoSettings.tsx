@@ -8,6 +8,8 @@
 import React, { useState } from 'react';
 import { Search, Globe, ChevronDown, ChevronUp, AlertCircle, Info, ExternalLink, Sparkles, Check } from 'lucide-react';
 import { HelpTooltip } from './AdminComponents';
+import { slugify } from '@utils/navigation';
+
 
 interface SeoSettingsProps {
   name: string;
@@ -35,11 +37,8 @@ export function SeoSettings({
 
   const displayTitle = seoTitle || name || '';
   const displayDescription = seoDescription || description || '';
-  const displayHandle = handle || (name || 'product-handle')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'product-handle';
+  const displayHandle = handle || slugify(name || 'product-handle') || 'product-handle';
+
 
   const titleLength = displayTitle.length;
   const descLength = displayDescription.length;

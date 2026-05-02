@@ -4,8 +4,10 @@ import { useServices } from '../../../../hooks/useServices';
 import { useToast } from '../../../../components/admin/AdminComponents';
 import type { Product, ProductCategory, ProductSalesChannel, ProductType } from '@domain/models';
 import { INITIAL_FORM_STATE, ProductFormState } from '../types';
-import { centsFromInput, integerFromInput, listToCsv, csvToList, previewHandle } from '../utils';
+import { centsFromInput, integerFromInput, listToCsv, csvToList } from '../utils';
 import { validatePriceCents, validateStock } from '@utils/validators';
+import { slugify } from '@utils/navigation';
+
 
 export function useProductForm(id?: string) {
   const router = useRouter();
@@ -284,11 +286,12 @@ export function useProductForm(id?: string) {
   }
 
   function generateHandle() {
-    const newHandle = previewHandle(form.name, '');
+    const newHandle = slugify(form.name);
     setForm(f => ({ ...f, handle: newHandle }));
     setUnsaved(true);
     toast('info', 'Handle generated from title');
   }
+
 
   return {
     form,

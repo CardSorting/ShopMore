@@ -23,8 +23,10 @@ import {
   useAdminPageTitle,
 } from '../../components/admin/AdminComponents';
 import { useServices } from '../../hooks/useServices';
-import { SeoSettings } from '../../components/admin/SeoSettings';
 import { ImageUpload } from '../../components/admin/ImageUpload';
+import { SeoSettings } from '../../components/admin/SeoSettings';
+import { slugify } from '@utils/navigation';
+
 
 export function AdminCollectionCreate() {
   useAdminPageTitle('Create Collection');
@@ -43,14 +45,15 @@ export function AdminCollectionCreate() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
-
     try {
+      const finalHandle = formData.handle.trim() || slugify(formData.name);
+      
       await services.collectionService.create({
         ...formData,
+        handle: finalHandle,
         imageUrl
       });
+
       toast('success', 'Collection created successfully');
       router.push('/admin/collections');
     } catch (error) {
@@ -173,7 +176,7 @@ export function AdminCollectionCreate() {
             seoTitle=""
             seoDescription=""
             isEdit={false}
-            onChange={(name, value) => setFormData(prev => ({ ...prev, [name]: value }))}
+            onChange={(name: string, value: string) => setFormData(prev => ({ ...prev, [name]: value }))}
           />
         </div>
 

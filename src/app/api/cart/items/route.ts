@@ -5,9 +5,9 @@ import { jsonError, parseCartItemMutation, parseProductIdMutation, readJsonObjec
 export async function POST(request: Request) {
     try {
         const user = await requireSessionUser();
-        const { productId, quantity } = parseCartItemMutation(await readJsonObject(request));
+        const { productId, quantity, variantId } = parseCartItemMutation(await readJsonObject(request));
         const services = await getServerServices();
-        return NextResponse.json(await services.cartService.addToCart(user.id, productId, quantity));
+        return NextResponse.json(await services.cartService.addToCart(user.id, productId, quantity, variantId));
     } catch (error) {
         return jsonError(error, 'Failed to add item to cart');
     }
@@ -16,9 +16,9 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
     try {
         const user = await requireSessionUser();
-        const { productId, quantity } = parseCartItemMutation(await readJsonObject(request));
+        const { productId, quantity, variantId } = parseCartItemMutation(await readJsonObject(request));
         const services = await getServerServices();
-        return NextResponse.json(await services.cartService.updateQuantity(user.id, productId, quantity));
+        return NextResponse.json(await services.cartService.updateQuantity(user.id, productId, quantity, variantId));
     } catch (error) {
         return jsonError(error, 'Failed to update cart item');
     }
@@ -27,9 +27,9 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
     try {
         const user = await requireSessionUser();
-        const { productId } = parseProductIdMutation(await readJsonObject(request));
+        const { productId, variantId } = parseProductIdMutation(await readJsonObject(request));
         const services = await getServerServices();
-        return NextResponse.json(await services.cartService.removeFromCart(user.id, productId));
+        return NextResponse.json(await services.cartService.removeFromCart(user.id, productId, variantId));
     } catch (error) {
         return jsonError(error, 'Failed to remove cart item');
     }

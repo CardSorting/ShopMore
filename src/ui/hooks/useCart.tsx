@@ -17,9 +17,9 @@ export interface CartContextValue {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (productId: string, quantity: number) => Promise<void>;
-  updateQuantity: (productId: string, quantity: number) => Promise<void>;
-  removeItem: (productId: string) => Promise<void>;
+  addItem: (productId: string, quantity: number, variantId?: string) => Promise<void>;
+  updateQuantity: (productId: string, quantity: number, variantId?: string) => Promise<void>;
+  removeItem: (productId: string, variantId?: string) => Promise<void>;
   clearCart: () => Promise<void>;
   subtotal: number;
   totalItems: number;
@@ -42,7 +42,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem(GUEST_CART_KEY);
     if (!saved) return null;
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      return {
+        ...parsed,
+        updatedAt: new Date(parsed.updatedAt)
+      };
     } catch {
       return null;
     }
@@ -62,24 +66,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       if (user) {
-        // Authenticated user: load from repository
         const remoteCart = await services.cartService.getCart(user.id);
-        
-        // Handle sync: if there's a guest cart, merge it
         const guestCart = getGuestCart();
         if (guestCart && guestCart.items.length > 0) {
           logger.info('Syncing guest cart with user cart');
           let currentCart = remoteCart;
           for (const item of guestCart.items) {
-             currentCart = await services.cartService.addToCart(user.id, item.productId, item.quantity);
+             currentCart = await services.cartService.addToCart(user.id, item.productId, item.quantity, item.variantId);
           }
           setCart(currentCart);
-          saveGuestCart(null); // Clear guest cart after sync
+          saveGuestCart(null);
         } else {
           setCart(remoteCart);
         }
       } else {
-        // Guest user: load from localStorage
         setCart(getGuestCart());
       }
     } catch (err) {
@@ -93,7 +93,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     void loadCart();
   }, [loadCart]);
 
-  // Handle custom events for external triggers (if any still exist)
   useEffect(() => {
     const handleOpen = () => setIsOpen(true);
     const handleRefresh = () => void loadCart();
@@ -117,31 +116,48 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [cart]
   );
 
-  const addItem = async (productId: string, quantity: number) => {
+  const addItem = async (productId: string, quantity: number, variantId?: string) => {
     try {
       if (user) {
-        const updated = await services.cartService.addToCart(user.id, productId, quantity);
+        const updated = await services.cartService.addToCart(user.id, productId, quantity, variantId);
         setCart(updated);
       } else {
-        // Guest logic: we need to mimic CartService or use it with a dummy id
-        // Since CartService uses repositories which might be server-side or DB-tied,
-        // we'll implement simple local logic for guest cart for now, 
-        // or we could potentially use a "Guest ID" in the service if supported.
-        // For production hardening, let's keep guest cart local-first.
-        const product = await services.productService.getProducts({}).then(r => r.products.find(p => p.id === productId));
+        // Load product details to mimic server logic
+        let product;
+        try {
+          product = await services.productService.getProduct(productId);
+        } catch {
+          product = await services.productService.getProducts({}).then(r => r.products.find(p => p.id === productId));
+        }
+        
         if (!product) throw new Error('Product not found');
 
+        let price = product.price;
+        let imageUrl = product.imageUrl;
+        let variantTitle = undefined;
+
+        if (variantId && product.variants) {
+          const v = product.variants.find(varnt => varnt.id === variantId);
+          if (v) {
+            price = v.price;
+            variantTitle = v.title;
+            if (v.imageUrl) imageUrl = v.imageUrl;
+          }
+        }
+
         const currentCart = getGuestCart() || { id: 'guest', userId: 'guest', items: [], updatedAt: new Date() };
-        const existingIndex = currentCart.items.findIndex(i => i.productId === productId);
+        const existingIndex = currentCart.items.findIndex(i => i.productId === productId && i.variantId === variantId);
         
         if (existingIndex > -1) {
           currentCart.items[existingIndex].quantity = Math.min(currentCart.items[existingIndex].quantity + quantity, MAX_CART_QUANTITY);
         } else {
           currentCart.items.push({
             productId,
+            variantId,
+            variantTitle,
             name: product.name,
-            priceSnapshot: product.price,
-            imageUrl: product.imageUrl,
+            priceSnapshot: price,
+            imageUrl,
             quantity: Math.min(quantity, MAX_CART_QUANTITY)
           });
         }
@@ -149,32 +165,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setCart({ ...currentCart });
         saveGuestCart(currentCart);
       }
-      setIsOpen(true); // Open drawer on add
+      setIsOpen(true);
     } catch (err) {
       logger.error('Failed to add to cart', err);
     }
   };
 
-  const updateQuantity = async (productId: string, quantity: number) => {
+  const updateQuantity = async (productId: string, quantity: number, variantId?: string) => {
     const safeQuantity = Math.max(1, Math.min(quantity, MAX_CART_QUANTITY));
     
-    // Optimistic Update
     const prevCart = cart;
     if (cart) {
       setCart({
         ...cart,
-        items: cart.items.map(i => i.productId === productId ? { ...i, quantity: safeQuantity } : i)
+        items: cart.items.map(i => (i.productId === productId && i.variantId === variantId) ? { ...i, quantity: safeQuantity } : i)
       });
     }
 
     try {
       if (user) {
-        const updated = await services.cartService.updateQuantity(user.id, productId, safeQuantity);
+        const updated = await services.cartService.updateQuantity(user.id, productId, safeQuantity, variantId);
         setCart(updated);
       } else {
         const currentCart = getGuestCart();
         if (currentCart) {
-          currentCart.items = currentCart.items.map(i => i.productId === productId ? { ...i, quantity: safeQuantity } : i);
+          currentCart.items = currentCart.items.map(i => (i.productId === productId && i.variantId === variantId) ? { ...i, quantity: safeQuantity } : i);
           currentCart.updatedAt = new Date();
           setCart({ ...currentCart });
           saveGuestCart(currentCart);
@@ -186,24 +201,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const removeItem = async (productId: string) => {
-    // Optimistic Update
+  const removeItem = async (productId: string, variantId?: string) => {
     const prevCart = cart;
     if (cart) {
       setCart({
         ...cart,
-        items: cart.items.filter(i => i.productId !== productId)
+        items: cart.items.filter(i => !(i.productId === productId && i.variantId === variantId))
       });
     }
 
     try {
       if (user) {
-        const updated = await services.cartService.removeFromCart(user.id, productId);
+        const updated = await services.cartService.removeFromCart(user.id, productId, variantId);
         setCart(updated);
       } else {
         const currentCart = getGuestCart();
         if (currentCart) {
-          currentCart.items = currentCart.items.filter(i => i.productId !== productId);
+          currentCart.items = currentCart.items.filter(i => !(i.productId === productId && i.variantId === variantId));
           currentCart.updatedAt = new Date();
           setCart({ ...currentCart });
           saveGuestCart(currentCart);

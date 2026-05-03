@@ -320,12 +320,19 @@ export function calculateCartTotal(items: CartItem[]): number {
 export function validateCartItem(
   product: Product,
   quantity: number,
-  existingQuantity: number = 0
+  existingQuantity: number = 0,
+  variantId?: string
 ): boolean {
   if (quantity <= 0) return false;
   if (quantity > MAX_CART_QUANTITY) return false;
-  if (product.stock < quantity + existingQuantity) return false;
-  return true;
+  
+  if (variantId && product.variants) {
+    const variant = product.variants.find(v => v.id === variantId);
+    if (!variant) return false;
+    return variant.stock >= quantity + existingQuantity;
+  }
+  
+  return product.stock >= quantity + existingQuantity;
 }
 
 export function canPlaceOrder(
@@ -525,27 +532,45 @@ export function deriveOrderFulfillmentEvents(order: Order): OrderFulfillmentEven
 export function addCartItem(
   items: CartItem[],
   product: Product,
-  quantity: number
+  quantity: number,
+  variantId?: string
 ): CartItem[] {
-  const existingIndex = items.findIndex((i) => i.productId === product.id);
-  const existingQty =
-    existingIndex >= 0 ? items[existingIndex].quantity : 0;
+  const existingIndex = items.findIndex((i) => i.productId === product.id && i.variantId === variantId);
+  const existingQty = existingIndex >= 0 ? items[existingIndex].quantity : 0;
 
-  if (!validateCartItem(product, quantity, existingQty)) {
+  if (!validateCartItem(product, quantity, existingQty, variantId)) {
+    const stock = variantId 
+      ? (product.variants?.find(v => v.id === variantId)?.stock ?? 0)
+      : product.stock;
     throw new InsufficientStockError(
-      product.id,
+      variantId || product.id,
       quantity + existingQty,
-      product.stock
+      stock
     );
+  }
+
+  let price = product.price;
+  let variantTitle = undefined;
+  let imageUrl = product.imageUrl;
+
+  if (variantId && product.variants) {
+    const variant = product.variants.find(v => v.id === variantId);
+    if (variant) {
+      price = variant.price;
+      variantTitle = variant.title;
+      if (variant.imageUrl) imageUrl = variant.imageUrl;
+    }
   }
 
   const newItem: CartItem = {
     productId: product.id,
+    variantId,
+    variantTitle,
     productHandle: product.handle,
     name: product.name,
-    priceSnapshot: product.price,
+    priceSnapshot: price,
     quantity,
-    imageUrl: product.imageUrl,
+    imageUrl,
     isDigital: product.isDigital,
   };
 
@@ -561,8 +586,8 @@ export function addCartItem(
   return [...items, newItem];
 }
 
-export function removeCartItem(items: CartItem[], productId: string): CartItem[] {
-  return items.filter((i) => i.productId !== productId);
+export function removeCartItem(items: CartItem[], productId: string, variantId?: string): CartItem[] {
+  return items.filter((i) => !(i.productId === productId && i.variantId === variantId));
 }
 
 // ─────────────────────────────────────────────
@@ -780,17 +805,29 @@ export function updateCartItemQuantity(
   items: CartItem[],
   productId: string,
   quantity: number,
-  product: Product
+  product: Product,
+  variantId?: string
 ): CartItem[] {
-  if (quantity <= 0) {
-    return removeCartItem(items, productId);
+  const existingIndex = items.findIndex((i) => i.productId === productId && i.variantId === variantId);
+  if (existingIndex < 0) return items;
+
+  if (!validateCartItem(product, quantity, 0, variantId)) {
+    const stock = variantId 
+      ? (product.variants?.find(v => v.id === variantId)?.stock ?? 0)
+      : product.stock;
+    throw new InsufficientStockError(
+      variantId || productId,
+      quantity,
+      stock
+    );
   }
-  if (quantity > product.stock) {
-    throw new InsufficientStockError(productId, quantity, product.stock);
-  }
-  return items.map((item) =>
-    item.productId === productId ? { ...item, quantity } : item
-  );
+
+  const updated = [...items];
+  updated[existingIndex] = {
+    ...updated[existingIndex],
+    quantity,
+  };
+  return updated;
 }
 
 export function formatCents(cents: number): string {

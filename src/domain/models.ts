@@ -276,6 +276,8 @@ export interface Cart {
 
 export interface CartItem {
   productId: string;
+  variantId?: string;
+  variantTitle?: string;
   productHandle?: string;
   name: string;
   priceSnapshot: number; // cents at time of add
@@ -350,6 +352,8 @@ export interface OrderNote {
 
 export interface OrderItem {
   productId: string;
+  variantId?: string;
+  variantTitle?: string;
   name: string;
   quantity: number;
   unitPrice: number; // cents

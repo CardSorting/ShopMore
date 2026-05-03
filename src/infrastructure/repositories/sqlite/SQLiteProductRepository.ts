@@ -648,7 +648,12 @@ export class SQLiteProductRepository implements IProductRepository {
 
 
   async delete(id: string): Promise<void> {
-    await this.db.deleteFrom('products').where('id', '=', id).execute();
+    await this.db.transaction().execute(async (trx) => {
+      await trx.deleteFrom('product_options').where('productId', '=', id).execute();
+      await trx.deleteFrom('product_variants').where('productId', '=', id).execute();
+      await trx.deleteFrom('product_media').where('productId', '=', id).execute();
+      await trx.deleteFrom('products').where('id', '=', id).execute();
+    });
     this.invalidateIndex();
   }
 
@@ -716,6 +721,45 @@ export class SQLiteProductRepository implements IProductRepository {
     });
 
     this.invalidateIndex(); // Ensure RAM stays synchronous with physical state
+  }
+
+  async updateVariantStock(variantId: string, delta: number): Promise<void> {
+    await this.db.transaction().execute(async (trx) => {
+      const variant = await trx
+        .selectFrom('product_variants')
+        .select(['productId', 'stock'])
+        .where('id', '=', variantId)
+        .executeTakeFirst();
+
+      if (!variant) throw new Error(`Variant not found: ${variantId}`);
+
+      const nextVariantStock = variant.stock + delta;
+      if (nextVariantStock < 0) throw new Error(`Insufficient stock for variant: ${variantId}`);
+
+      // Update variant stock
+      await trx
+        .updateTable('product_variants')
+        .set({ stock: nextVariantStock, updatedAt: new Date().toISOString() })
+        .where('id', '=', variantId)
+        .execute();
+
+      // Sync parent product stock (sum of all variants)
+      const allVariants = await trx
+        .selectFrom('product_variants')
+        .select('stock')
+        .where('productId', '=', variant.productId)
+        .execute();
+      
+      const totalStock = allVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
+
+      await trx
+        .updateTable('products')
+        .set({ stock: totalStock, updatedAt: new Date().toISOString() })
+        .where('id', '=', variant.productId)
+        .execute();
+    });
+
+    this.invalidateIndex();
   }
 
   async getStats(): Promise<{

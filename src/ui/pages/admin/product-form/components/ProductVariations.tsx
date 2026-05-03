@@ -12,7 +12,11 @@ import {
   Copy,
   ArrowRight,
   Package,
-  DollarSign
+  DollarSign,
+  Check,
+  MoreVertical,
+  Layers,
+  Image as ImageIcon
 } from 'lucide-react';
 import type { ProductOption, ProductVariant } from '@domain/models';
 import { TextInput, MoneyInput } from './FormInputs';
@@ -44,6 +48,8 @@ export function ProductVariations({
   onChange 
 }: ProductVariationsProps) {
   const [isEditingOptions, setIsEditingOptions] = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
+  const [showBulkMenu, setShowBulkMenu] = useState(false);
 
   // --- GENERATION LOGIC ---
   const generateVariants = (currentOptions: ProductOption[]) => {
@@ -54,15 +60,14 @@ export function ProductVariations({
     
     const combinations = cartesian(...activeOptions.map(o => o.values));
     
-    return combinations.map((combo: string | string[]) => {
-      const vals = Array.isArray(combo) ? combo : [combo];
-      const title = vals.join(' / ');
+    return combinations.map((combo: string[]) => {
+      const title = combo.join(' / ');
       
-      // Try to find existing variant to preserve data
+      // Try to find existing variant to preserve data (ID and custom fields)
       const existing = variants.find(v => 
-        v.option1 === vals[0] && 
-        (vals.length < 2 || v.option2 === vals[1]) && 
-        (vals.length < 3 || v.option3 === vals[2])
+        v.option1 === combo[0] && 
+        (combo.length < 2 || v.option2 === combo[1]) && 
+        (combo.length < 3 || v.option3 === combo[2])
       );
 
       if (existing) return existing;
@@ -73,10 +78,10 @@ export function ProductVariations({
         title,
         price: centsFromInput(basePrice) || 0,
         stock: parseInt(baseStock) || 0,
-        sku: baseSku ? `${baseSku}-${vals.join('-').toUpperCase().replace(/\s+/g, '')}` : '',
-        option1: vals[0],
-        option2: vals[1],
-        option3: vals[2],
+        sku: baseSku ? `${baseSku}-${combo.join('-').toUpperCase().replace(/\s+/g, '')}` : '',
+        option1: combo[0],
+        option2: combo[1] || undefined,
+        option3: combo[2] || undefined,
         createdAt: new Date(),
         updatedAt: new Date()
       } as ProductVariant;
@@ -85,7 +90,6 @@ export function ProductVariations({
 
   const handleToggleVariants = (checked: boolean) => {
     if (checked && options.length === 0) {
-      // Initialize with a default option
       const initialOptions: ProductOption[] = [
         { id: crypto.randomUUID(), productId: '', name: 'Size', position: 0, values: [] }
       ];
@@ -118,10 +122,7 @@ export function ProductVariations({
 
   const handleOptionsSave = () => {
     const newVariants = generateVariants(options);
-    
-    // Total stock should be sum of variants
     const totalStock = newVariants.reduce((sum, v) => sum + v.stock, 0);
-    
     onChange({ 
       variants: newVariants,
       stock: String(totalStock)
@@ -131,8 +132,6 @@ export function ProductVariations({
 
   const updateVariant = (id: string, updates: Partial<ProductVariant>) => {
     const newVariants = variants.map(v => v.id === id ? { ...v, ...updates, updatedAt: new Date() } : v);
-    
-    // If stock changed, update total stock
     if (updates.stock !== undefined) {
       const totalStock = newVariants.reduce((sum, v) => sum + v.stock, 0);
       onChange({ variants: newVariants, stock: String(totalStock) });
@@ -141,17 +140,50 @@ export function ProductVariations({
     }
   };
 
+  // --- BULK ACTIONS ---
+  const toggleSelectAll = () => {
+    if (selectedVariants.length === variants.length) {
+      setSelectedVariants([]);
+    } else {
+      setSelectedVariants(variants.map(v => v.id));
+    }
+  };
+
+  const toggleSelectVariant = (id: string) => {
+    setSelectedVariants(prev => 
+      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+    );
+  };
+
+  const bulkUpdate = (updates: Partial<ProductVariant>) => {
+    const targetIds = selectedVariants.length > 0 ? selectedVariants : variants.map(v => v.id);
+    const newVariants = variants.map(v => 
+      targetIds.includes(v.id) ? { ...v, ...updates, updatedAt: new Date() } : v
+    );
+    
+    if (updates.stock !== undefined) {
+      const totalStock = newVariants.reduce((sum, v) => sum + v.stock, 0);
+      onChange({ variants: newVariants, stock: String(totalStock) });
+    } else {
+      onChange({ variants: newVariants });
+    }
+    setShowBulkMenu(false);
+  };
+
+  const applyBasePriceToSelected = () => bulkUpdate({ price: centsFromInput(basePrice) || 0 });
+  const applyBaseSkuToSelected = () => bulkUpdate({ sku: baseSku });
+
   return (
     <section className="rounded-xl border bg-white shadow-sm overflow-hidden transition-all duration-300">
       <div className="p-5 border-b bg-gray-50/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
-              <Package className="h-4 w-4" />
+              <Layers className="h-4 w-4" />
             </div>
             <div>
               <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Variations</h2>
-              <p className="text-sm font-bold text-gray-900">Options & Variants</p>
+              <p className="text-sm font-bold text-gray-900">Manage SKU variations</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -171,20 +203,20 @@ export function ProductVariations({
       </div>
 
       {!hasVariants ? (
-        <div className="p-10 flex flex-col items-center justify-center text-center space-y-3">
-          <div className="h-12 w-12 rounded-full bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200">
-            <Plus className="h-6 w-6 text-gray-300" />
+        <div className="p-10 flex flex-col items-center justify-center text-center space-y-4">
+          <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 group-hover:border-primary-200 transition-colors">
+            <Plus className="h-8 w-8 text-gray-300 group-hover:text-primary-400" />
           </div>
-          <div className="max-w-[300px]">
+          <div className="max-w-[340px]">
             <p className="text-sm font-bold text-gray-700">Add options like size or color</p>
-            <p className="mt-1 text-xs text-gray-500">This product has multiple options, like different sizes or colors</p>
+            <p className="mt-1 text-xs text-gray-500 leading-relaxed">This product has multiple options, like different sizes or colors. Each combination creates a unique variant you can track.</p>
           </div>
           <button 
             type="button" 
             onClick={() => handleToggleVariants(true)}
-            className="mt-2 text-xs font-bold text-primary-600 hover:text-primary-700 transition"
+            className="rounded-lg bg-white px-4 py-2 text-xs font-bold text-primary-600 ring-1 ring-primary-100 shadow-sm hover:bg-primary-50 transition"
           >
-            + Add variations
+            + Create variations
           </button>
         </div>
       ) : (
@@ -192,14 +224,14 @@ export function ProductVariations({
           {/* Options Editor */}
           <div className="p-5 space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Options</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Option Definitions</h3>
               {!isEditingOptions && (
                 <button 
                   type="button" 
                   onClick={() => setIsEditingOptions(true)}
-                  className="text-xs font-bold text-primary-600 hover:underline"
+                  className="flex items-center gap-1.5 text-xs font-bold text-primary-600 hover:underline"
                 >
-                  Edit options
+                  <Settings2 className="h-3.5 w-3.5" /> Edit options
                 </button>
               )}
             </div>
@@ -222,41 +254,44 @@ export function ProductVariations({
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Values</label>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Option Values</label>
                           <div className="mt-1.5 flex flex-wrap gap-2">
                             {option.values.map((val, vIdx) => (
-                              <span key={vIdx} className="inline-flex items-center gap-1 rounded-lg bg-primary-50 px-2 py-1 text-xs font-bold text-primary-700 ring-1 ring-primary-100 transition hover:bg-primary-100">
+                              <span key={vIdx} className="inline-flex items-center gap-1 rounded-lg bg-primary-50 px-2.5 py-1.5 text-xs font-bold text-primary-700 ring-1 ring-primary-100 transition hover:bg-primary-100">
                                 {val}
                                 <button 
                                   type="button" 
                                   onClick={() => updateOption(idx, { values: option.values.filter((_, i) => i !== vIdx) })}
-                                  className="rounded-full p-0.5 hover:bg-primary-200"
+                                  className="rounded-full p-0.5 hover:bg-primary-200 transition-colors"
                                 >
                                   <X className="h-3 w-3" />
                                 </button>
                               </span>
                             ))}
-                            <input 
-                              placeholder="Add value..."
-                              className="text-xs font-medium outline-none bg-transparent min-w-[100px]"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const val = e.currentTarget.value.trim();
-                                  if (val && !option.values.includes(val)) {
-                                    updateOption(idx, { values: [...option.values, val] });
-                                    e.currentTarget.value = '';
+                            <div className="flex-1 min-w-[120px] relative">
+                              <input 
+                                placeholder="Add value..."
+                                className="w-full text-xs font-medium outline-none bg-transparent py-1.5"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const val = e.currentTarget.value.trim();
+                                    if (val && !option.values.includes(val)) {
+                                      updateOption(idx, { values: [...option.values, val] });
+                                      e.currentTarget.value = '';
+                                    }
                                   }
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                              <p className="text-[8px] text-gray-400 uppercase font-bold tracking-tighter">Press Enter to add</p>
+                            </div>
                           </div>
                         </div>
                       </div>
                       <button 
                         type="button" 
                         onClick={() => removeOption(idx)}
-                        className="text-gray-400 hover:text-red-600 transition"
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -268,9 +303,9 @@ export function ProductVariations({
                   <button 
                     type="button" 
                     onClick={addOption}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed py-3 text-xs font-bold text-gray-400 hover:bg-white hover:text-primary-600 hover:border-primary-200 transition"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed py-4 text-xs font-bold text-gray-400 hover:bg-white hover:text-primary-600 hover:border-primary-200 transition-all"
                   >
-                    <Plus className="h-4 w-4" /> Add another option
+                    <Plus className="h-4 w-4" /> Add another option (Max 3)
                   </button>
                 )}
 
@@ -278,25 +313,29 @@ export function ProductVariations({
                   <button 
                     type="button" 
                     onClick={() => setIsEditingOptions(false)}
-                    className="rounded-lg px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700"
+                    className="rounded-lg px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 transition"
                   >
-                    Discard
+                    Cancel
                   </button>
                   <button 
                     type="button" 
                     onClick={handleOptionsSave}
-                    className="rounded-lg bg-gray-900 px-6 py-2 text-xs font-bold text-white shadow-sm hover:bg-gray-800 transition"
+                    className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-xs font-bold text-white shadow-lg shadow-primary-500/20 hover:bg-primary-700 transition-all active:scale-95"
                   >
-                    Done
+                    Save Options
                   </button>
                 </div>
               </div>
             ) : (
               <div className="flex flex-wrap gap-4">
                 {options.map((option) => (
-                  <div key={option.id} className="rounded-xl border bg-gray-50 px-4 py-3 min-w-[120px]">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{option.name || 'Untitled'}</p>
-                    <p className="mt-1 text-sm font-bold text-gray-700">{option.values.length} values</p>
+                  <div key={option.id} className="rounded-xl border bg-gray-50 px-5 py-4 min-w-[160px] relative group overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-primary-200 group-hover:bg-primary-500 transition-colors" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{option.name || 'Unnamed Option'}</p>
+                    <div className="mt-1 flex items-center justify-between">
+                      <p className="text-sm font-bold text-gray-900">{option.values.length} Values</p>
+                      <span className="text-[10px] font-medium text-gray-500 truncate max-w-[80px]">{option.values.slice(0, 2).join(', ')}{option.values.length > 2 ? '...' : ''}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -306,45 +345,94 @@ export function ProductVariations({
           {/* Variants Table */}
           {!isEditingOptions && variants.length > 0 && (
             <div className="border-t">
-              <div className="p-5 border-b bg-gray-50/30">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Previews ({variants.length})</h3>
+              <div className="p-5 border-b bg-gray-50/30 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" 
+                      checked={selectedVariants.length === variants.length && variants.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Variants ({variants.length})</h3>
+                  </div>
+                  {selectedVariants.length > 0 && (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                      <span className="text-[10px] font-bold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">{selectedVariants.length} selected</span>
+                      <div className="relative">
+                        <button 
+                          onClick={() => setShowBulkMenu(!showBulkMenu)}
+                          className="flex items-center gap-1 text-[10px] font-bold text-primary-600 hover:underline uppercase"
+                        >
+                          Bulk actions <ChevronDown className="h-3 w-3" />
+                        </button>
+                        {showBulkMenu && (
+                          <div className="absolute left-0 top-full z-50 mt-2 w-48 rounded-xl border bg-white shadow-2xl p-1 animate-in zoom-in-95">
+                            <button onClick={applyBasePriceToSelected} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[10px] font-bold uppercase text-gray-700 hover:bg-gray-50 transition">
+                              <DollarSign className="h-3.5 w-3.5 text-gray-400" /> Apply base price
+                            </button>
+                            <button onClick={applyBaseSkuToSelected} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[10px] font-bold uppercase text-gray-700 hover:bg-gray-50 transition">
+                              <Copy className="h-3.5 w-3.5 text-gray-400" /> Apply base SKU
+                            </button>
+                            <div className="h-px bg-gray-100 my-1" />
+                            <button onClick={() => setShowBulkMenu(false)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[10px] font-bold uppercase text-red-600 hover:bg-red-50 transition">
+                              <Trash2 className="h-3.5 w-3.5" /> Delete selected
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
+                  <AlertCircle className="h-3.5 w-3.5" /> Price & Stock per variant
+                </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="border-b bg-gray-50/50 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                      <th className="px-5 py-3 font-bold">Variant</th>
+                      <th className="w-12 px-5 py-3"></th>
+                      <th className="px-5 py-3 font-bold">Variant Title</th>
                       <th className="px-5 py-3 font-bold">Price</th>
                       <th className="px-5 py-3 font-bold">SKU</th>
-                      <th className="px-5 py-3 font-bold">Inventory</th>
+                      <th className="px-5 py-3 font-bold">Stock</th>
                       <th className="px-5 py-3 font-bold"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {variants.map((variant) => (
-                      <tr key={variant.id} className="group hover:bg-primary-50/30 transition-colors">
+                      <tr key={variant.id} className={`group hover:bg-primary-50/30 transition-colors ${selectedVariants.includes(variant.id) ? 'bg-primary-50/50' : ''}`}>
+                        <td className="px-5 py-4">
+                          <input 
+                            type="checkbox" 
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" 
+                            checked={selectedVariants.includes(variant.id)}
+                            onChange={() => toggleSelectVariant(variant.id)}
+                          />
+                        </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-gray-100 border flex items-center justify-center overflow-hidden">
+                            <button className="h-10 w-10 rounded-lg bg-white border-2 border-dashed flex items-center justify-center overflow-hidden hover:border-primary-300 transition-colors">
                               {variant.imageUrl ? (
                                 <img src={variant.imageUrl} alt={variant.title} className="h-full w-full object-cover" />
                               ) : (
-                                <Package className="h-5 w-5 text-gray-300" />
+                                <ImageIcon className="h-4 w-4 text-gray-300" />
                               )}
-                            </div>
+                            </button>
                             <div>
                               <p className="text-sm font-bold text-gray-900">{variant.title}</p>
-                              <p className="text-[10px] font-medium text-gray-500 uppercase tracking-tight">
-                                {variant.option1}{variant.option2 ? ` / ${variant.option2}` : ''}{variant.option3 ? ` / ${variant.option3}` : ''}
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                {[variant.option1, variant.option2, variant.option3].filter(Boolean).join(' • ')}
                               </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <div className="relative max-w-[120px]">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                          <div className="relative group/input max-w-[120px]">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">$</span>
                             <input 
-                              className="w-full rounded-lg border bg-white px-6 py-1.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500"
+                              className="w-full rounded-lg border bg-white px-7 py-2 text-sm font-bold outline-none ring-primary-500 focus:ring-2 focus:border-transparent transition-all"
                               value={(variant.price / 100).toFixed(2)}
                               onChange={(e) => {
                                 const cents = centsFromInput(e.target.value);
@@ -355,24 +443,27 @@ export function ProductVariations({
                         </td>
                         <td className="px-5 py-4">
                           <input 
-                            className="w-full rounded-lg border bg-white px-3 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full max-w-[140px] rounded-lg border bg-white px-3 py-2 text-xs font-bold uppercase outline-none ring-primary-500 focus:ring-2 focus:border-transparent transition-all"
                             value={variant.sku || ''}
-                            placeholder="SKU"
+                            placeholder="Variant SKU"
                             onChange={(e) => updateVariant(variant.id, { sku: e.target.value })}
                           />
                         </td>
                         <td className="px-5 py-4">
-                          <input 
-                            type="number"
-                            className="w-20 rounded-lg border bg-white px-3 py-1.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500 text-center"
-                            value={variant.stock}
-                            onChange={(e) => updateVariant(variant.id, { stock: parseInt(e.target.value) || 0 })}
-                          />
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="number"
+                              className="w-20 rounded-lg border bg-white px-3 py-2 text-sm font-bold outline-none ring-primary-500 focus:ring-2 focus:border-transparent text-center transition-all"
+                              value={variant.stock}
+                              onChange={(e) => updateVariant(variant.id, { stock: parseInt(e.target.value) || 0 })}
+                            />
+                            <span className={`h-2 w-2 rounded-full ${variant.stock > 0 ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+                          </div>
                         </td>
                         <td className="px-5 py-4 text-right">
                           <button 
                             type="button"
-                            className="p-2 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-white transition"
+                            className="p-2 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-white transition-all active:bg-gray-100"
                           >
                             <Settings2 className="h-4 w-4" />
                           </button>
@@ -381,6 +472,10 @@ export function ProductVariations({
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="p-4 bg-gray-50 border-t flex items-center justify-between">
+                <p className="text-[10px] font-bold text-gray-500 uppercase">Total Inventory: {variants.reduce((sum, v) => sum + v.stock, 0)} units</p>
+                <button type="button" onClick={() => setIsEditingOptions(true)} className="text-[10px] font-bold text-primary-600 hover:underline uppercase">Add/Remove Options</button>
               </div>
             </div>
           )}

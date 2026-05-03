@@ -18,7 +18,9 @@ function isCartItem(value: unknown): value is CartItem {
     && typeof candidate.name === 'string'
     && Number.isInteger(candidate.priceSnapshot)
     && Number.isInteger(candidate.quantity)
-    && typeof candidate.imageUrl === 'string';
+    && typeof candidate.imageUrl === 'string'
+    && (candidate.variantId === undefined || typeof candidate.variantId === 'string')
+    && (candidate.variantTitle === undefined || typeof candidate.variantTitle === 'string');
 }
 
 function parseCartItems(value: string): CartItem[] {

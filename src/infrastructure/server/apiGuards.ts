@@ -252,15 +252,19 @@ export function parseProductMediaArray(value: unknown): ProductMedia[] {
     return value.map((item) => parseProductMedia(item));
 }
 
-export function parseCartItemMutation(body: Record<string, unknown>): { productId: string; quantity: number } {
+export function parseCartItemMutation(body: Record<string, unknown>): { productId: string; quantity: number; variantId?: string } {
     return {
         productId: requireString(body.productId, 'productId'),
         quantity: requireInteger(body.quantity, 'quantity'),
+        variantId: optionalString(body.variantId, 'variantId'),
     };
 }
 
-export function parseProductIdMutation(body: Record<string, unknown>): { productId: string } {
-    return { productId: requireString(body.productId, 'productId') };
+export function parseProductIdMutation(body: Record<string, unknown>): { productId: string; variantId?: string } {
+    return { 
+        productId: requireString(body.productId, 'productId'),
+        variantId: optionalString(body.variantId, 'variantId'),
+    };
 }
 
 export function parseShippingAddress(value: unknown): Address {

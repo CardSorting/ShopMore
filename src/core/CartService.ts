@@ -24,7 +24,8 @@ export class CartService {
   async addToCart(
     userId: string,
     productId: string,
-    quantity: number
+    quantity: number,
+    variantId?: string
   ): Promise<Cart> {
     const product = await this.productRepo.getById(productId);
     if (!product) throw new ProductNotFoundError(productId);
@@ -32,7 +33,7 @@ export class CartService {
     const cart = await this.cartRepo.getByUserId(userId);
     const items = cart?.items ?? [];
 
-    const updatedItems = addCartItem(items, product, quantity);
+    const updatedItems = addCartItem(items, product, quantity, variantId);
 
     const updatedCart: Cart = {
       id: userId,
@@ -45,10 +46,10 @@ export class CartService {
     return updatedCart;
   }
 
-  async removeFromCart(userId: string, productId: string): Promise<Cart> {
+  async removeFromCart(userId: string, productId: string, variantId?: string): Promise<Cart> {
     const cart = await this.cartRepo.getByUserId(userId);
     const items = cart?.items ?? [];
-    const updatedItems = removeCartItem(items, productId);
+    const updatedItems = removeCartItem(items, productId, variantId);
 
     const updatedCart: Cart = {
       id: userId,
@@ -64,7 +65,8 @@ export class CartService {
   async updateQuantity(
     userId: string,
     productId: string,
-    quantity: number
+    quantity: number,
+    variantId?: string
   ): Promise<Cart> {
     const product = await this.productRepo.getById(productId);
     if (!product) throw new ProductNotFoundError(productId);
@@ -72,7 +74,7 @@ export class CartService {
     const cart = await this.cartRepo.getByUserId(userId);
     const items = cart?.items ?? [];
 
-    const updatedItems = updateCartItemQuantity(items, productId, quantity, product);
+    const updatedItems = updateCartItemQuantity(items, productId, quantity, product, variantId);
 
     const updatedCart: Cart = {
       id: userId,

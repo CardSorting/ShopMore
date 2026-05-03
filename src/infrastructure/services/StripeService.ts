@@ -29,6 +29,7 @@ export class StripeService {
     orderId?: string;
     userId: string;
     metadata?: Record<string, string>;
+    idempotencyKey?: string;
   }): Promise<{ clientSecret: string; id: string }> {
     try {
       const paymentIntent = await this.stripe.paymentIntents.create({
@@ -42,6 +43,8 @@ export class StripeService {
         automatic_payment_methods: {
           enabled: true,
         },
+      }, {
+        idempotencyKey: params.idempotencyKey,
       });
 
       if (!paymentIntent.client_secret) {

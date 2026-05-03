@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         const paymentIntent = event.data.object;
         logger.info(`Processing payment_intent.succeeded: ${paymentIntent.id}`);
         
-        await services.orderService.finalizeOrderPayment(paymentIntent.id);
+        await services.orderService.finalizeOrderPayment(paymentIntent.id, paymentIntent);
         break;
       }
       case 'payment_intent.payment_failed': {

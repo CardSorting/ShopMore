@@ -52,6 +52,7 @@ export async function POST(request: Request) {
           currency: 'usd',
           userId: user.id,
           orderId: order.id,
+          idempotencyKey: idempotencyKey, // Crucial for redundant request protection
           metadata: {
             orderId: order.id,
             userId: user.id,

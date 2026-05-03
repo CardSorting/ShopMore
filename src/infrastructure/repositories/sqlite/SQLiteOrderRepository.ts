@@ -499,4 +499,15 @@ export class SQLiteOrderRepository implements IOrderRepository {
       })
       .execute();
   }
+
+  async updateRiskScore(orderId: string, score: number): Promise<void> {
+    await this.db
+      .updateTable('orders')
+      .set({
+        riskScore: score,
+        updatedAt: new Date().toISOString(),
+      })
+      .where('id', '=', orderId)
+      .execute();
+  }
 }

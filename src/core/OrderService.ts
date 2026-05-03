@@ -251,7 +251,7 @@ export class OrderService {
     }
   }
 
-  async finalizeOrderPayment(paymentIntentId: string): Promise<Order> {
+  async finalizeOrderPayment(paymentIntentId: string, stripePi?: any): Promise<Order> {
     const order = await this.orderRepo.getByPaymentTransactionId(paymentIntentId);
     if (!order) {
       throw new Error(`Order not found for payment intent ${paymentIntentId}`);
@@ -271,13 +271,14 @@ export class OrderService {
         throw new Error(`Payment received for already cancelled order ${order.id}. Manual review required.`);
     }
 
+    // Extract Risk Scores if available
+    const riskLevel = stripePi?.charges?.data?.[0]?.outcome?.risk_level || 'unknown';
+    const riskScore = stripePi?.charges?.data?.[0]?.outcome?.risk_score || 0;
+
     const db = getSQLiteDB();
 
     return await db.transaction().execute(async (trx) => {
         // Double check status inside transaction
-        // (Assuming repo can use the trx context - for now we'll stick to the existing repo methods
-        // but recognized they use the global DB instance. In a full refactor we'd pass trx down).
-        
         await this.orderRepo.updateStatus(order.id, 'confirmed');
         await this.cartRepo.clear(order.userId);
         
@@ -293,7 +294,7 @@ export class OrderService {
                 id: noteId,
                 authorId: 'system',
                 authorEmail: 'stripe-webhook@playmore.tcg',
-                text: `Payment confirmed via Stripe (PI: ${paymentIntentId}). Order finalized.`,
+                text: `Payment confirmed via Stripe (PI: ${paymentIntentId}). Risk: ${riskLevel} (${riskScore}).`,
                 createdAt: new Date(),
             }
         ]);
@@ -307,9 +308,15 @@ export class OrderService {
               from: order.status, 
               to: 'confirmed', 
               stripeId: paymentIntentId,
+              risk: { level: riskLevel, score: riskScore },
               noteId
           }
         });
+
+        // Update risk score on order if it's high
+        if (riskScore > 50) {
+            await this.orderRepo.updateRiskScore(order.id, riskScore);
+        }
 
         return { ...order, status: 'confirmed' };
     });

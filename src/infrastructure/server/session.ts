@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 import type { User } from '@domain/models';
 
-const COOKIE_NAME = 'pm_tcg_session';
+const COOKIE_NAME = 'db_art_session';
 const SESSION_VERSION = 1;
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
 const MAX_SESSION_COOKIE_BYTES = 4096;

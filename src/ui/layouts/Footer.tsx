@@ -210,7 +210,7 @@ export function Footer() {
                     </div>
                     <div>
                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-1">The Daily Pull</p>
-                       <h2 className="text-2xl font-black tracking-tight">The Best TCG Newsletter</h2>
+                       <h2 className="text-2xl font-black tracking-tight">The Best Art & TCG Newsletter</h2>
                     </div>
                  </div>
                  <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
@@ -253,7 +253,7 @@ export function Footer() {
               © {currentYear} DreamBeesArt. All Rights Reserved.
             </p>
             <p className="text-[10px] font-bold text-primary-500 mt-1 uppercase tracking-tighter">
-              The World's Favorite TCG Marketplace
+              The World's Favorite Art & TCG Marketplace
             </p>
           </div>
         </div>

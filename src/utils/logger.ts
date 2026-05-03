@@ -14,7 +14,7 @@ function emit(level: LogLevel, message: string, context?: unknown) {
   }
 
   const timestamp = new Date().toISOString();
-  const prefix = `[PM-TCG:${level.toUpperCase()}] ${timestamp}`;
+  const prefix = `[DB-ART:${level.toUpperCase()}] ${timestamp}`;
   
   // Serialize error objects for better visibility in production logs
   let contextualData = context;

@@ -1,4 +1,4 @@
-# ShopMore: The Sovereign Commerce Engine
+# DreamBeesArt: The Sovereign Commerce Engine
 
 ShopMore is a neutral, high-performance, and deeply customizable e-commerce engine designed for merchants who prioritize data ownership and operational sovereignty. Built on a hardened TypeScript substrate, ShopMore provides an industry-leading alternative to SaaS platforms, offering absolute control over the entire commerce lifecycle.
 

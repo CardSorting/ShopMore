@@ -76,9 +76,9 @@ export function AdminProductForm() {
   }, [unsaved]);
 
   useEffect(() => {
-    const title = isEdit ? `${form.name || 'Edit product'} · ShopMore Admin` : 'Add product · ShopMore Admin';
+    const title = isEdit ? `${form.name || 'Edit product'} · DreamBees Art Admin` : 'Add product · DreamBees Art Admin';
     document.title = title;
-    return () => { document.title = 'ShopMore'; };
+    return () => { document.title = 'DreamBees Art'; };
   }, [isEdit, form.name]);
 
   const priceCents = centsFromInput(form.price) ?? 0;

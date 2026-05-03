@@ -128,7 +128,7 @@ export function Navbar() {
               <div className="h-10 w-10 rounded-xl bg-gray-900 flex items-center justify-center text-white shadow-xl shadow-gray-200">
                 <Package className="w-6 h-6" />
               </div>
-              <span className="hidden sm:block">ShopMore</span>
+              <span className="hidden sm:block">DreamBees Art</span>
             </Link>
 
 
@@ -342,7 +342,7 @@ export function Navbar() {
             <div className="flex items-center justify-between px-6 py-6 border-b">
                <Link href={STORE_PATHS.HOME} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 text-gray-900 font-black text-xl tracking-tighter">
                  <Package className="w-6 h-6" />
-                 ShopMore
+                 DreamBees Art
                </Link>
 
                <button onClick={() => setIsMenuOpen(false)} className="p-2 rounded-xl bg-gray-50 text-gray-400"><X className="w-5 h-5" /></button>
@@ -433,7 +433,7 @@ export function Navbar() {
             <div className="p-6 border-t bg-gray-50">
                <div className="flex items-center justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   <span>US / USD</span>
-                  <span>ShopMore v12.4</span>
+                  <span>DreamBees Art v12.4</span>
                </div>
             </div>
           </div>

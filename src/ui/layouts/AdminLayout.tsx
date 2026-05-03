@@ -134,7 +134,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 </div>
                 {!collapsed && (
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-gray-900 leading-tight">ShopMore</p>
+                    <p className="truncate text-sm font-bold text-gray-900 leading-tight">DreamBees Art</p>
                     <p className="text-[10px] text-gray-500 font-medium">Online store · Live</p>
                   </div>
                 )}

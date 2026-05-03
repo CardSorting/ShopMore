@@ -2,10 +2,10 @@ import { HomePage } from '@ui/pages/HomePage';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'DreamBeesArt | The World\'s Favorite TCG Marketplace',
+    title: 'DreamBeesArt | The World\'s Favorite Art & TCG Marketplace',
     description: 'Shop, sell, and trade the world\'s rarest Trading Card Games. Authentic cards, fast shipping, and a community of passionate collectors.',
     openGraph: {
-        title: 'DreamBeesArt | The World\'s Favorite TCG Marketplace',
+        title: 'DreamBeesArt | The World\'s Favorite Art & TCG Marketplace',
         description: 'Shop, sell, and trade the world\'s rarest Trading Card Games.',
         type: 'website',
         url: 'https://dreambeesart.com',

@@ -25,7 +25,7 @@ export function OrderTrackingPage() {
           { status: 'Arrived at Facility', location: 'Oakland, CA', time: 'May 21, 11:20 PM' },
           { status: 'In Transit', location: 'Memphis, TN', time: 'May 20, 4:30 AM' },
           { status: 'Order Picked Up', location: 'New York, NY', time: 'May 19, 2:15 PM' },
-          { status: 'Label Created', location: 'ShopMore Warehouse', time: 'May 18, 10:00 AM' }
+          { status: 'Label Created', location: 'DreamBees Art Warehouse', time: 'May 18, 10:00 AM' }
         ]
       });
       setLoading(false);

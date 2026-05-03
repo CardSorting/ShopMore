@@ -7,8 +7,8 @@ import { StorefrontShell } from '@ui/layouts/StorefrontShell';
 import '../index.css';
 
 export const metadata: Metadata = {
-    title: 'ShopMore | Open Source Commerce',
-    description: 'A sovereign, customizable ecommerce platform.',
+    title: 'DreamBeesArt | Premium Art & Trading Cards',
+    description: 'A sovereign marketplace for art and rare collectibles.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

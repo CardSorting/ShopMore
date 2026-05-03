@@ -232,7 +232,7 @@ export function CheckoutPage() {
 
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="text-2xl font-black tracking-tighter text-gray-900">DreamBees<span className="text-primary-600">TCG</span></Link>
+          <Link href="/" className="text-2xl font-black tracking-tighter text-gray-900">DreamBees<span className="text-primary-600">Art</span></Link>
           <div className="flex items-center gap-6">
             <div className="hidden items-center gap-2 rounded-full border border-green-100 bg-green-50 px-4 py-1.5 md:flex">
               <LockKeyhole className="h-3.5 w-3.5 text-green-600" />

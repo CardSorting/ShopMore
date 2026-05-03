@@ -384,6 +384,12 @@ export interface SupportArticleFeedbackTable {
   createdAt: string;
 }
 
+export interface StripeWebhookEventTable {
+  id: string; // Stripe event ID
+  type: string;
+  processedAt: string; // ISO string
+}
+
 export interface Database {
   products: ProductTable;
   product_media: ProductMediaTable;
@@ -415,5 +421,6 @@ export interface Database {
   product_variants: ProductVariantTable;
   knowledgebase_categories: KnowledgebaseCategoryTable;
   knowledgebase_articles: KnowledgebaseArticleTable;
+  stripe_webhook_events: StripeWebhookEventTable;
 }
 

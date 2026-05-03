@@ -128,6 +128,36 @@ export class SQLiteOrderRepository implements IOrderRepository {
     return created;
   }
 
+  async getByPaymentTransactionId(id: string): Promise<Order | null> {
+    const result = await this.db
+      .selectFrom('orders')
+      .leftJoin('users', 'users.id', 'orders.userId')
+      .select([
+        'orders.id',
+        'orders.userId',
+        'orders.items',
+        'orders.total',
+        'orders.status',
+        'orders.shippingAddress',
+        'orders.paymentTransactionId',
+        'orders.idempotencyKey',
+        'orders.discountCode',
+        'orders.discountAmount',
+        'orders.trackingNumber',
+        'orders.shippingCarrier',
+        'orders.notes',
+        'orders.riskScore',
+        'orders.createdAt',
+        'orders.updatedAt',
+        'users.displayName',
+        'users.email'
+      ])
+      .where('orders.paymentTransactionId', '=', id)
+      .executeTakeFirst();
+
+    return result ? this.mapTableToOrder(result) : null;
+  }
+
   async getByIdempotencyKey(key: string): Promise<Order | null> {
     const result = await this.db
       .selectFrom('orders')
@@ -331,6 +361,18 @@ export class SQLiteOrderRepository implements IOrderRepository {
       .updateTable('orders')
       .set({
         status,
+        updatedAt: now,
+      })
+      .where('id', '=', id)
+      .execute();
+  }
+
+  async updatePaymentTransactionId(id: string, paymentTransactionId: string): Promise<void> {
+    const now = new Date().toISOString();
+    await this.db
+      .updateTable('orders')
+      .set({
+        paymentTransactionId,
         updatedAt: now,
       })
       .where('id', '=', id)

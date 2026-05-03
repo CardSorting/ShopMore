@@ -50,6 +50,7 @@ export interface IOrderRepository {
   create(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<Order>;
   getById(id: string): Promise<Order | null>;
   getByIdempotencyKey(key: string): Promise<Order | null>;
+  getByPaymentTransactionId(id: string): Promise<Order | null>;
   getByUserId(userId: string): Promise<Order[]>;
   getAll(options?: {
     status?: OrderStatus;
@@ -58,6 +59,7 @@ export interface IOrderRepository {
     cursor?: string;
   }): Promise<{ orders: Order[]; nextCursor?: string }>;
   updateStatus(id: string, status: OrderStatus): Promise<void>;
+  updatePaymentTransactionId(id: string, paymentTransactionId: string): Promise<void>;
   batchUpdateStatus?(ids: string[], status: OrderStatus): Promise<void>;
   updateNotes(orderId: string, notes: import('./models').OrderNote[]): Promise<void>;
   updateFulfillment(orderId: string, data: { trackingNumber?: string; shippingCarrier?: string }): Promise<void>;

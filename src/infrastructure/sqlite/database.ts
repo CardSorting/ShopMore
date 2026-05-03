@@ -249,6 +249,22 @@ export async function initDatabase() {
       .ifNotExists()
       .execute();
   } catch {}
+  try {
+    await db.schema
+      .createIndex('idx_orders_payment_intent')
+      .on('orders')
+      .column('paymentTransactionId')
+      .ifNotExists()
+      .execute();
+  } catch {}
+
+  await db.schema
+    .createTable('stripe_webhook_events')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('type', 'text', (col) => col.notNull())
+    .addColumn('processedAt', 'text', (col) => col.notNull())
+    .execute();
 
 
   // BroccoliQ Level 5: Sovereign Locking Table

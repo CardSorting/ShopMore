@@ -10,6 +10,7 @@ import { SQLiteOrderRepository } from '@infrastructure/repositories/sqlite/SQLit
 import { SQLiteDiscountRepository } from '@infrastructure/repositories/sqlite/SQLiteDiscountRepository';
 import { SQLiteAuthAdapter } from '@infrastructure/services/SQLiteAuthAdapter';
 import { StripePaymentProcessor } from '@infrastructure/services/StripePaymentProcessor';
+import { StripeService } from '@infrastructure/services/StripeService';
 import { TrustedCheckoutGateway } from '@infrastructure/services/TrustedCheckoutGateway';
 import { SovereignLocker } from '@infrastructure/sqlite/SovereignLocker';
 import { SQLiteSettingsRepository } from '@infrastructure/repositories/sqlite/SQLiteSettingsRepository';
@@ -78,6 +79,7 @@ let supplierServiceInstance: SupplierService | null = null;
 let collectionServiceInstance: CollectionService | null = null;
 
 let taxonomyServiceInstance: TaxonomyService | null = null;
+let stripeServiceInstance: StripeService | null = null;
 let wishlistRepoInstance: IWishlistRepository | null = null;
 let wishlistServiceInstance: WishlistService | null = null;
 
@@ -146,7 +148,9 @@ export function getServiceContainer() {
     collectionService: new CollectionService(new SQLiteCollectionRepository(), new AuditService()),
     taxonomyService: new TaxonomyService(new SQLiteTaxonomyRepository(), new AuditService()),
     wishlistService: new WishlistService(wishlistRepo, productRepo, new AuditService()),
+    stripeService: new StripeService(),
     auditService: new AuditService(),
+    orderRepo,
   };
 }
 
@@ -242,8 +246,13 @@ export function getInitialServices() {
       if (!wishlistServiceInstance) wishlistServiceInstance = new WishlistService(wishlistRepoInstance!, productRepoInstance!, getAuditService());
       return wishlistServiceInstance;
     })(),
+    orderRepo: orderRepoInstance!,
     inventoryLocationRepo: inventoryLocationRepoInstance!,
     inventoryLevelRepo: inventoryLevelRepoInstance!,
     auditService: getAuditService(),
+    stripeService: (() => {
+      if (!stripeServiceInstance) stripeServiceInstance = new StripeService();
+      return stripeServiceInstance;
+    })(),
   };
 }

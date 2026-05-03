@@ -8,7 +8,7 @@ import { getServerServices } from '@infrastructure/server/services';
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const services = await getServerServices();
-  const baseUrl = 'https://playmoretcg.com';
+  const baseUrl = 'https://dreambeesart.com';
 
   // 1. Static Routes
   const staticRoutes = [

@@ -857,8 +857,8 @@
 
 ### Remediation performed
 
-- Created an admin user in the `playmore.db` with `role: 'admin'`.
-- Created [.wiki/admin-access.md](file:///Users/bozoegg/Desktop/PlayMoreTCG/.wiki/admin-access.md) containing:
+- Created an admin user in the `DreamBees.db` with `role: 'admin'`.
+- Created [.wiki/admin-access.md](file:///Users/bozoegg/Desktop/DreamBeesArt/.wiki/admin-access.md) containing:
   - Default admin credentials (email/password).
   - Step-by-step instructions for signing in and navigating to the dashboard.
   - Verification commands for the database.
@@ -866,7 +866,7 @@
 
 ### Verification evidence
 
-- Admin user verified in `playmore.db` via `sqlite3` check.
+- Admin user verified in `DreamBees.db` via `sqlite3` check.
 - Documentation links verified for correctness.
 
 ### Files intentionally changed in this pass
@@ -1491,7 +1491,7 @@
 - `src/infrastructure/server/session.ts` stored the session payload as base64url JSON without a cryptographic signature, so cookie integrity was not enforced before trusting user and role fields.
 - API request parsing was route-local and inconsistent for malformed JSON, pagination limits, and order-status values.
 - `next.config.ts` did not apply baseline browser security headers.
-- `npm run lint` initially scanned generated nested Next output under `playmore-tcg/.next`, producing generated-file lint failures unrelated to application source.
+- `npm run lint` initially scanned generated nested Next output under `DreamBees-tcg/.next`, producing generated-file lint failures unrelated to application source.
 
 ### Remediation performed
 
@@ -1515,7 +1515,7 @@
   - `src/app/api/products/[id]/route.ts`
 - Updated `src/ui/apiClientServices.ts` so cart/order client calls no longer send `userId` to session-owned API endpoints while preserving existing UI-facing method signatures.
 - Updated `next.config.ts` to emit baseline security headers for all routes, with CSP allowances for Stripe script/connect/frame usage.
-- Updated `eslint.config.js` to ignore `playmore-tcg/.next` generated output.
+- Updated `eslint.config.js` to ignore `DreamBees-tcg/.next` generated output.
 
 ### Verification evidence
 
@@ -1594,7 +1594,7 @@
 
 ### Remediation performed
 
-- Ran `npm rebuild better-sqlite3` from `/Users/bozoegg/Desktop/PlayMoreTCG`.
+- Ran `npm rebuild better-sqlite3` from `/Users/bozoegg/Desktop/DreamBeesArt`.
 - This rebuilt the installed native dependency artifact for the currently active Node.js runtime.
 
 ### Verification evidence

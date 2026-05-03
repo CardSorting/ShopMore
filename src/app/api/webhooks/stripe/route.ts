@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         if (order && order.status === 'pending') {
             await services.orderService.updateOrderStatus(order.id, 'cancelled', { 
                 id: 'system', 
-                email: 'stripe-webhook@playmore.tcg' 
+                email: 'stripe-webhook@dreambees.art' 
             });
         }
         break;

@@ -54,7 +54,7 @@ The engine has been audited for compliance with the 4-layer Joy-Zoning architect
 ### Deployment Checklist
 - [ ] **Secret Rotation**: Rotate `SESSION_SECRET` (minimum 32 characters).
 - [ ] **Rate Limits**: Tune `apiGuards.ts` buckets for production traffic levels.
-- [ ] **Backup Policy**: Establish cron job for `playmore.db` snapshots.
+- [ ] **Backup Policy**: Establish cron job for `DreamBees.db` snapshots.
 - [ ] **Stripe Production**: Switch `STRIPE_SECRET_KEY` to live mode.
 
 ### Monitoring Strategy

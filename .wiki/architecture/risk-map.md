@@ -21,5 +21,5 @@ This document identifies high-risk surfaces and the mitigation strategies implem
 
 1. [ ] **Secret Management**: Ensure `SESSION_SECRET` is >= 32 characters and rotated periodically.
 2. [ ] **CSP**: Verify Content Security Policy in `next.config.ts` allows Stripe and Google Fonts.
-3. [ ] **Backup Strategy**: Regular snapshots of the `playmore.db` SQLite file.
+3. [ ] **Backup Strategy**: Regular snapshots of the `DreamBees.db` SQLite file.
 4. [ ] **Rate Limits**: Tune rate limit buckets based on expected traffic.

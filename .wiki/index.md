@@ -1,6 +1,6 @@
-# PlayMoreTCG Knowledge Ledger
+# DreamBeesArt Knowledge Ledger
 
-Definitive architectural bridge for humans and autonomous agents working in `/Users/bozoegg/Desktop/PlayMoreTCG`.
+Definitive architectural bridge for humans and autonomous agents working in `/Users/bozoegg/Desktop/DreamBeesArt`.
 
 ## Navigation
 
@@ -150,7 +150,7 @@ Definitive architectural bridge for humans and autonomous agents working in `/Us
 - Product detail add-to-cart UX in `src/ui/pages/ProductDetailPage.tsx` now mirrors Domain `MAX_CART_QUANTITY`, clamps submitted quantity to the lower of stock and cart limit, exposes labelled quantity controls, and translates common insufficient-stock errors into non-technical customer guidance.
 - Browser security headers are configured globally in `next.config.ts`: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy` with Stripe allowances; production `script-src` omits `'unsafe-inline'` and `'unsafe-eval'` while development keeps them for local Next.js compatibility.
 - Additional browser hardening headers are configured globally in `next.config.ts`: `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, `X-DNS-Prefetch-Control`, and production-only `Strict-Transport-Security`.
-- ESLint ignores generated output via `eslint.config.js`: `dist`, `.next`, `playmore-tcg/.next`, and `next-env.d.ts`.
+- ESLint ignores generated output via `eslint.config.js`: `dist`, `.next`, `DreamBees-tcg/.next`, and `next-env.d.ts`.
 
 ## Physical verification commands
 

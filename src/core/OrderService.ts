@@ -220,7 +220,7 @@ export class OrderService {
           notes: [{
             id: crypto.randomUUID(),
             authorId: 'system',
-            authorEmail: 'system-checkout@playmore.tcg',
+            authorEmail: 'system-checkout@dreambees.art',
             text: 'Checkout initiated. Awaiting payment confirmation.',
             createdAt: new Date(),
           }],
@@ -229,7 +229,7 @@ export class OrderService {
 
         await this.audit.record({
           userId,
-          userEmail: 'system-checkout@playmore.tcg',
+          userEmail: 'system-checkout@dreambees.art',
           action: 'order_placed',
           targetId: order.id,
           details: { 
@@ -263,7 +263,7 @@ export class OrderService {
     if (order.status === 'cancelled') {
         await this.audit.record({
             userId: order.userId,
-            userEmail: 'system-reconciliation@playmore.tcg',
+            userEmail: 'system-reconciliation@dreambees.art',
             action: 'payment_received_on_cancelled_order',
             targetId: order.id,
             details: { paymentIntentId, status: 'manual_review_required' }
@@ -293,7 +293,7 @@ export class OrderService {
             {
                 id: noteId,
                 authorId: 'system',
-                authorEmail: 'stripe-webhook@playmore.tcg',
+                authorEmail: 'stripe-webhook@dreambees.art',
                 text: `Payment confirmed via Stripe (PI: ${paymentIntentId}). Risk: ${riskLevel} (${riskScore}).`,
                 createdAt: new Date(),
             }
@@ -301,7 +301,7 @@ export class OrderService {
 
         await this.audit.record({
           userId: order.userId,
-          userEmail: 'system-webhook@playmore.tcg',
+          userEmail: 'system-webhook@dreambees.art',
           action: 'order_status_changed',
           targetId: order.id,
           details: { 
@@ -482,7 +482,7 @@ export class OrderService {
           validDiscountCode ? this.discountRepo.getByCode(validDiscountCode).then((d: Discount | null) => d && this.discountRepo.incrementUsage(d.id)) : Promise.resolve(),
           this.audit.record({
             userId,
-            userEmail: 'system-checkout@playmore.tcg',
+            userEmail: 'system-checkout@dreambees.art',
             action: 'order_placed',
             targetId: order.id,
             details: { total, items: verifiedItems.length, discount: validDiscountCode }
@@ -494,7 +494,7 @@ export class OrderService {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         await this.audit.record({
           userId,
-          userEmail: 'system-reconciliation@playmore.tcg',
+          userEmail: 'system-reconciliation@dreambees.art',
           action: 'checkout_reconciliation_required',
           targetId: paymentResult.transactionId || 'unknown',
           details: { error: errorMessage, userId, total, items: verifiedItems.length, idempotencyKey: checkoutIdempotencyKey }
@@ -866,7 +866,7 @@ export class OrderService {
     if (pi.status === 'succeeded') {
       return this.finalizeOrderPayment(paymentIntentId);
     } else if (pi.status === 'canceled' || pi.status === 'requires_payment_method') {
-      await this.updateOrderStatus(order.id, 'cancelled', { id: 'system', email: 'reconciliation@playmore.tcg' });
+      await this.updateOrderStatus(order.id, 'cancelled', { id: 'system', email: 'reconciliation@dreambees.art' });
       return { ...order, status: 'cancelled' };
     }
 
@@ -887,7 +887,7 @@ export class OrderService {
 
     for (const order of expired) {
       try {
-        await this.updateOrderStatus(order.id, 'cancelled', { id: 'system', email: 'cleanup-service@playmore.tcg' });
+        await this.updateOrderStatus(order.id, 'cancelled', { id: 'system', email: 'cleanup-service@dreambees.art' });
       } catch (err) {
         logger.error(`Failed to cleanup order ${order.id}`, err);
       }

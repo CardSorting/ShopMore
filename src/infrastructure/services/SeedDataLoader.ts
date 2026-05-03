@@ -1,6 +1,6 @@
 /**
  * [LAYER: INFRASTRUCTURE]
- * Industrialized Seeding Infrastructure for PlayMoreTCG.
+ * Industrialized Seeding Infrastructure for DreamBeesArt.
  * Features: Domain Service Integration, Forensic Lifecycle Seeding, and Relational Sovereignty.
  */
 import type { 
@@ -200,7 +200,7 @@ const INITIAL_CUSTOMERS = [
   { email: 'ash.ketchum@palette.town', password: 'Pikapika-password123', displayName: 'Ash Ketchum' },
   { email: 'misty.williams@cerulean.city', password: 'Starmie-password123', displayName: 'Misty Williams' },
   { email: 'brock.harrison@pewter.city', password: 'Onix-password123', displayName: 'Brock Harrison' },
-  { email: 'admin@playmore.tcg', password: 'Admin-Secure-Password123', displayName: 'System Admin', role: 'admin' as const },
+  { email: 'admin@dreambees.art', password: 'Admin-Secure-Password123', displayName: 'System Admin', role: 'admin' as const },
   { email: 'giovanni@rocket.corp', password: 'Mewtwo-is-mine-123', displayName: 'Giovanni Whale' },
   { email: 'red@pallet.town', password: 'Champion-password-123', displayName: 'Red Inactive' },
 ];
@@ -333,7 +333,7 @@ export async function seedSuppliers(): Promise<number> {
     try {
       const existing = await services.supplierService.list({ query: sup.name });
       if (existing.length === 0) {
-        await services.supplierService.create(sup, { id: 'system', email: 'admin@playmore.tcg' });
+        await services.supplierService.create(sup, { id: 'system', email: 'admin@dreambees.art' });
         created++;
       }
     } catch (err) {
@@ -414,7 +414,7 @@ export async function seedProducts(): Promise<number> {
     try {
       const existing = await services.productService.getProducts({ limit: 1, query: product.name });
       if (existing.products.length === 0) {
-        const saved = await services.productService.createProduct(product, { id: 'system', email: 'system@playmore.tcg' });
+        const saved = await services.productService.createProduct(product, { id: 'system', email: 'system@dreambees.art' });
         
         // Seed Media specifically
         if (product.media && product.media.length > 0) {
@@ -557,7 +557,7 @@ export async function seedOrders(): Promise<number> {
         riskScore: 85,
         createdAt: new Date(),
         updatedAt: new Date(),
-        notes: [{ id: 'n-1', authorId: 'system', authorEmail: 'system@playmore.tcg', text: 'High value international order flagged for manual review.', createdAt: new Date() }],
+        notes: [{ id: 'n-1', authorId: 'system', authorEmail: 'system@dreambees.art', text: 'High value international order flagged for manual review.', createdAt: new Date() }],
       });
       created++;
     }
@@ -687,7 +687,7 @@ export async function seedSettings(): Promise<number> {
   assertSeedingAllowed();
   const db = getSQLiteDB();
   const settings = [
-    { key: 'store_name', value: JSON.stringify('PlayMore TCG'), updatedAt: new Date().toISOString() },
+    { key: 'store_name', value: JSON.stringify('DreamBees Art'), updatedAt: new Date().toISOString() },
     { key: 'currency', value: JSON.stringify('USD'), updatedAt: new Date().toISOString() },
     { key: 'tax_rate', value: JSON.stringify(0.08), updatedAt: new Date().toISOString() },
   ];
@@ -906,7 +906,7 @@ export async function seedAuditLogs(): Promise<number> {
 
   const events: Array<{ action: any, targetId: string, details: any }> = [
     { action: 'product_created', targetId: 'seeded-prod-1', details: { name: 'Scarlet & Violet Booster Box' } },
-    { action: 'settings_updated', targetId: 'store_name', details: { old: 'My Store', new: 'PlayMore TCG' } },
+    { action: 'settings_updated', targetId: 'store_name', details: { old: 'My Store', new: 'DreamBees Art' } },
   ];
 
   for (const event of events) {

@@ -24,12 +24,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!category) {
     const fallbackTitle = params.slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     return {
-      title: `${fallbackTitle} | PlayMoreTCG`,
+      title: `${fallbackTitle} | DreamBeesArt`,
     };
   }
 
   return {
-    title: `${category.name} | PlayMoreTCG`,
+    title: `${category.name} | DreamBeesArt`,
     description: category.description || `Shop our curated collection of ${category.name}. Fast shipping and guaranteed authenticity.`,
     alternates: {
       canonical: `/collections/${category.slug}`,
@@ -60,13 +60,13 @@ export default async function CollectionPage({ params }: { params: { slug: strin
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://playmoretcg.com',
+        item: 'https://dreambeesart.com',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: category?.name || 'Catalog',
-        item: `https://playmoretcg.com/collections/${params.slug}`,
+        item: `https://dreambeesart.com/collections/${params.slug}`,
       },
     ],
   };

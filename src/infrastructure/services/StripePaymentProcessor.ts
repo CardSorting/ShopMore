@@ -37,7 +37,7 @@ export class StripePaymentProcessor implements IPaymentProcessor {
           enabled: true,
           allow_redirects: 'never', // For synchronous processing in this context
         },
-        description: `PlayMoreTCG order ${params.orderId}`,
+        description: `DreamBeesArt order ${params.orderId}`,
         metadata: { orderId: params.orderId },
       }, {
         idempotencyKey: params.idempotencyKey,

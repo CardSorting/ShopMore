@@ -57,7 +57,7 @@ export class IntegrityWorker {
         .values({
           id: crypto.randomUUID(),
           userId: 'system',
-          userEmail: 'system@playmore.tcg',
+          userEmail: 'system@dreambees.art',
           action: 'autonomous_audit',
           targetId: 'internal',
           details: JSON.stringify({ locksCleared, cartsCleared, logsCleared }),

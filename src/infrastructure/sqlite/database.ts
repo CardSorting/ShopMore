@@ -11,7 +11,7 @@ let dbInstance: Kysely<Database> | null = null;
 export function getSQLiteDB(): Kysely<Database> {
   if (dbInstance) return dbInstance;
 
-  const sqlite = new SQLite(process.env.SQLITE_DATABASE_PATH ?? 'playmore.db');
+  const sqlite = new SQLite(process.env.SQLITE_DATABASE_PATH ?? 'DreamBees.db');
 
   // Enable WAL mode for performance
   sqlite.pragma('journal_mode = WAL');
@@ -317,7 +317,7 @@ export async function initDatabase() {
   // Migration for hive_audit if it was created with the old schema
   try {
     await db.schema.alterTable('hive_audit').addColumn('userId', 'text', (col) => col.notNull().defaultTo('system')).execute();
-    await db.schema.alterTable('hive_audit').addColumn('userEmail', 'text', (col) => col.notNull().defaultTo('system@playmore.tcg')).execute();
+    await db.schema.alterTable('hive_audit').addColumn('userEmail', 'text', (col) => col.notNull().defaultTo('system@dreambees.art')).execute();
     await db.schema.alterTable('hive_audit').addColumn('targetId', 'text', (col) => col.notNull().defaultTo('unknown')).execute();
     await db.schema.alterTable('hive_audit').renameColumn('timestamp', 'createdAt').execute();
   } catch (err) {

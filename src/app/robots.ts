@@ -21,6 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://playmoretcg.com/sitemap.xml',
+    sitemap: 'https://dreambeesart.com/sitemap.xml',
   };
 }

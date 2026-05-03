@@ -277,7 +277,7 @@ export function ProductDetailPage() {
               
               <div className="flex items-center gap-3">
                 <p className="text-sm font-bold text-gray-400 italic">
-                  Brand: <span className="text-primary-600 font-black">{product.vendor || 'PlayMore'}</span>
+                  Brand: <span className="text-primary-600 font-black">{product.vendor || 'DreamBees'}</span>
                 </p>
                 <div className="h-4 w-px bg-gray-200" />
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SKU: {currentSku || 'N/A'}</p>

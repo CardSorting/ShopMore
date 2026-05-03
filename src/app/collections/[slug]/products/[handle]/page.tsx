@@ -29,10 +29,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const product = await getProduct(params.handle);
     
     if (!product) {
-        return { title: 'Product Not Found | PlayMoreTCG' };
+        return { title: 'Product Not Found | DreamBeesArt' };
     }
     
-    const title = product.seoTitle || `${product.name} | ${params.slug} | PlayMoreTCG`;
+    const title = product.seoTitle || `${product.name} | ${params.slug} | DreamBeesArt`;
     const description = product.seoDescription || product.description.slice(0, 160);
     
     return {
@@ -67,7 +67,7 @@ export default async function Page({ params }: Props) {
             price: (product.price / 100).toFixed(2),
             priceCurrency: 'USD',
             availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: `https://playmoretcg.com/products/${product.handle || product.id}`,
+            url: `https://dreambeesart.com/products/${product.handle || product.id}`,
         },
     };
 

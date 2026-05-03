@@ -344,7 +344,7 @@ export function SearchCommandPalette() {
                  Select
               </div>
            </div>
-           <p className="text-[10px] font-bold text-gray-400 italic">PlayMore Discovery Engine v1.0</p>
+           <p className="text-[10px] font-bold text-gray-400 italic">DreamBees Discovery Engine v1.0</p>
         </footer>
       </div>
     </div>

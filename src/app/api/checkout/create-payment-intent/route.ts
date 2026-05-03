@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         
         await services.orderService.updateOrderStatus(order.id, 'cancelled', { 
             id: 'system', 
-            email: 'system-rollback@playmore.tcg' 
+            email: 'system-rollback@dreambees.art' 
         }).catch(rollbackErr => {
             logger.error(`FATAL: Rollback failed for order ${order.id}. Manual reconciliation required.`, rollbackErr);
         });

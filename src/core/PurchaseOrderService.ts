@@ -164,7 +164,7 @@ export class PurchaseOrderService {
 
     await this.auditService.record({
       userId: 'system', // Should be passed in real app
-      userEmail: 'admin@playmore.tcg',
+      userEmail: 'admin@dreambees.art',
       action: 'purchase_order.created',
       targetId: saved.id,
       details: { supplier: saved.supplier, itemCount: saved.items.length }
@@ -295,7 +295,7 @@ export class PurchaseOrderService {
 
     await this.auditService.record({
       userId: 'system',
-      userEmail: 'admin@playmore.tcg',
+      userEmail: 'admin@dreambees.art',
       action: 'purchase_order.submitted',
       targetId: id,
       details: { status: 'ordered' }
@@ -314,7 +314,7 @@ export class PurchaseOrderService {
 
     await this.auditService.record({
       userId: 'system',
-      userEmail: 'admin@playmore.tcg',
+      userEmail: 'admin@dreambees.art',
       action: 'purchase_order.cancelled',
       targetId: id,
       details: { status: 'cancelled' }
@@ -347,7 +347,7 @@ export class PurchaseOrderService {
 
     await this.auditService.record({
       userId: 'system',
-      userEmail: 'admin@playmore.tcg',
+      userEmail: 'admin@dreambees.art',
       action: 'purchase_order.closed',
       targetId: input.id,
       details: { discrepancyReason: input.discrepancyReason, notes: input.notes }
@@ -507,7 +507,7 @@ export class PurchaseOrderService {
 
     await this.auditService.record({
       userId: input.receivedBy,
-      userEmail: 'admin@playmore.tcg',
+      userEmail: 'admin@dreambees.art',
       action: 'purchase_order.items_received',
       targetId: input.purchaseOrderId,
       details: { 

@@ -18,7 +18,7 @@ ShopMore uses SQLite for sovereign data management.
 
 - **Migrations**: New tables should be added to `src/infrastructure/sqlite/database.ts` within the `initDatabase` or `applyMigrations` logic.
 - **Seeding**: Update `src/infrastructure/services/SeedDataLoader.ts` to include mock data for new features.
-- **Backups**: Simply copy the `playmore.db` file. For production, use a tool like `litestream` for real-time replication.
+- **Backups**: Simply copy the `DreamBees.db` file. For production, use a tool like `litestream` for real-time replication.
 
 ## 🔐 Security & Permissions
 

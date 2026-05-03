@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', '.next', 'playmore-tcg/.next', 'next-env.d.ts']),
+  globalIgnores(['dist', '.next', 'DreamBees-tcg/.next', 'next-env.d.ts']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

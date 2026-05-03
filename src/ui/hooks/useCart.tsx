@@ -27,7 +27,7 @@ export interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-const GUEST_CART_KEY = 'playmore_guest_cart';
+const GUEST_CART_KEY = 'DreamBees_guest_cart';
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();

@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 export async function generateMetadata({ searchParams }: { searchParams: { q?: string } }): Promise<Metadata> {
   const query = searchParams.q || '';
   return {
-    title: query ? `Search: ${query} | PlayMoreTCG` : 'Search Catalog | PlayMoreTCG',
+    title: query ? `Search: ${query} | DreamBeesArt` : 'Search Catalog | DreamBeesArt',
     description: `Search our extensive catalog of trading cards, sets, and supplies. Results for ${query || 'all products'}.`,
     alternates: {
       canonical: query ? `/search?q=${encodeURIComponent(query)}` : '/search',
@@ -25,13 +25,13 @@ export default function SearchPage({ searchParams }: { searchParams: { q?: strin
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://playmoretcg.com',
+        item: 'https://dreambeesart.com',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Search Results',
-        item: `https://playmoretcg.com/search${query ? `?q=${encodeURIComponent(query)}` : ''}`,
+        item: `https://dreambeesart.com/search${query ? `?q=${encodeURIComponent(query)}` : ''}`,
       },
     ],
   };

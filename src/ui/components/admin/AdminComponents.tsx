@@ -111,8 +111,8 @@ export function AdminBreadcrumb() {
 
 export function useAdminPageTitle(title: string) {
   useEffect(() => {
-    document.title = `${title} · PlayMoreTCG Admin`;
-    return () => { document.title = 'PlayMoreTCG'; };
+    document.title = `${title} · DreamBeesArt Admin`;
+    return () => { document.title = 'DreamBeesArt'; };
   }, [title]);
 }
 
@@ -605,7 +605,7 @@ export function AdminTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void 
         <div className="hidden items-center gap-3 md:flex">
           <div className="text-right">
             <p className="text-xs font-semibold text-gray-900">{user?.displayName || 'Store Admin'}</p>
-            <p className="text-[10px] text-gray-500">PlayMoreTCG</p>
+            <p className="text-[10px] text-gray-500">DreamBeesArt</p>
           </div>
           <div className="h-8 w-8 overflow-hidden rounded-full bg-linear-to-br from-primary-400 to-primary-600 shadow-sm">
             <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white">{initials}</div>
@@ -937,9 +937,9 @@ export function AdminPackingSlip({ order }: { order: Order }) {
           <p className="text-sm font-bold text-gray-500">Order #{order.id.slice(0, 8).toUpperCase()}</p>
         </div>
         <div className="text-right">
-          <p className="text-xl font-black uppercase">PlayMore TCG</p>
+          <p className="text-xl font-black uppercase">DreamBees Art</p>
           <p className="text-xs font-medium text-gray-500">123 Pallet Town Road, Kanto</p>
-          <p className="text-xs font-medium text-gray-500">support@playmoretcg.com</p>
+          <p className="text-xs font-medium text-gray-500">support@dreambeesart.com</p>
         </div>
       </div>
 
@@ -992,7 +992,7 @@ export function AdminPackingSlip({ order }: { order: Order }) {
       </table>
 
       <div className="border-t pt-8 text-center">
-        <p className="text-xs font-bold text-gray-400 italic">Thank you for shopping with PlayMore TCG!</p>
+        <p className="text-xs font-bold text-gray-400 italic">Thank you for shopping with DreamBees Art!</p>
       </div>
     </div>
   );

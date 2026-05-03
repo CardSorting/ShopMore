@@ -1,6 +1,6 @@
 # Admin Access Guide
 
-This guide provides the necessary credentials and instructions to access the PlayMoreTCG Admin Panel.
+This guide provides the necessary credentials and instructions to access the DreamBeesArt Admin Panel.
 
 ## Credentials
 
@@ -8,7 +8,7 @@ The following admin user has been created in the local SQLite database:
 
 | Detail | Value |
 |---|---|
-| **Email** | `admin@playmore.tcg` |
+| **Email** | `admin@dreambees.art` |
 | **Password** | `admin-password-123` |
 | **Display Name** | Head Merchant |
 | **Role** | `admin` |
@@ -43,7 +43,7 @@ Once logged in, you will have access to:
 
 To verify the admin role in the database manually, you can run:
 ```bash
-sqlite3 playmore.db "SELECT email, role FROM users WHERE email = 'admin@playmore.tcg';"
+sqlite3 DreamBees.db "SELECT email, role FROM users WHERE email = 'admin@dreambees.art';"
 ```
 Expected output:
-`admin@playmore.tcg|admin`
+`admin@dreambees.art|admin`

@@ -43,7 +43,7 @@ const MOCK_REVIEWS: Review[] = [
     rating: 5,
     date: '2024-02-28',
     title: 'Professional packaging',
-    content: 'I was worried about a high-value single getting damaged in the mail, but PlayMoreTCG knows what they are doing. Bulletproof packaging.',
+    content: 'I was worried about a high-value single getting damaged in the mail, but DreamBeesArt knows what they are doing. Bulletproof packaging.',
     verified: true,
     helpful: 45
   }

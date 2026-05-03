@@ -1,5 +1,5 @@
 {
-  "name": "playmore-tcg",
+  "name": "DreamBees-tcg",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "seed": "tsx --tsconfig tsconfig.json migrate-and-seed.ts",
+    "seed": "tsx --env-file=.env --tsconfig tsconfig.json migrate-and-seed.ts",
     "setup": "./scripts/setup.sh"
   },
   "engines": {

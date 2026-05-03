@@ -2,7 +2,7 @@ import SQLite from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
-const dbPath = process.env.SQLITE_DATABASE_PATH ?? 'playmore.db';
+const dbPath = process.env.SQLITE_DATABASE_PATH ?? 'DreamBees.db';
 const db = new SQLite(dbPath);
 
 async function createAdmin() {

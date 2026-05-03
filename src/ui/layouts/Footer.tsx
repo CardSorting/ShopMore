@@ -93,7 +93,7 @@ export function Footer() {
               <Link href={STORE_PATHS.HOME} className="flex items-center gap-3 text-primary-700 font-black text-3xl tracking-tighter hover:opacity-80 transition-opacity">
 
                 <Package className="w-10 h-10" />
-                PlayMoreTCG
+                DreamBeesArt
               </Link>
               <p className="text-gray-500 text-base leading-relaxed">
                 Founded by collectors, for collectors. We are building the world's most trusted platform for Trading Card Games, ensuring every player has access to the cards they love.
@@ -250,7 +250,7 @@ export function Footer() {
 
           <div className="text-right">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              © {currentYear} PlayMoreTCG. All Rights Reserved.
+              © {currentYear} DreamBeesArt. All Rights Reserved.
             </p>
             <p className="text-[10px] font-bold text-primary-500 mt-1 uppercase tracking-tighter">
               The World's Favorite TCG Marketplace

@@ -68,6 +68,8 @@ export async function initDatabase() {
     .addColumn('imageUrl', 'text', (col) => col.notNull())
     .addColumn('set', 'text')
     .addColumn('rarity', 'text')
+    .addColumn('isDigital', 'integer')
+    .addColumn('digitalAssets', 'text')
     .addColumn('status', 'text', (col) => col.notNull().defaultTo('active'))
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .addColumn('updatedAt', 'text', (col) => col.notNull())
@@ -103,6 +105,8 @@ export async function initDatabase() {
   try { await db.schema.alterTable('products').addColumn('manufacturerSku', 'text').execute(); } catch {}
   try { await db.schema.alterTable('products').addColumn('barcode', 'text').execute(); } catch {}
   try { await db.schema.alterTable('products').addColumn('hasVariants', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('isDigital', 'integer').execute(); } catch {}
+  try { await db.schema.alterTable('products').addColumn('digitalAssets', 'text').execute(); } catch {}
 
   await db.schema
     .createTable('product_options')
@@ -294,9 +298,12 @@ export async function initDatabase() {
     .addColumn('status', 'text', (col) => col.notNull())
     .addColumn('startsAt', 'text', (col) => col.notNull())
     .addColumn('endsAt', 'text')
+    .addColumn('isAutomatic', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('usageCount', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('createdAt', 'text', (col) => col.notNull())
     .execute();
+  
+  try { await db.schema.alterTable('discounts').addColumn('isAutomatic', 'integer', (col) => col.notNull().defaultTo(0)).execute(); } catch {}
 
   await db.schema
     .createTable('settings')
@@ -423,6 +430,7 @@ export async function initDatabase() {
     .addColumn('reorderPoint', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('reorderQty', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .addPrimaryKeyConstraint('pk_inventory_levels', ['productId', 'locationId'])
     .execute();
 
   await db.schema
@@ -647,6 +655,14 @@ export async function initDatabase() {
     .execute();
 
   await db.schema
+    .createIndex('idx_inventory_levels_composite')
+    .on('inventory_levels')
+    .columns(['productId', 'locationId'])
+    .unique()
+    .ifNotExists()
+    .execute();
+
+  await db.schema
     .createIndex('idx_suppliers_name')
     .on('suppliers')
     .column('name')
@@ -774,6 +790,42 @@ export async function initDatabase() {
     .createIndex('idx_digital_access_userId')
     .on('digital_access_logs')
     .column('userId')
+    .ifNotExists()
+    .execute();
+
+  await db.schema
+    .createTable('knowledgebase_categories')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('name', 'text', (col) => col.notNull())
+    .addColumn('slug', 'text', (col) => col.notNull().unique())
+    .addColumn('description', 'text', (col) => col.notNull())
+    .addColumn('icon', 'text')
+    .addColumn('articleCount', 'integer', (col) => col.notNull().defaultTo(0))
+    .execute();
+
+  await db.schema
+    .createTable('knowledgebase_articles')
+    .ifNotExists()
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('categoryId', 'text', (col) => col.notNull())
+    .addColumn('title', 'text', (col) => col.notNull())
+    .addColumn('slug', 'text', (col) => col.notNull().unique())
+    .addColumn('content', 'text', (col) => col.notNull())
+    .addColumn('excerpt', 'text', (col) => col.notNull())
+    .addColumn('authorName', 'text')
+    .addColumn('viewCount', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('helpfulCount', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('notHelpfulCount', 'integer', (col) => col.notNull().defaultTo(0))
+    .addColumn('tags', 'text')
+    .addColumn('createdAt', 'text', (col) => col.notNull())
+    .addColumn('updatedAt', 'text', (col) => col.notNull())
+    .execute();
+
+  await db.schema
+    .createIndex('idx_kb_articles_category')
+    .on('knowledgebase_articles')
+    .column('categoryId')
     .ifNotExists()
     .execute();
 }

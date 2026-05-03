@@ -314,6 +314,31 @@ export interface ProductMediaTable {
   createdAt: string;
 }
 
+export interface KnowledgebaseCategoryTable {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  icon: string | null;
+  articleCount: number;
+}
+
+export interface KnowledgebaseArticleTable {
+  id: string;
+  categoryId: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  authorName: string | null;
+  viewCount: number;
+  helpfulCount: number;
+  notHelpfulCount: number;
+  tags: string | null; // JSON string
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SupportTicketTable {
   id: string;
   userId: string;
@@ -388,5 +413,7 @@ export interface Database {
   support_article_feedback: SupportArticleFeedbackTable;
   product_options: ProductOptionTable;
   product_variants: ProductVariantTable;
+  knowledgebase_categories: KnowledgebaseCategoryTable;
+  knowledgebase_articles: KnowledgebaseArticleTable;
 }
 
